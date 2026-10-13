@@ -1,99 +1,406 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Instagram, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import Slider from 'react-slick'
+import { Instagram } from 'lucide-react'
+
+function getGalleryLayout() {
+  if (typeof window === 'undefined') {
+    return {
+      itemsPerPage: 10,
+      columns: 5,
+    }
+  }
+
+  if (window.matchMedia('(min-width: 1024px)').matches) {
+    return {
+      // Desktop: 5 columns × 2 rows
+      itemsPerPage: 10,
+      columns: 5,
+    }
+  }
+
+  if (window.matchMedia('(min-width: 640px)').matches) {
+    return {
+      // Tablet: 3 columns × 2 rows
+      itemsPerPage: 6,
+      columns: 3,
+    }
+  }
+
+  return {
+    // Mobile: 2 columns × 3 rows
+    itemsPerPage: 6,
+    columns: 2,
+  }
+}
+
+function useGalleryLayout() {
+  const [layout, setLayout] = useState(getGalleryLayout)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setLayout(getGalleryLayout())
+    }
+
+    window.addEventListener('resize', handleResize)
+
+    handleResize()
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  return layout
+}
+
+function chunkItems(items, size) {
+  const pages = []
+
+  for (let index = 0; index < items.length; index += size) {
+    pages.push(items.slice(index, index + size))
+  }
+
+  return pages
+}
 
 function GridTile({ item, index }) {
-  return (
-    <a
-      href={item.url || '#'}
-      target={item.url ? '_blank' : undefined}
-      rel={item.url ? 'noopener noreferrer' : undefined}
-      className="group relative block aspect-square overflow-hidden"
-    >
+  const content = (
+    <>
       <img
         src={item.image}
         alt={item.alt || `Instagram post ${index + 1}`}
-        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         loading="lazy"
+        className="
+          h-full w-full
+          object-cover
+          transition-transform
+          duration-500
+          ease-out
+          group-hover:scale-[1.035]
+        "
       />
-      <div className="absolute inset-0 bg-black/0 flex flex-col items-center justify-center gap-2 transition-colors duration-300 group-hover:bg-black/50">
-        <Instagram className="w-8 h-8 text-white opacity-0 -translate-y-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0" strokeWidth={1.75} />
-        <span className="text-white text-sm font-semibold tracking-wide opacity-0 -translate-y-1 transition-all duration-300 delay-75 group-hover:opacity-100 group-hover:translate-y-0">
-          Shop It
+
+      {/* subtle image treatment */}
+      <div
+        className="
+          pointer-events-none
+          absolute inset-0
+          bg-gradient-to-t
+          from-black/20
+          via-transparent
+          to-transparent
+          opacity-60
+        "
+      />
+
+      {/* HOVER OVERLAY */}
+      <div
+        className="
+          absolute inset-0
+          flex flex-col
+          items-center justify-center
+          gap-2
+          bg-black/0
+          transition-all duration-300
+          group-hover:bg-black/45
+        "
+      >
+        <span
+          className="
+            flex h-10 w-10
+            translate-y-1
+            items-center justify-center
+            rounded-full
+            border border-white/30
+            bg-white/10
+            text-white
+            opacity-0
+            backdrop-blur-sm
+            transition-all duration-300
+            group-hover:translate-y-0
+            group-hover:opacity-100
+          "
+        >
+          <Instagram
+            className="h-[18px] w-[18px]"
+            strokeWidth={1.8}
+          />
+        </span>
+
+        <span
+          className="
+            translate-y-1
+            text-[10px]
+            font-semibold uppercase
+            tracking-[0.15em]
+            text-white
+            opacity-0
+            transition-all
+            delay-75 duration-300
+            group-hover:translate-y-0
+            group-hover:opacity-100
+          "
+        >
+          View Post
         </span>
       </div>
+    </>
+  )
+
+  if (!item.url) {
+    return (
+      <div
+        className="
+          group
+          relative block
+          aspect-square
+          overflow-hidden
+          rounded-xl
+          bg-[#EEE7E0]
+        "
+      >
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <a
+      href={item.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="
+        group
+        relative block
+        aspect-square
+        overflow-hidden
+        rounded-xl
+        bg-[#EEE7E0]
+        outline-none
+        ring-[#A86C40]
+        transition-shadow
+        focus-visible:ring-2
+        focus-visible:ring-offset-2
+      "
+    >
+      {content}
     </a>
   )
 }
 
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true
-  )
-  useEffect(() => {
-    const mql = window.matchMedia('(min-width: 1024px)')
-    const onChange = (e) => setIsDesktop(e.matches)
-    if (mql.addEventListener) {
-      mql.addEventListener('change', onChange)
-      return () => mql.removeEventListener('change', onChange)
-    }
-    mql.addListener(onChange)
-    return () => mql.removeListener(onChange)
-  }, [])
-  return isDesktop
-}
-
 export default function HomeInstagramGrid({ images }) {
-  const isDesktop = useIsDesktop()
-  const [page, setPage] = useState(0)
+  const sliderRef = useRef(null)
 
-  if (!images || images.length === 0) return null
+  const { itemsPerPage, columns } = useGalleryLayout()
 
-  // Desktop: 5 columns x 2 rows = 10 per page. Mobile: 2 columns x 3 rows = 6 per page.
-  const itemsPerPage = isDesktop ? 10 : 6
-  const totalPages = Math.ceil(images.length / itemsPerPage)
-  const safePage = ((page % totalPages) + totalPages) % totalPages
-  const start = safePage * itemsPerPage
-  const currentImages = images.slice(start, start + itemsPerPage)
-  const showArrows = totalPages > 1
+  const [activePage, setActivePage] = useState(0)
 
-  const goPrev = () => setPage((p) => p - 1)
-  const goNext = () => setPage((p) => p + 1)
+  const safeImages = useMemo(
+    () =>
+      Array.isArray(images)
+        ? images.filter((item) => item?.image)
+        : [],
+    [images],
+  )
+
+  const pages = useMemo(
+    () => chunkItems(safeImages, itemsPerPage),
+    [safeImages, itemsPerPage],
+  )
+
+  /*
+   * Reset to first page when breakpoint changes.
+   * Otherwise an old desktop page index could point
+   * beyond the mobile page structure.
+   */
+  useEffect(() => {
+    setActivePage(0)
+
+    sliderRef.current?.slickGoTo(0, true)
+  }, [itemsPerPage])
+
+  if (safeImages.length === 0) {
+    return null
+  }
+
+  const gridColumnsClass =
+    columns === 5
+      ? 'grid-cols-5'
+      : columns === 3
+        ? 'grid-cols-3'
+        : 'grid-cols-2'
+
+  const hasMultiplePages = pages.length > 1
+
+  const settings = {
+    dots: false,
+    arrows: false,
+
+    slidesToShow: 1,
+    slidesToScroll: 1,
+
+    infinite: hasMultiplePages,
+
+    autoplay: hasMultiplePages,
+    autoplaySpeed: 3600,
+
+    speed: 700,
+    cssEase: 'ease',
+
+    pauseOnHover: true,
+    pauseOnFocus: true,
+
+    swipe: true,
+    swipeToSlide: true,
+    draggable: true,
+    touchMove: true,
+
+    adaptiveHeight: false,
+
+    afterChange: (current) => {
+      setActivePage(current)
+    },
+  }
+
+  const handlePageChange = (pageIndex) => {
+    sliderRef.current?.slickGoTo(pageIndex)
+  }
 
   return (
-    <section className="bg-white py-14 sm:py-16">
-      <h2 className="text-center font-serif text-3xl sm:text-4xl text-stone-900 mb-10">
-        Instagram
-      </h2>
-
-      <div className="relative px-10 sm:px-14">
-        {showArrows && (
-          <button
-            type="button"
-            onClick={goPrev}
-            aria-label="Previous images"
-            className="absolute left-1 sm:left-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white shadow-md ring-1 ring-stone-200 text-stone-700 hover:text-[#FFD400] hover:shadow-lg transition-all duration-200"
+    <section
+      className="
+        w-full
+        overflow-hidden
+        bg-[#FAF8F5]
+        py-10
+        sm:py-14
+        lg:py-16
+      "
+    >
+      <div className="w-full px-3 sm:px-5 lg:px-8 xl:px-10">
+        {/* HEADING */}
+        <div className="mx-auto mb-7 text-center sm:mb-9">
+          <div
+            className="
+              mx-auto
+              flex h-9 w-9
+              items-center justify-center
+              rounded-full
+              border border-[#E4D5C8]
+              bg-white
+              text-[#855333]
+              shadow-[0_4px_14px_rgba(79,48,27,0.06)]
+            "
           >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-        )}
+            <Instagram
+              className="h-[17px] w-[17px]"
+              strokeWidth={1.8}
+            />
+          </div>
 
-        <div className={`grid ${isDesktop ? 'grid-cols-5' : 'grid-cols-2'}`}>
-          {currentImages.map((item, i) => (
-            <GridTile key={item.id} item={item} index={start + i} />
-          ))}
+          <h2
+            className="
+              mt-3
+              text-2xl
+              font-semibold
+              tracking-[-0.02em]
+              text-[#30241D]
+              sm:text-3xl
+            "
+          >
+            Instagram
+          </h2>
+
+          <div className="mx-auto mt-3 h-px w-8 bg-[#B98255]" />
         </div>
 
-        {showArrows && (
-          <button
-            type="button"
-            onClick={goNext}
-            aria-label="Next images"
-            className="absolute right-1 sm:right-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white shadow-md ring-1 ring-stone-200 text-stone-700 hover:text-[#FFD400] hover:shadow-lg transition-all duration-200"
+        {/* CAROUSEL */}
+        <div className="mx-auto w-full">
+          <Slider
+            key={`${itemsPerPage}-${columns}`}
+            ref={sliderRef}
+            {...settings}
           >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+            {pages.map((pageItems, pageIndex) => (
+              <div
+                key={`instagram-page-${pageIndex}`}
+                className="outline-none"
+              >
+                <div
+                  className={`
+                    grid
+                    ${gridColumnsClass}
+                    gap-2
+                    sm:gap-2.5
+                    lg:gap-3
+                  `}
+                >
+                  {pageItems.map((item, itemIndex) => (
+                    <GridTile
+                      key={
+                        item.id ||
+                        `${pageIndex}-${itemIndex}`
+                      }
+                      item={item}
+                      index={
+                        pageIndex * itemsPerPage +
+                        itemIndex
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </Slider>
+        </div>
+
+        {/* MANUAL NAVIGATION — NO ARROWS */}
+        {hasMultiplePages && (
+          <div className="mt-6 flex items-center justify-center gap-2">
+            {pages.map((_, pageIndex) => (
+              <button
+                key={`instagram-dot-${pageIndex}`}
+                type="button"
+                onClick={() =>
+                  handlePageChange(pageIndex)
+                }
+                aria-label={`Go to Instagram gallery page ${pageIndex + 1
+                  }`}
+                aria-current={
+                  activePage === pageIndex
+                    ? 'true'
+                    : undefined
+                }
+                className={`
+                  h-2 rounded-full
+                  transition-all duration-300
+                  ${activePage === pageIndex
+                    ? 'w-7 bg-[#6A4027]'
+                    : 'w-2 bg-[#D6C7BA] hover:bg-[#B58F70]'
+                  }
+                `}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* MOBILE HINT */}
+        {hasMultiplePages && (
+          <p
+            className="
+              mt-3
+              text-center
+              text-[9px]
+              font-medium uppercase
+              tracking-[0.16em]
+              text-[#A38E7E]
+              sm:hidden
+            "
+          >
+            Swipe to explore
+          </p>
         )}
       </div>
     </section>
