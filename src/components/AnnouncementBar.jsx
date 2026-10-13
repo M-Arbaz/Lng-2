@@ -1,91 +1,212 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import announcementService from '../utils/announcementService.js'
 
 export default function AnnouncementBar() {
   const [visible, setVisible] = useState(false)
   const [announcement, setAnnouncement] = useState(null)
+
   const trackRef = useRef(null)
 
   useEffect(() => {
     let mounted = true
+
     const load = async () => {
       try {
         const [active, enabled] = await Promise.all([
           announcementService.getActiveAnnouncement(),
           announcementService.getAnnouncementBarEnabled(),
         ])
+
         if (!mounted) return
-        if (!enabled) {
+
+        if (!enabled || !active) {
           setVisible(false)
+          setAnnouncement(null)
           return
         }
+
         setAnnouncement(active)
-        setVisible(active !== null)
-      } catch (e) {
-        console.error('Error loading announcement bar:', e)
+        setVisible(true)
+      } catch (error) {
+        console.error(
+          'Error loading announcement bar:',
+          error,
+        )
       }
     }
+
     load()
-    const interval = setInterval(load, 30000)
+
+    const interval = window.setInterval(load, 30000)
+
     return () => {
       mounted = false
-      clearInterval(interval)
+      window.clearInterval(interval)
     }
   }, [])
 
-  if (!visible || !announcement) return null
+  if (!visible || !announcement) {
+    return null
+  }
 
-  const bg = announcement.bgColor || '#5A2D0C'
-  const tc = announcement.textColor || '#ffffff'
-  const scrollSpeed = announcement.scrollSpeed || 20
+  const scrollSpeed =
+    announcement.scrollSpeed || 20
 
-  // Separator between repeated messages
-  const separator = '<span style="opacity:0.4;margin:0 1.5rem;">•</span>'
-  const itemHtml = announcement.message + separator
+  const textColor =
+    announcement.textColor || '#FFF8F1'
+
+  const separator =
+    '<span style="opacity:.42;margin:0 1.65rem;font-size:.72em;">✦</span>'
+
+  const itemHtml =
+    announcement.message + separator
 
   return (
-    <div className="w-full overflow-hidden relative" data-announcement-bar="true" style={{ backgroundColor: bg, color: tc }}>
-      {/*
-        Two identical halves side-by-side.
-        We animate translateX from 0 to -50% — exactly one full half-width.
-        This creates a perfect seamless loop with zero gap.
-      */}
+    <div
+      data-announcement-bar="true"
+      className="group relative z-[160] w-full overflow-hidden"
+      style={{
+        color: textColor,
+        backgroundImage: `
+          linear-gradient(
+            90deg,
+            #342116 0%,
+            #4A2B1B 18%,
+            #633A24 42%,
+            #70452B 50%,
+            #633A24 58%,
+            #4A2B1B 82%,
+            #342116 100%
+          )
+        `,
+      }}
+    >
+      {/* WOOD GRAIN */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.10]"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(
+              0deg,
+              rgba(255,255,255,0.05) 0px,
+              rgba(255,255,255,0.05) 1px,
+              transparent 1px,
+              transparent 4px
+            ),
+            repeating-linear-gradient(
+              90deg,
+              rgba(0,0,0,0.08) 0px,
+              rgba(0,0,0,0.08) 1px,
+              transparent 1px,
+              transparent 17px
+            )
+          `,
+        }}
+      />
+
+      {/* SOFT INNER HIGHLIGHTS */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/15" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-black/25" />
+
+      {/* LEFT FADE */}
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 sm:w-16"
+        style={{
+          background:
+            'linear-gradient(to right, rgba(52,33,22,0.96), transparent)',
+        }}
+      />
+
+      {/* RIGHT FADE */}
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 sm:w-16"
+        style={{
+          background:
+            'linear-gradient(to left, rgba(52,33,22,0.96), transparent)',
+        }}
+      />
+
+      {/* MARQUEE */}
       <div
         ref={trackRef}
-        className="flex whitespace-nowrap w-max"
+        className="flex w-max whitespace-nowrap group-hover:[animation-play-state:paused]"
         style={{
-          animation: `marquee ${scrollSpeed}s linear infinite`,
+          animation: `announcementMarquee ${scrollSpeed}s linear infinite`,
         }}
       >
-        {/* First half */}
-        <div className="flex shrink-0">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <span
-              key={`a-${i}`}
-              className="inline-flex items-center py-2 text-xs sm:text-sm md:text-base"
-              dangerouslySetInnerHTML={{ __html: itemHtml }}
-            />
-          ))}
+        {/* FIRST COPY */}
+        <div className="flex shrink-0 items-center">
+          {Array.from({ length: 8 }).map(
+            (_, index) => (
+              <span
+                key={`announcement-a-${index}`}
+                className="
+                  inline-flex
+                  min-h-[34px]
+                  items-center
+                  py-1.5
+                  text-[11px]
+                  font-medium
+                  tracking-[0.035em]
+                  sm:min-h-[36px]
+                  sm:text-[12px]
+                  lg:text-[13px]
+                "
+                dangerouslySetInnerHTML={{
+                  __html: itemHtml,
+                }}
+              />
+            ),
+          )}
         </div>
 
-        {/* Exact duplicate — when first half scrolls out, this takes over */}
-        <div className="flex shrink-0" aria-hidden="true">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <span
-              key={`b-${i}`}
-              className="inline-flex items-center py-2 text-xs sm:text-sm md:text-base"
-              dangerouslySetInnerHTML={{ __html: itemHtml }}
-            />
-          ))}
+        {/* SECOND COPY */}
+        <div
+          className="flex shrink-0 items-center"
+          aria-hidden="true"
+        >
+          {Array.from({ length: 8 }).map(
+            (_, index) => (
+              <span
+                key={`announcement-b-${index}`}
+                className="
+                  inline-flex
+                  min-h-[34px]
+                  items-center
+                  py-1.5
+                  text-[11px]
+                  font-medium
+                  tracking-[0.035em]
+                  sm:min-h-[36px]
+                  sm:text-[12px]
+                  lg:text-[13px]
+                "
+                dangerouslySetInnerHTML={{
+                  __html: itemHtml,
+                }}
+              />
+            ),
+          )}
         </div>
       </div>
 
       <style>{`
-        @keyframes marquee {
-          0%   { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
+        @keyframes announcementMarquee {
+          0% {
+            transform: translateX(0);
+          }
+
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          [data-announcement-bar="true"] > div {
+            animation-play-state: paused !important;
+          }
         }
       `}</style>
     </div>
