@@ -1,19 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Link } from '@/lib/navigation'
-import { FaHeart, FaRegHeart } from 'react-icons/fa'
+import ProductCard from '../components/ProductCard.jsx'
 import classNames from '../utils/classNames.js'
 import { getDiscountInfo } from '../utils/discountHelpers.js'
-import { slugify } from '../utils/slugify.js'
 
-const formatPricePKR = (value) => {
-  if (typeof value !== 'number' || Number.isNaN(value)) return ''
-  return new Intl.NumberFormat('en-PK', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)
-}
+
 
 /* ── Mobile filter drawer toggle icon ── */
 function FilterIcon() {
@@ -44,17 +36,34 @@ function Chevron({ open }) {
 /* ── Collapsible filter group ── */
 function FilterGroup({ title, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
+
   return (
-    <div className="border-b border-stone-200 last:border-b-0">
+    <div className="border-b border-[#EAE0D7] last:border-b-0">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between py-3 text-left text-xs font-semibold uppercase tracking-widest text-stone-500 hover:text-stone-800 transition-colors"
+        onClick={() => setOpen((value) => !value)}
+        className="
+          flex w-full items-center justify-between
+          py-4
+          text-left
+          text-[10px] font-semibold uppercase
+          tracking-[0.18em]
+          text-[#8A6F5B]
+          transition-colors duration-200
+          hover:text-[#5A3422]
+        "
       >
         {title}
+
         <Chevron open={open} />
       </button>
-      <div className={classNames('overflow-hidden transition-all duration-300', open ? 'max-h-96 pb-4' : 'max-h-0')}>
+
+      <div
+        className={classNames(
+          'overflow-hidden transition-all duration-300',
+          open ? 'max-h-[600px] pb-4' : 'max-h-0',
+        )}
+      >
         {children}
       </div>
     </div>
@@ -98,122 +107,204 @@ export default function ProductsSection({
 
   /* ── Sidebar content (shared between desktop + mobile drawer) ── */
   const SidebarContent = () => (
-    <div className="space-y-0">
-      {/* Category */}
+    <div>
+      {/* CATEGORY */}
       <FilterGroup title="Category">
-        <ul className="space-y-1.5">
-          <li>
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('All')}
+            className={classNames(
+              'group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13px] transition-all duration-200',
+              selectedCategory === 'All'
+                ? 'bg-[#F1E8DF] font-semibold text-[#5A3422]'
+                : 'text-[#68584C] hover:bg-[#F8F3EE] hover:text-[#3D2D23]',
+            )}
+          >
+            <span>All Products</span>
+
+            {selectedCategory === 'All' && (
+              <span className="h-1.5 w-1.5 rounded-full bg-[#8A562F]" />
+            )}
+          </button>
+
+          {categories.map((cat) => (
             <button
+              key={cat.id}
               type="button"
-              onClick={() => setSelectedCategory('All')}
+              onClick={() => setSelectedCategory(cat.id)}
               className={classNames(
-                'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
-                selectedCategory === 'All'
-                  ? 'bg-[#F5F1EA] font-semibold text-[#5A2D0C]'
-                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900',
+                'group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13px] leading-5 transition-all duration-200',
+                selectedCategory === cat.id
+                  ? 'bg-[#F1E8DF] font-semibold text-[#5A3422]'
+                  : 'text-[#68584C] hover:bg-[#F8F3EE] hover:text-[#3D2D23]',
               )}
             >
-              All Products
-              {selectedCategory === 'All' && (
-                <span className="h-1.5 w-1.5 rounded-full bg-[#F5F1EA]0" />
+              <span className="pr-3">
+                {cat.title}
+              </span>
+
+              {selectedCategory === cat.id && (
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#8A562F]" />
               )}
             </button>
-          </li>
-          {categories.map((cat) => (
-            <li key={cat.id}>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                className={classNames(
-                  'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
-                  selectedCategory === cat.id
-                    ? 'bg-[#F5F1EA] font-semibold text-[#5A2D0C]'
-                    : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900',
-                )}
-              >
-                {cat.title}
-                {selectedCategory === cat.id && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#F5F1EA]0" />
-                )}
-              </button>
-            </li>
           ))}
-        </ul>
+        </div>
       </FilterGroup>
 
-      {/* Special Filters */}
+      {/* SPECIAL */}
       <FilterGroup title="Special">
         <div className="space-y-2">
-          {/* New Arrival toggle */}
-          <label className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 hover:bg-stone-100 transition-colors">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-sm bg-[#F5F1EA]0/10 text-[#FFD400]">
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
+          {/* NEW ARRIVALS */}
+          <div
+            className="
+            flex items-center justify-between
+            rounded-xl
+            border border-transparent
+            px-3 py-2.5
+            transition-colors duration-200
+            hover:border-[#E8DDD3]
+            hover:bg-[#F8F3EE]
+          "
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="
+                flex h-8 w-8
+                items-center justify-center
+                rounded-lg
+                bg-[#F2E6D9]
+                text-[#9A6239]
+              "
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                >
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
               </span>
-              <span className="text-sm text-stone-700">New Arrivals</span>
+
+              <span className="text-[13px] font-medium text-[#58473B]">
+                New Arrivals
+              </span>
             </div>
+
             <button
               type="button"
               role="switch"
               aria-checked={showNewArrival}
-              onClick={() => setShowNewArrival((v) => !v)}
+              onClick={() =>
+                setShowNewArrival((value) => !value)
+              }
               className={classNames(
-                'relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]',
-                showNewArrival ? 'bg-[#F5F1EA]0' : 'bg-stone-200',
+                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8A562F]/30',
+                showNewArrival
+                  ? 'bg-[#6B4028]'
+                  : 'bg-[#DDD4CC]',
               )}
             >
               <span
                 className={classNames(
-                  'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200',
-                  showNewArrival ? 'translate-x-4' : 'translate-x-0',
+                  'inline-block h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform duration-200',
+                  showNewArrival
+                    ? 'translate-x-[21px]'
+                    : 'translate-x-[3px]',
                 )}
               />
             </button>
-          </label>
+          </div>
 
-          {/* Discount toggle */}
-          <label className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 hover:bg-stone-100 transition-colors">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-sm bg-red-500/10 text-[#E53935]">
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
+          {/* ON SALE */}
+          <div
+            className="
+            flex items-center justify-between
+            rounded-xl
+            border border-transparent
+            px-3 py-2.5
+            transition-colors duration-200
+            hover:border-[#E8DDD3]
+            hover:bg-[#F8F3EE]
+          "
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="
+                flex h-8 w-8
+                items-center justify-center
+                rounded-lg
+                bg-[#F8E8E3]
+                text-[#B6533C]
+              "
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                >
                   <path d="M9 14l6-6M9 9h.01M15 14h.01" />
-                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="9" />
                 </svg>
               </span>
-              <span className="text-sm text-stone-700">On Sale</span>
+
+              <span className="text-[13px] font-medium text-[#58473B]">
+                On Sale
+              </span>
             </div>
+
             <button
               type="button"
               role="switch"
               aria-checked={showDiscount}
-              onClick={() => setShowDiscount((v) => !v)}
+              onClick={() =>
+                setShowDiscount((value) => !value)
+              }
               className={classNames(
-                'relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500',
-                showDiscount ? 'bg-red-500' : 'bg-stone-200',
+                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B6533C]/30',
+                showDiscount
+                  ? 'bg-[#B6533C]'
+                  : 'bg-[#DDD4CC]',
               )}
             >
               <span
                 className={classNames(
-                  'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200',
-                  showDiscount ? 'translate-x-4' : 'translate-x-0',
+                  'inline-block h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform duration-200',
+                  showDiscount
+                    ? 'translate-x-[21px]'
+                    : 'translate-x-[3px]',
                 )}
               />
             </button>
-          </label>
+          </div>
         </div>
       </FilterGroup>
 
-      {/* Clear all */}
+      {/* CLEAR FILTERS */}
       {activeFilterCount > 0 && (
         <div className="pt-4">
           <button
             type="button"
             onClick={clearAll}
-            className="w-full rounded-lg border border-stone-300 py-2 text-xs font-semibold text-stone-600 hover:border-stone-400 hover:bg-stone-50 transition-colors"
+            className="
+            w-full rounded-xl
+            border border-[#DACCC0]
+            bg-white
+            px-3 py-2.5
+            text-[11px] font-semibold
+            uppercase tracking-[0.1em]
+            text-[#755640]
+            transition-all duration-200
+            hover:border-[#A97A55]
+            hover:bg-[#F8F3EE]
+            hover:text-[#5A3422]
+          "
           >
-            Clear all filters ({activeFilterCount})
+            Clear All ({activeFilterCount})
           </button>
         </div>
       )}
@@ -308,59 +399,26 @@ export default function ProductsSection({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-5">
-              {filteredProducts.map((product) => {
-                const avg = productAverageRating[product.id]
-                const { hasDiscount, originalPrice, discountedPrice, discountPercent } = getDiscountInfo(product)
-
-                return (
-                  <article
-                    key={product.id}
-                    className="group flex flex-col overflow-hidden rounded-3xl bg-stone-50 ring-1 ring-stone-200 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:ring-[#FFD400]/30/70 motion-reduce:transform-none motion-reduce:transition-none"
-                  >
-                    <Link to={`/products/${slugify(product.name)}`} className="group block">
-                      <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">
-                        {product.isNewArrival && (
-                          <span className="absolute left-0 top-0 z-10 bg-[#F5F1EA]0 px-2 py-1 text-xs font-semibold text-white">
-                            New Arrival
-                          </span>
-                        )}
-                        {hasDiscount && (
-                          <span className={`absolute ${product.isNewArrival ? 'left-0 top-7' : 'left-0 top-0'} z-10 bg-[#E53935] px-2 py-1 text-xs font-semibold text-white`}>
-                            -{discountPercent}%
-                          </span>
-                        )}
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none"
-                        />
-                        {avg ? (
-                          <div className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-[11px] font-medium text-amber-100 backdrop-blur">
-                            <span className="text-[#FFD400]">★</span> {avg.toFixed(1)}
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="px-4 pt-4 pb-3">
-                        <h2 className="text-sm font-semibold text-stone-900 leading-snug">
-                          {product.name}
-                        </h2>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                          {hasDiscount && (
-                            <span className="text-stone-700 line-through text-xs">
-                              Rs.{formatPricePKR(originalPrice)}
-                            </span>
-                          )}
-                          <span className="font-semibold text-[#E53935]">Rs.{formatPricePKR(discountedPrice)}</span>
-                        </div>
-                      </div>
-                    </Link>
-
-                    
-                  </article>
-                )
-              })}
+            <div
+              className="
+    grid
+    grid-cols-2
+    gap-3
+    sm:gap-4
+    lg:grid-cols-3
+    xl:grid-cols-4
+    2xl:grid-cols-5
+  "
+            >
+              {filteredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onAddToCart={handleAddToCart}
+                  onToggleWishlist={handleToggleWishlist}
+                  isInWishlist={isInWishlist}
+                />
+              ))}
             </div>
           )}
         </div>
