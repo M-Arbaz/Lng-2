@@ -1,0 +1,322 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brown: #5A2D0C;
+  --color-brown-walnut: #7A4A20;
+  --color-gold: #8a6000;
+  --color-gold-light: #FFE566;
+  --color-warm-white: #FAFAF8;
+  --color-cream: #F5F1EA;
+  --color-charcoal: #1F1F1F;
+  --color-rich-black: #222222;
+  --color-gray-text: #666666;
+  --color-border-brand: #E5E5E5;
+  --color-success: #22C55E;
+  --color-sale: #E53935;
+  --color-footer-text: #D1D1D1;
+}
+
+/* Primary button: brown bg, white text, gold hover */
+.btn-primary {
+  background-color: #5A2D0C;
+  color: #ffffff;
+  transition: background-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: #FFD400;
+  color: #222222;
+}
+
+/* Secondary button: transparent, brown border, inverted hover */
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid #5A2D0C;
+  color: #5A2D0C;
+  transition: background-color 0.2s, color 0.2s;
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: #5A2D0C;
+  color: #ffffff;
+}
+
+/* Product card hover effects */
+.product-card {
+  background-color: #ffffff;
+  transition: box-shadow 0.3s ease;
+}
+.product-card:hover {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+.product-card-image {
+  transition: transform 0.3s ease;
+}
+.product-card:hover .product-card-image {
+  transform: scale(1.05);
+}
+
+/* Sale badge */
+.sale-badge {
+  background-color: #E53935;
+  color: #ffffff;
+}
+
+/* Hero gradient background */
+.hero-gradient-bg {
+  background: linear-gradient(180deg, #FAFAF8 0%, #F5F1EA 100%);
+}
+
+@keyframes lg-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.slick-prev:before,
+.slick-next:before {
+  content: none !important;
+}
+
+.slick-prev,
+.slick-next {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 20;
+}
+
+.slick-prev {
+  left: 24px !important;
+}
+
+.slick-next {
+  right: 24px !important;
+}
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+#__next {
+  overflow-x: hidden;
+}
+
+.lg-marquee {
+  overflow: hidden;
+}
+
+.lg-marquee__inner {
+  display: flex;
+  white-space: nowrap;
+  will-change: transform;
+  animation: lg-marquee 18s linear infinite;
+}
+
+.lg-marquee__track {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.lg-marquee__item {
+  display: inline-block;
+  flex: 0 0 auto;
+  min-width: max-content;
+  padding: 0 48px 0 0;
+  white-space: nowrap;
+}
+
+/* Global pointer cursor for all interactive buttons */
+button {
+  cursor: pointer;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Rich text page content styles */
+/* white-space: pre-wrap keeps legacy plain-text content (saved before the
+   rich text editor existed) readable — it has no HTML tags, just raw
+   newlines, so without this it would collapse into a single paragraph. */
+.page-content {
+  white-space: pre-wrap;
+}
+
+.page-content h1 {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+  color: #5A2D0C;
+  margin-bottom: 1.5rem;
+  margin-top: 2rem;
+}
+
+.dark .page-content h1 {
+  color: #FFD400;
+}
+
+.page-content h2 {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  font-weight: 700;
+  color: #5A2D0C;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+}
+
+.dark .page-content h2 {
+  color: #FFD400;
+}
+
+.page-content h3 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
+  color: #5A2D0C;
+  margin-bottom: 0.75rem;
+  margin-top: 1rem;
+}
+
+.dark .page-content h3 {
+  color: #FFD400;
+}
+
+.page-content p {
+  margin-bottom: 1rem;
+}
+
+.page-content ul,
+.page-content ol {
+  margin-bottom: 1.5rem;
+  padding-left: 1.5rem;
+}
+
+.page-content ul {
+  list-style-type: disc;
+}
+
+.page-content ol {
+  list-style-type: decimal;
+}
+
+.page-content li {
+  margin-bottom: 0.5rem;
+}
+
+.page-content a {
+  color: #FFD400;
+  text-decoration: underline;
+}
+
+.page-content a:hover {
+  color: #FFE566;
+}
+
+.page-content strong,
+.page-content b {
+  font-weight: 700;
+  color: #5A2D0C;
+}
+
+.dark .page-content strong,
+.dark .page-content b {
+  color: #FFD400;
+}
+
+.page-content em,
+.page-content i {
+  font-style: italic;
+  color: #374151;
+}
+
+.dark .page-content em,
+.dark .page-content i {
+  color: #d1d5db;
+}
+
+.page-content code {
+  background-color: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.dark .page-content code {
+  background-color: #1f2937;
+}
+
+.page-content pre {
+  background-color: #f3f4f6;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.dark .page-content pre {
+  background-color: #1f2937;
+}
+
+.page-content blockquote {
+  border-left: 4px solid #FFD400;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+.dark .page-content blockquote {
+  color: #d1d5db;
+}
+
+.page-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.page-content th {
+  background-color: #f3f4f6;
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.dark .page-content th {
+  background-color: #1f2937;
+}
+
+.page-content td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.75rem;
+}
+
+.dark .page-content td {
+  border-bottom-color: #374151;
+}
+
+.page-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.page-content hr {
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.5rem 0;
+}
+
+.dark .page-content hr {
+  border-top-color: #374151;
+}
