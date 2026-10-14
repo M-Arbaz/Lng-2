@@ -6,6 +6,7 @@ import {
   FaEnvelope,
   FaMapMarkerAlt,
   FaWhatsapp,
+  FaPhoneAlt,
 } from 'react-icons/fa'
 import {
   FaFacebook,
@@ -16,6 +17,7 @@ import {
   FaXTwitter,
   FaPinterestP,
 } from 'react-icons/fa6'
+
 import socialLinksService from '../utils/socialLinksService.js'
 import footerService from '../utils/footerService.js'
 import newsletterService from '../utils/newsletterService.js'
@@ -37,7 +39,7 @@ const DEFAULT_CONFIG = {
   whatsapp: '923134371467',
   showWhatsAppInFooter: true,
   address: '',
-  city: 'Sahiwal',
+  city: 'Sahiwal, Punjab Pakistan',
 }
 
 const DEFAULT_LINKS = [
@@ -48,6 +50,7 @@ const DEFAULT_LINKS = [
   { id: 'default-wishlist', label: 'Wishlist', url: '/wishlist', section: 'quickLinks', isActive: true, displayOrder: 3 },
   { id: 'default-blogs', label: 'Blog', url: '/blogs', section: 'quickLinks', isActive: true, displayOrder: 4 },
   { id: 'default-shipping', label: 'Shipping Policy', url: '/shipping-policy', section: 'quickLinks', isActive: true, displayOrder: 5 },
+
   // Collections
   { id: 'default-table', label: 'Table Lamps', url: '#', section: 'collections', isActive: true, displayOrder: 0 },
   { id: 'default-floor', label: 'Floor Lamps', url: '#', section: 'collections', isActive: true, displayOrder: 1 },
@@ -55,6 +58,7 @@ const DEFAULT_LINKS = [
   { id: 'default-wall', label: 'Wall Lamps', url: '#', section: 'collections', isActive: true, displayOrder: 3 },
   { id: 'default-hanging', label: 'Hanging Lamps', url: '#', section: 'collections', isActive: true, displayOrder: 4 },
   { id: 'default-bedside', label: 'Bedside/Side Table Lamps', url: '#', section: 'collections', isActive: true, displayOrder: 5 },
+
   // Policies
   { id: 'default-privacy', label: 'Privacy Policy', url: '/privacy-policy', section: 'policies', isActive: true, displayOrder: 0 },
   { id: 'default-refund', label: 'Refund Policy', url: '#', section: 'policies', isActive: true, displayOrder: 1 },
@@ -76,12 +80,13 @@ export default function Footer({ theme = 'light' }) {
   const [footerLinks, setFooterLinks] = useState([])
   const [loadingFooter, setLoadingFooter] = useState(true)
   const [newsletterEmail, setNewsletterEmail] = useState('')
-  const [newsletterStatus, setNewsletterStatus] = useState('idle') // idle | submitting | success | error
+  const [newsletterStatus, setNewsletterStatus] = useState('idle')
   const [newsletterMsg, setNewsletterMsg] = useState('')
 
   // ── Draggable WhatsApp ──
   const [waPos, setWaPos] = useState(() => {
     if (typeof window === 'undefined') return null
+
     try {
       const saved = window.localStorage.getItem('whatsappPos')
       return saved ? JSON.parse(saved) : null
@@ -89,7 +94,15 @@ export default function Footer({ theme = 'light' }) {
       return null
     }
   })
-  const waDrag = useRef({ dragging: false, startX: 0, startY: 0, posX: 0, posY: 0 })
+
+  const waDrag = useRef({
+    dragging: false,
+    startX: 0,
+    startY: 0,
+    posX: 0,
+    posY: 0,
+  })
+
   const waWasDragged = useRef(false)
 
   useEffect(() => {
@@ -103,6 +116,7 @@ export default function Footer({ theme = 'light' }) {
         setLoadingSocial(false)
       }
     }
+
     loadSocial()
   }, [])
 
@@ -113,6 +127,7 @@ export default function Footer({ theme = 'light' }) {
           footerService.getFooterConfig(),
           footerService.getActiveFooterLinks(),
         ])
+
         if (configData) {
           setFooterConfig({
             phone: configData.phone || DEFAULT_CONFIG.phone,
@@ -123,6 +138,7 @@ export default function Footer({ theme = 'light' }) {
             city: configData.city || DEFAULT_CONFIG.city,
           })
         }
+
         if (linksData && linksData.length > 0) {
           setFooterLinks(linksData)
         } else {
@@ -135,21 +151,25 @@ export default function Footer({ theme = 'light' }) {
         setLoadingFooter(false)
       }
     }
+
     loadFooterData()
   }, [])
 
   const handleNewsletterSubmit = async (e) => {
     e.preventDefault()
+
     const email = newsletterEmail.trim()
     if (!email) return
 
     setNewsletterStatus('submitting')
     setNewsletterMsg('')
+
     try {
       await newsletterService.subscribe(email)
       setNewsletterStatus('success')
       setNewsletterMsg('Thank you for subscribing!')
       setNewsletterEmail('')
+
       setTimeout(() => {
         setNewsletterStatus('idle')
         setNewsletterMsg('')
@@ -158,6 +178,7 @@ export default function Footer({ theme = 'light' }) {
       console.error('Newsletter subscription error:', err)
       setNewsletterStatus('error')
       setNewsletterMsg('Something went wrong. Please try again.')
+
       setTimeout(() => {
         setNewsletterStatus('idle')
         setNewsletterMsg('')
@@ -174,229 +195,314 @@ export default function Footer({ theme = 'light' }) {
     return acc
   }, {})
 
-  // Sort links within each section by displayOrder
   Object.keys(groupedLinks).forEach((section) => {
-    groupedLinks[section].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+    groupedLinks[section].sort(
+      (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)
+    )
   })
 
   const getSectionTitle = (section) => SECTION_LABELS[section] || section
 
-  const textClass = 'text-[#D1D1D1]'
-  const headingClass = 'text-sm font-semibold text-[#FFD400]'
-  const linkListClass = `mt-4 space-y-2 text-sm ${textClass} flex flex-col items-center sm:items-start`
-  const iconClass = 'mt-1 h-4 w-4 text-[#FFD400]'
-  const socialContainerClass = `mt-6 flex items-center justify-center sm:justify-start gap-5 ${textClass}`
-  const hoverClass = 'hover:text-[#FFD400]'
+  const sectionOrder = ['quickLinks', 'collections', 'policies', 'other']
+  const visibleSections = sectionOrder.filter(
+    (section) => groupedLinks[section] && groupedLinks[section].length > 0
+  )
+
+  const footerLinkClass =
+    'group inline-flex items-center gap-2 text-[13px] leading-6 text-[#CFC1B3] transition-all duration-200 hover:translate-x-1 hover:text-[#FFF7EE]'
 
   const renderLink = (link) => {
     const isExternal = link.url?.startsWith('http')
     const isHash = link.url === '#'
+
     if (isHash) {
       return (
-        <span className="hover:underline cursor-default opacity-60">
+        <span className="cursor-default text-[13px] leading-6 text-[#8F8175]">
           {link.label}
         </span>
       )
     }
+
+    const content = (
+      <>
+        <span>{link.label}</span>
+        <span
+          aria-hidden="true"
+          className="text-[#C99562] opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+        >
+          ↗
+        </span>
+      </>
+    )
+
     if (isExternal) {
       return (
-        <a href={link.url}  className="hover:underline">
-          {link.label}
+        <a href={link.url} className={footerLinkClass}>
+          {content}
         </a>
       )
     }
+
     return (
-      <Link to={link.url} className="hover:underline">
-        {link.label}
+      <Link to={link.url} className={footerLinkClass}>
+        {content}
       </Link>
     )
   }
 
-  const sectionOrder = ['quickLinks', 'collections', 'policies', 'other']
-  const visibleSections = sectionOrder.filter((s) => groupedLinks[s] && groupedLinks[s].length > 0)
-
   return (
-    <footer>
-      {/* Scoped styles for the reusable "water fill + shake" hover effect */}
-      <style>{`
-        .fill-btn {
-          overflow: hidden;
-        }
-        .fill-btn .fill-layer {
-          position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          height: 0%;
-          background: #059669;
-          transition: height 1.8s cubic-bezier(0.22, 0.9, 0.32, 1);
-          pointer-events: none;
-          z-index: 0;
-        }
-        .fill-btn .fill-layer::before {
-          content: '';
-          position: absolute;
-          top: -16px;
-          left: 0;
-          right: 0;
-          height: 32px;
-          background: #059669;
-          border-radius: 50%;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        }
-        .fill-btn.fill-amber .fill-layer {
-          background: #d97706;
-        }
-        .fill-btn.fill-amber .fill-layer::before {
-          background: #d97706;
-        }
-        .fill-btn:hover .fill-layer {
-          height: 100%;
-        }
-        .fill-btn:hover .fill-layer::before {
-          opacity: 1;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .fill-btn:hover .fill-layer { transition: none; height: 100%; }
-          .fill-btn:hover .fill-layer::before { opacity: 1; }
-        }
-      `}</style>
+    <footer className="relative isolate overflow-hidden bg-[#120B07] text-[#F7EFE7]">
+      {/* Ambient depth */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[-10%] top-[-120px] h-[520px] w-[520px] rounded-full bg-[#9A5C2D]/10 blur-[120px]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-[-8%] top-[16%] h-[620px] w-[620px] rounded-full bg-[#D08A45]/[0.07] blur-[150px]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-[-260px] left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-[#5E321B]/20 blur-[130px]"
+      />
 
-      <div className="border-t border-[#E5E5E5] bg-[#1F1F1F]">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-y-10 gap-x-8 lg:gap-x-4">
-            {/* Contact Info Column */}
-            <div className="text-center sm:text-left sm:border-r sm:border-[#333333] sm:pr-6 lg:pr-4">
-              <p className={headingClass}>
-                {footerConfig.city || 'Contact'}
+      <div className="relative mx-auto w-full max-w-[1720px] px-5 sm:px-8 lg:px-12 xl:px-16">
+        {/* Newsletter statement */}
+        <div className="grid gap-10 border-b border-white/[0.08] py-14 sm:py-16 lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:gap-16 lg:py-20">
+          <div>
+            <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.34em] text-[#D4A36F]">
+              <span className="h-px w-8 bg-[#D4A36F]/70" />
+              Lamp & Glow
+            </div>
+
+            <h2 className="mt-6 max-w-3xl text-[clamp(2.4rem,5vw,5.6rem)] font-medium leading-[1.05] tracking-[-0.05em] text-[#FFF9F3]">
+              Light, crafted to live with you.
+            </h2>
+          </div>
+
+          <div className="lg:pb-1">
+            <p className="max-w-xl text-sm leading-7 text-[#C3B5A8] sm:text-[15px]">
+              Join our list for new collections, thoughtful pieces and selected
+              Lamp & Glow updates.
+            </p>
+
+            <form onSubmit={handleNewsletterSubmit} className="mt-7">
+              <div className="group flex overflow-hidden rounded-full border border-white/[0.14] bg-white/[0.035] p-1.5 transition-colors duration-200 focus-within:border-[#D0A06D]/60">
+                <input
+                  type="email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  placeholder="Email address"
+                  required
+                  aria-label="Email address"
+                  className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[#FFF9F3] outline-none placeholder:text-[#77695E]"
+                />
+
+                <button
+                  type="submit"
+                  disabled={newsletterStatus === 'submitting'}
+                  className="shrink-0 rounded-full bg-[#D8A15F] px-5 py-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#1A0F08] transition-all duration-200 hover:bg-[#E9BC82] sm:px-7 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {newsletterStatus === 'submitting'
+                    ? 'Joining...'
+                    : 'Subscribe'}
+                </button>
+              </div>
+
+              {newsletterMsg && (
+                <p
+                  className={`mt-3 text-xs ${newsletterStatus === 'success'
+                    ? 'text-emerald-300'
+                    : 'text-red-300'
+                    }`}
+                >
+                  {newsletterMsg}
+                </p>
+              )}
+            </form>
+          </div>
+        </div>
+
+        {/* Brand / contact row */}
+        <div className="grid gap-10 border-b border-white/[0.08] py-10 sm:py-12 lg:grid-cols-[1.25fr_0.75fr] lg:items-center">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-7">
+            <div className="h-16 w-16 shrink-0 sm:h-[72px] sm:w-[72px]">
+              <img
+                src="/logo.png"
+                alt="Lamp & Glow"
+                className="h-full w-full object-contain"
+              />
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-[#F5EDE5]">
+                Hand-finished lighting, made for warm and considered spaces.
               </p>
-              <div className={linkListClass}>
-                {footerConfig.address && (
-                  <div className="flex justify-center sm:justify-start gap-3 min-w-0 w-full">
-                    <FaMapMarkerAlt className={iconClass} />
-                    <span className="break-words text-left">{footerConfig.address}</span>
-                  </div>
-                )}
-                {footerConfig.city && !footerConfig.address && (
-                  <div className="flex justify-center sm:justify-start gap-3 min-w-0 w-full">
-                    <FaMapMarkerAlt className={iconClass} />
-                    <span className="break-words text-left">{footerConfig.city}</span>
-                  </div>
-                )}
-                {footerConfig.phone && (
-                  <div className="flex justify-center sm:justify-start gap-3 min-w-0 w-full">
-                    <FaWhatsapp className={iconClass} />
-                    <span className="break-words text-left">Phone: {footerConfig.phone}</span>
-                  </div>
-                )}
-                {footerConfig.whatsapp && footerConfig.showWhatsAppInFooter !== false && (
-                  <div className="flex justify-center sm:justify-start gap-3 min-w-0 w-full">
-                    <FaWhatsapp className={iconClass} />
-                    <span className="break-words text-left">WhatsApp: {footerConfig.whatsapp}</span>
-                  </div>
-                )}
-                {footerConfig.email && (
-                  <div className="flex justify-center sm:justify-start gap-3 min-w-0 w-full">
-                    <FaEnvelope className={iconClass} />
-                    <a href={`mailto:${footerConfig.email}`} className="hover:underline break-all text-left">
-                      {footerConfig.email}
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[#9D8D80]">
+                {footerConfig.city && <span>{footerConfig.city}, Pakistan</span>}
+                <span className="hidden h-1 w-1 rounded-full bg-[#7B6553] sm:block" />
+                <span>Handcrafted with character</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            {loadingSocial ? (
+              <span className="text-xs text-[#8D7D70]">Loading...</span>
+            ) : socialLinks.length > 0 ? (
+              socialLinks.map((link) => {
+                const Icon = PLATFORM_ICONS[link.platform] || FaFacebook
+
+                return (
+                  <a
+                    key={link.id}
+                    href={link.url}
+                    aria-label={link.platform}
+                    title={link.platform}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.11] bg-white/[0.025] text-[#BBAEA2] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#D0A06D]/50 hover:bg-[#D0A06D]/10 hover:text-[#FFEAD3]"
+                  >
+                    <Icon className="h-[14px] w-[14px]" />
+                  </a>
+                )
+              })
+            ) : (
+              <span className="text-xs text-[#8D7D70]">
+                Social links coming soon
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Main footer navigation */}
+        <div className="grid gap-12 border-b border-white/[0.08] py-12 lg:grid-cols-[1.2fr_2.8fr] lg:gap-16 lg:py-14">
+          {/* Contact */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#D5A672]">
+              Contact
+            </p>
+
+            <div className="mt-6 space-y-4 text-sm text-[#C6B8AB]">
+              {footerConfig.address && (
+                <div className="flex items-start gap-3">
+                  <FaMapMarkerAlt className="mt-1 h-3.5 w-3.5 shrink-0 text-[#C89561]" />
+                  <span className="max-w-[280px] leading-6">
+                    {footerConfig.address}
+                  </span>
+                </div>
+              )}
+
+              {footerConfig.city && !footerConfig.address && (
+                <div className="flex items-start gap-3">
+                  <FaMapMarkerAlt className="mt-1 h-3.5 w-3.5 shrink-0 text-[#C89561]" />
+                  <span className="leading-6">{footerConfig.city}</span>
+                </div>
+              )}
+
+              {footerConfig.phone && (
+                <div className="flex items-start gap-3">
+                  <FaPhoneAlt className="mt-1 h-3.5 w-3.5 shrink-0 text-[#C89561]" />
+                  <a
+                    href={`tel:${footerConfig.phone}`}
+                    className="leading-6 transition-colors duration-200 hover:text-[#FFF7EE]"
+                  >
+                    {footerConfig.phone}
+                  </a>
+                </div>
+              )}
+
+              {footerConfig.whatsapp &&
+                footerConfig.showWhatsAppInFooter !== false && (
+                  <div className="flex items-start gap-3">
+                    <FaWhatsapp className="mt-1 h-3.5 w-3.5 shrink-0 text-[#C89561]" />
+                    <a
+                      href={`https://wa.me/${footerConfig.whatsapp.replace(
+                        /\D/g,
+                        ''
+                      )}`}
+                      className="leading-6 transition-colors duration-200 hover:text-[#FFF7EE]"
+                    >
+                      {footerConfig.whatsapp}
                     </a>
                   </div>
                 )}
-              </div>
 
-              <div className={socialContainerClass}>
-                {loadingSocial ? (
-                  <span className="text-xs text-stone-400">Loading...</span>
-                ) : socialLinks.length > 0 ? (
-                  socialLinks.map((link) => {
-                    const Icon = PLATFORM_ICONS[link.platform] || FaFacebook
-                    return (
-                      <a
-                        key={link.id}
-                        href={link.url}
-                        
-                        aria-label={link.platform}
-                        className={hoverClass}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </a>
-                    )
-                  })
-                ) : (
-                  <span className="text-xs text-stone-400">No social links configured</span>
-                )}
-              </div>
+              {footerConfig.email && (
+                <div className="flex items-start gap-3">
+                  <FaEnvelope className="mt-1 h-3.5 w-3.5 shrink-0 text-[#C89561]" />
+                  <a
+                    href={`mailto:${footerConfig.email}`}
+                    className="break-all leading-6 transition-colors duration-200 hover:text-[#FFF7EE]"
+                  >
+                    {footerConfig.email}
+                  </a>
+                </div>
+              )}
             </div>
+          </div>
 
-            {/* Dynamic Footer Link Sections */}
+          {/* Dynamic link sections */}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
             {visibleSections.map((section) => (
-              <div key={section} className="text-center sm:text-left sm:border-r sm:border-[#333333] sm:pr-6 lg:pr-4">
-                <p className={headingClass}>
+              <div key={section}>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#D5A672]">
                   {getSectionTitle(section)}
                 </p>
-                <ul className={linkListClass}>
+
+                <ul className="mt-5 space-y-2.5">
                   {groupedLinks[section].map((link) => (
                     <li key={link.id}>{renderLink(link)}</li>
                   ))}
                 </ul>
               </div>
             ))}
+          </div>
+        </div>
 
-            {/* Newsletter Column - wider, shorter, self-start so it doesn't stretch to match taller columns */}
-            <div className="self-start text-center sm:text-left sm:col-span-2 lg:col-span-2 rounded-2xl bg-gradient-to-br from-[#8a5a28] via-[#5A2D0C] to-[#33190a] p-5 sm:p-6 -mx-2 sm:mx-0">
-              <p className="text-sm sm:text-base font-bold uppercase tracking-wider text-[#FFD400]">
-                Newsletter Sign Up
-              </p>
-              <p className="mt-2 text-sm text-white/70 leading-relaxed">
-                Receive the latest updates about our products and promotions.
-              </p>
+        {/* Copyright row */}
+        <div className="flex flex-col gap-3 py-6 text-[11px] text-[#776A60] sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            © {new Date().getFullYear()} Lamp & Glow. All rights reserved.
+          </p>
+          <p className="text-[#8A7767]">Handcrafted in Pakistan.</p>
+        </div>
 
-              <form onSubmit={handleNewsletterSubmit} className="mt-4 mx-auto sm:mx-0">
-                <div className="flex flex-col sm:flex-row gap-2.5">
-                  <input
-                    type="email"
-                    value={newsletterEmail}
-                    onChange={(e) => setNewsletterEmail(e.target.value)}
-                    placeholder="Email address"
-                    required
-                    className="w-full flex-1 rounded-lg border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFD400]"
-                  />
-                  <button
-                    type="submit"
-                    disabled={newsletterStatus === 'submitting'}
-                    className="fill-btn fill-amber group relative shrink-0 whitespace-nowrap rounded-lg bg-[#FFD400] px-6 py-2.5 text-sm font-bold text-[#222222] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <span className="fill-layer" aria-hidden="true" />
-                    <span className="relative z-10 transition-colors group-hover:text-white">
-                      {newsletterStatus === 'submitting' ? 'Subscribing...' : 'Subscribe'}
-                    </span>
-                  </button>
-                </div>
-                {newsletterMsg && (
-                  <p className={`mt-2 text-xs ${newsletterStatus === 'success' ? 'text-[#22C55E]' : 'text-red-400'}`}>
-                    {newsletterMsg}
-                  </p>
-                )}
-              </form>
-            </div>
+        {/* Oversized glowing brand signature */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none select-none overflow-hidden pb-3 pt-5 text-center"
+        >
+          <div className="relative inline-block whitespace-nowrap text-[clamp(3.6rem,10vw,12rem)] font-medium leading-[0.8] tracking-[-0.065em]">
+            <span
+              className="absolute inset-0 text-[#D8A15F]/40 blur-[14px] animate-[pulse_3.2s_ease-in-out_infinite] [text-shadow:0_0_18px_rgba(216,161,95,0.5),0_0_42px_rgba(216,161,95,0.35),0_0_78px_rgba(216,161,95,0.2)]"
+            >
+              LAMP &amp; GLOW PK
+            </span>
+
+            <span
+              className="relative text-[#F8EFE4] [-webkit-text-stroke:1px_rgba(255,244,232,0.12)] drop-shadow-[0_0_12px_rgba(216,161,95,0.26)]"
+            >
+              LAMP &amp; GLOW PK
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="bg-[#1F1F1F] border-t border-[#333333]">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-[#D1D1D1]/70">
-          &copy; {new Date().getFullYear()} All rights reserved by Lampandglow.
-        </div>
-      </div>
-
+      {/* Draggable WhatsApp */}
       {footerConfig.whatsapp && (
         <a
-          href={`https://wa.me/${footerConfig.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi! I'm interested in your products from Lamp and Glow. Website: ${typeof window !== 'undefined' ? window.location.href : 'https://lampandglow.pk'}`)}`}
+          href={`https://wa.me/${footerConfig.whatsapp.replace(
+            /\D/g,
+            ''
+          )}?text=${encodeURIComponent(
+            `Hi! I'm interested in your products from Lamp and Glow. Website: ${typeof window !== 'undefined'
+              ? window.location.href
+              : 'https://lampandglow.pk'
+            }`
+          )}`}
           target="_blank"
           rel="noreferrer"
-          className="fill-btn fixed z-40 inline-flex items-center justify-center rounded-xl bg-emerald-500 p-3 text-white shadow-lg cursor-grab active:cursor-grabbing select-none touch-none"
+          className="fixed z-40 inline-flex items-center justify-center rounded-full border border-white/20 bg-[#B96A18] p-2 text-white shadow-[0_14px_38px_rgba(0,0,0,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#C97B26] cursor-grab select-none touch-none active:cursor-grabbing"
           aria-label="Chat on WhatsApp"
           style={
             waPos
@@ -406,6 +512,7 @@ export default function Footer({ theme = 'light' }) {
           onTouchStart={(e) => {
             const touch = e.touches[0]
             waWasDragged.current = false
+
             waDrag.current = {
               dragging: false,
               startX: touch.clientX,
@@ -418,11 +525,29 @@ export default function Footer({ theme = 'light' }) {
             const touch = e.touches[0]
             const dx = Math.abs(touch.clientX - waDrag.current.startX)
             const dy = Math.abs(touch.clientY - waDrag.current.startY)
+
             if (dx > 5 || dy > 5) {
               waWasDragged.current = true
               waDrag.current.dragging = true
-              const newX = Math.max(4, Math.min(window.innerWidth - 80, waDrag.current.posX - (touch.clientX - waDrag.current.startX)))
-              const newY = Math.max(4, Math.min(window.innerHeight - 120, waDrag.current.posY - (touch.clientY - waDrag.current.startY)))
+
+              const newX = Math.max(
+                4,
+                Math.min(
+                  window.innerWidth - 80,
+                  waDrag.current.posX -
+                  (touch.clientX - waDrag.current.startX)
+                )
+              )
+
+              const newY = Math.max(
+                4,
+                Math.min(
+                  window.innerHeight - 120,
+                  waDrag.current.posY -
+                  (touch.clientY - waDrag.current.startY)
+                )
+              )
+
               setWaPos({ x: newX, y: newY })
             }
           }}
@@ -439,8 +564,7 @@ export default function Footer({ theme = 'light' }) {
             }
           }}
         >
-          <span className="fill-layer" aria-hidden="true" />
-          <span className="relative z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
             <FaWhatsapp className="h-5 w-5" />
           </span>
         </a>
