@@ -1,6 +1,5 @@
 'use client'
-
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from '@/lib/navigation'
 import {
   ArrowRight,
@@ -129,7 +128,122 @@ export default function CustomOrderPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [showSuccess, setShowSuccess] = useState(false)
+  const stickyColumnRef = useRef(null)
+  const stickyPanelRef = useRef(null)
 
+  const [stickyPanelStyle, setStickyPanelStyle] = useState({
+    position: 'relative',
+    width: '100%',
+  })
+
+  useEffect(() => {
+    let animationFrame = null
+
+    const STICKY_TOP = 96
+
+    const updateStickyPanel = () => {
+      const column = stickyColumnRef.current
+      const panel = stickyPanelRef.current
+
+      if (!column || !panel) return
+
+      // Mobile/tablet par normal flow
+      if (window.innerWidth < 1024) {
+        setStickyPanelStyle({
+          position: 'relative',
+          width: '100%',
+        })
+
+        return
+      }
+
+      const columnRect =
+        column.getBoundingClientRect()
+
+      const panelHeight =
+        panel.offsetHeight
+
+      // Abhi sticky point tak nahi pohanche
+      if (columnRect.top >= STICKY_TOP) {
+        setStickyPanelStyle({
+          position: 'relative',
+          width: '100%',
+        })
+
+        return
+      }
+
+      // Form ke end par panel ko rok do
+      if (
+        columnRect.bottom <=
+        STICKY_TOP + panelHeight
+      ) {
+        setStickyPanelStyle({
+          position: 'absolute',
+          left: 0,
+          bottom: 0,
+          width: '100%',
+        })
+
+        return
+      }
+
+      // Main sticky state
+      setStickyPanelStyle({
+        position: 'fixed',
+        top: `${STICKY_TOP}px`,
+        left: `${columnRect.left}px`,
+        width: `${columnRect.width}px`,
+        zIndex: 30,
+      })
+    }
+
+    const handleUpdate = () => {
+      if (animationFrame) {
+        cancelAnimationFrame(
+          animationFrame
+        )
+      }
+
+      animationFrame =
+        requestAnimationFrame(
+          updateStickyPanel
+        )
+    }
+
+    updateStickyPanel()
+
+    window.addEventListener(
+      'scroll',
+      handleUpdate,
+      {
+        passive: true,
+      }
+    )
+
+    window.addEventListener(
+      'resize',
+      handleUpdate
+    )
+
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(
+          animationFrame
+        )
+      }
+
+      window.removeEventListener(
+        'scroll',
+        handleUpdate
+      )
+
+      window.removeEventListener(
+        'resize',
+        handleUpdate
+      )
+    }
+  }, [])
   const handleChange = (e) => {
     const { name, value } = e.target
 
@@ -307,14 +421,21 @@ export default function CustomOrderPage() {
       {/* ====================================================== */}
 
       <section className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 sm:py-14 lg:px-10 lg:py-20">
-        <div className="grid items-start gap-8 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[390px_minmax(0,1fr)]">
+        <div className="grid gap-8 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[390px_minmax(0,1fr)]">
 
           {/* ================================================== */}
           {/* LEFT PANEL */}
           {/* ================================================== */}
 
-          <aside className="lg:sticky lg:top-[110px] lg:h-fit lg:self-start">
-            <div className="relative overflow-hidden rounded-[28px] bg-[#321E16] p-7 text-white shadow-[0_24px_70px_rgba(50,30,22,0.18)] sm:p-8">
+          <aside
+            ref={stickyColumnRef}
+            className="relative self-stretch"
+          >
+            <div
+              ref={stickyPanelRef}
+              style={stickyPanelStyle}
+              className="overflow-hidden rounded-[28px] bg-[#321E16] p-7 text-white shadow-[0_24px_70px_rgba(50,30,22,0.18)] sm:p-8"
+            >
               <div className="absolute -right-24 -top-24 h-60 w-60 rounded-full bg-[#A87855]/15 blur-3xl" />
 
               <div className="relative">
