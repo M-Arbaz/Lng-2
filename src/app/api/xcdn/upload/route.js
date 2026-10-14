@@ -4,14 +4,24 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const ALLOWED_PRODUCT_FOLDERS = new Set([
-    'products',
-    'product-videos',
+    'banners',
+    'blogs',
+    'categories',
+    'collectionSlides',
     'color-variants',
-    'shade-colors',
-    'profile-images',
-    'hero-banners',
     'heroBanners',
-    'custom-orders'
+    'instagramGrid',
+    'product-videos',
+    'products',
+    'profile-images',
+    'reels/videos',
+    'reels/posters',
+    'reviews',
+    'shade-colors',
+    'websitePopups',
+    'customOrders',
+    'custom-orders',
+    'richtext',
 ])
 
 function getAllowedOrigins() {
