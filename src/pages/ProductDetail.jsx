@@ -85,16 +85,141 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
   const [copied, setCopied] = useState(false)
   const [viewerCount, setViewerCount] = useState(22)
   const actionRef = useRef(null)
+  const galleryColumnRef = useRef(null)
+  const galleryPanelRef = useRef(null)
+
+  const [galleryStickyStyle, setGalleryStickyStyle] = useState({
+    position: 'relative',
+    width: '100%',
+  })
+  const addToCartRef = useRef(null)
   const videoRef = useRef(null)
   const [badgePage, setBadgePage] = useState(0)
-
+  const [isImageLightboxOpen, setIsImageLightboxOpen] = useState(false)
   useEffect(() => {
     const syncMobile = () => setIsMobile(window.innerWidth < 640)
     syncMobile()
     window.addEventListener('resize', syncMobile)
     return () => window.removeEventListener('resize', syncMobile)
   }, [])
+  useEffect(() => {
+    let animationFrame = null
 
+    const STICKY_TOP = 105
+
+    const updateGalleryPosition = () => {
+      const column = galleryColumnRef.current
+      const panel = galleryPanelRef.current
+
+      if (!column || !panel) return
+
+      // Tablet/mobile = normal flow
+      if (window.innerWidth < 1024) {
+        setGalleryStickyStyle({
+          position: 'relative',
+          width: '100%',
+        })
+
+        return
+      }
+
+      const columnRect = column.getBoundingClientRect()
+      const panelHeight = panel.offsetHeight
+
+      // Gallery abhi sticky point tak nahi pohanchi
+      if (columnRect.top >= STICKY_TOP) {
+        setGalleryStickyStyle({
+          position: 'relative',
+          width: '100%',
+        })
+
+        return
+      }
+
+      // Product section ke bottom par gallery rok do
+      if (
+        columnRect.bottom <=
+        STICKY_TOP + panelHeight
+      ) {
+        setGalleryStickyStyle({
+          position: 'absolute',
+          left: 0,
+          bottom: 0,
+          width: '100%',
+        })
+
+        return
+      }
+
+      // Sticky/fixed state
+      setGalleryStickyStyle({
+        position: 'fixed',
+        top: `${STICKY_TOP}px`,
+        left: `${columnRect.left}px`,
+        width: `${columnRect.width}px`,
+        zIndex: 20,
+      })
+    }
+
+    const handleUpdate = () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame)
+      }
+
+      animationFrame =
+        requestAnimationFrame(
+          updateGalleryPosition
+        )
+    }
+
+    updateGalleryPosition()
+
+    window.addEventListener(
+      'scroll',
+      handleUpdate,
+      { passive: true }
+    )
+
+    window.addEventListener(
+      'resize',
+      handleUpdate
+    )
+
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame)
+      }
+
+      window.removeEventListener(
+        'scroll',
+        handleUpdate
+      )
+
+      window.removeEventListener(
+        'resize',
+        handleUpdate
+      )
+    }
+  }, [])
+  useEffect(() => {
+    if (!isImageLightboxOpen) return
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsImageLightboxOpen(false)
+      }
+    }
+
+    const previousOverflow = document.body.style.overflow
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isImageLightboxOpen])
   // ── Derived data (safe with optional chaining so they work even when product is undefined) ──
   const stock = typeof product?.stock === 'number' ? product.stock : 0
   const inStock = stock > 0
@@ -160,15 +285,48 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
     return () => clearInterval(interval)
   }, [])
 
+  // Subtle intermittent movement for the primary Add to Cart button.
+  useEffect(() => {
+    const button = addToCartRef.current
+    if (!button || !inStock || typeof window === 'undefined') return
+
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+    if (reduceMotion) return
+
+    const shake = () => {
+      if (!button?.animate) return
+      button.animate(
+        [
+          { transform: 'translateX(0)' },
+          { transform: 'translateX(-2px)' },
+          { transform: 'translateX(2px)' },
+          { transform: 'translateX(-1px)' },
+          { transform: 'translateX(1px)' },
+          { transform: 'translateX(0)' },
+        ],
+        {
+          duration: 380,
+          easing: 'ease-in-out',
+        },
+      )
+    }
+
+    const firstShake = window.setTimeout(shake, 2500)
+    const interval = window.setInterval(shake, 7000)
+
+    return () => {
+      window.clearTimeout(firstShake)
+      window.clearInterval(interval)
+    }
+  }, [inStock])
+
   // ── Effects ──
   useEffect(() => {
     if (isCompareOpen) {
-      // Initialize with all color variants and shade colors visible
-      const colorIndices = colorVariants.map((_, i) => `color-${i}`)
-      const shadeIndices = shadeColors.map((_, i) => `shade-${i}`)
-      setCompareVisibleIndices([...colorIndices, ...shadeIndices])
+      // Keep the comparison clean until the customer explicitly selects an option.
+      setCompareVisibleIndices([])
     }
-  }, [isCompareOpen, colorVariants, shadeColors])
+  }, [isCompareOpen])
 
   useEffect(() => {
     if (!isCompareOpen) return
@@ -191,7 +349,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
     const shades = Array.isArray(product?.shadeColors)
       ? product.shadeColors
       : []
-    
+
     // Only use shade if activeColorIndex is within shades array range
     if (activeColorIndex !== null && activeColorIndex < shades.length && shades[activeColorIndex]?.image) {
       return [shades[activeColorIndex].image, ...baseImages]
@@ -201,7 +359,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
     const variants = Array.isArray(product?.productDetails?.colorVariants)
       ? product.productDetails.colorVariants
       : []
-    
+
     // Only use color if selectedColorIndex is within variants array range
     if (selectedColorIndex !== null && selectedColorIndex < variants.length && variants[selectedColorIndex]?.image) {
       return [variants[selectedColorIndex].image, ...baseImages]
@@ -213,12 +371,12 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
   // Combined slides for mobile (images + videos)
   const mobileSlides = useMemo(() => {
     const slides = []
-    
+
     // Add images
     images.forEach((img, idx) => {
       slides.push({ type: 'image', src: img, index: idx })
     })
-    
+
     // Add videos at the end
     if (product.videos && product.videos.length > 0) {
       product.videos.forEach((videoUrl, idx) => {
@@ -227,7 +385,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
     } else if (product.videoUrl) {
       slides.push({ type: 'video', url: product.videoUrl, index: 0 })
     }
-    
+
     return slides
   }, [images, product?.videos, product?.videoUrl])
 
@@ -406,7 +564,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
   const pd = product.productDetails || {}
 
   return (
-    <section className="w-full">
+    <section className="w-full bg-[#F7F4EF] text-[#281912]">
       <style>{`
         .fill-btn {
           overflow: hidden;
@@ -433,16 +591,16 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
           transition: opacity 0.3s ease;
         }
         .fill-btn.fill-dark .fill-layer {
-          background: #FFD400;
+          background: #F0E3D8;
         }
         .fill-btn.fill-dark .fill-layer::before {
-          background: #FFD400;
+          background: #F0E3D8;
         }
         .fill-btn.fill-amber .fill-layer {
-          background: #b45309;
+          background: #3A2117;
         }
         .fill-btn.fill-amber .fill-layer::before {
-          background: #b45309;
+          background: #3A2117;
         }
         .fill-btn:hover .fill-layer {
           height: 100%;
@@ -456,9 +614,9 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
         }
       `}</style>
       {/* ═══════════════ BREADCRUMBS ═══════════════ */}
-      <div className="border-b border-stone-200">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center gap-1.5 py-4 text-[12px] text-stone-500">
+      <div className="border-b border-[#3A2117]/10 bg-[#FFFEFC]">
+        <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="flex flex-wrap items-center gap-2 py-4 text-[11px] font-medium uppercase tracking-[0.08em] text-stone-400">
             <button
               type="button"
               onClick={() => navigate('/')}
@@ -481,308 +639,339 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
       </div>
 
       {/* ═══════════════ MAIN PRODUCT AREA ═══════════════ */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+      <div className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10 lg:py-14">
+        <div className="grid grid-cols-1 gap-8 overflow-visible lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)] lg:items-stretch lg:gap-12 xl:gap-16">
+          {/* ─── LEFT: Image Gallery COLUMN ─── */}
+          <div
+            ref={galleryColumnRef}
+            className="relative self-stretch"
+          >
+            <div
+              ref={galleryPanelRef}
+              style={galleryStickyStyle}
+              className="flex flex-col gap-4"
+            >
+              <div className="flex gap-3 h-full">
 
-          {/* ─── LEFT: Image Gallery ─── */}
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-3 h-full">
-
-              {/* ── Vertical Thumbnail Strip (desktop) ── */}
-              <div
-                className="hidden sm:flex flex-col gap-2.5 overflow-y-auto"
-                style={{ maxHeight: '600px' }}
-              >
-                {mobileSlides.map((slide, idx) => {
-                  if (slide.type === 'video') {
-                    const isActive = activeImageIndex === idx
+                {/* ── Vertical Thumbnail Strip (desktop) ── */}
+                <div
+                  className="hidden sm:flex flex-col gap-3 overflow-y-auto pr-1"
+                  style={{
+                    height: 'clamp(460px, 68vh, 680px)',
+                  }}
+                >
+                  {mobileSlides.map((slide, idx) => {
+                    if (slide.type === 'video') {
+                      const isActive = activeImageIndex === idx
+                      return (
+                        <button
+                          key={`desk-video-${idx}`}
+                          type="button"
+                          onClick={() => setActiveImageIndex(idx)}
+                          className={classNames(
+                            'relative shrink-0 overflow-hidden rounded-xl bg-white transition-all duration-200',
+                            'w-[72px] h-[90px]',
+                            isActive
+                              ? 'border-2 border-stone-800 opacity-100 shadow-md scale-[1.03]'
+                              : 'border-2 border-transparent opacity-50 hover:opacity-80 hover:border-stone-300 hover:scale-[1.01]',
+                          )}
+                          aria-label={`View video ${idx + 1}`}
+                        >
+                          <img
+                            src={product.image}
+                            alt={`${product.name} video ${idx + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">
+                              <svg viewBox="0 0 24 24" className="w-4 h-4 text-stone-900 ml-0.5" fill="currentColor">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            </div>
+                          </div>
+                          {isActive && (
+                            <span className="absolute left-0 top-0 h-full w-0.5 bg-stone-800" />
+                          )}
+                        </button>
+                      )
+                    }
                     return (
                       <button
-                        key={`desk-video-${idx}`}
+                        key={`thumb-${idx}`}
                         type="button"
                         onClick={() => setActiveImageIndex(idx)}
                         className={classNames(
-                          'relative shrink-0 overflow-hidden transition-all duration-200 rounded-sm',
-                          'w-[70px] h-[86px]',
-                          isActive
+                          'relative shrink-0 overflow-hidden rounded-xl bg-white transition-all duration-200',
+                          'w-[72px] h-[90px]',
+                          idx === activeImageIndex
                             ? 'border-2 border-stone-800 opacity-100 shadow-md scale-[1.03]'
                             : 'border-2 border-transparent opacity-50 hover:opacity-80 hover:border-stone-300 hover:scale-[1.01]',
                         )}
-                        aria-label={`View video ${idx + 1}`}
+                        aria-label={`View image ${idx + 1}`}
                       >
                         <img
-                          src={product.image}
-                          alt={`${product.name} video ${idx + 1}`}
+                          src={slide.src}
+                          alt={`${product.name} thumbnail ${idx + 1}`}
                           className="h-full w-full object-cover"
                         />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                          <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">
-                            <svg viewBox="0 0 24 24" className="w-4 h-4 text-stone-900 ml-0.5" fill="currentColor">
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          </div>
-                        </div>
-                        {isActive && (
+                        {idx === activeImageIndex && (
                           <span className="absolute left-0 top-0 h-full w-0.5 bg-stone-800" />
                         )}
                       </button>
                     )
-                  }
+                  })}
+                </div>
+
+                {/* ── Main Image ── */}
+                <div className="group relative flex-1 overflow-hidden rounded-[26px] border border-[#3A2117]/10 bg-[#EEE9E3] shadow-[0_18px_50px_rgba(58,33,23,0.08)] aspect-[4/5] sm:aspect-auto sm:h-[clamp(400px,58vh,560px)]">
+                  {/* Badges */}
+                  {product.isNewArrival && (
+                    <span className="absolute left-0 top-0 z-10 bg-[#3A2117] px-3 py-1.5 text-[11px] font-bold text-white tracking-wide uppercase">
+                      New Arrival
+                    </span>
+                  )}
+                  {hasDiscount && (
+                    <span
+                      className={classNames(
+                        'absolute z-10 bg-[#E53935] px-3 py-1.5 text-[11px] font-bold text-white tracking-wide uppercase',
+                        product.isNewArrival ? 'left-0 top-7' : 'left-0 top-0',
+                      )}
+                    >
+                      Sale
+                    </span>
+                  )}
+
+                  {/* Main photo — covers the full width */}
+                  <div
+                    className="w-full h-full"
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                  >
+                    {mobileSlides[activeImageIndex]?.type === 'video' ? (
+                      <div className="relative w-full h-full">
+                        <video
+                          key={mobileSlides[activeImageIndex].url}
+                          ref={videoRef}
+                          src={mobileSlides[activeImageIndex].url}
+                          poster={product.image}
+                          className="h-full w-full object-contain transition-all duration-300"
+
+                          playsInline
+                          onPlay={() => setIsPlayingVideo(true)}
+                          onPause={() => setIsPlayingVideo(false)}
+                          onEnded={() => setIsPlayingVideo(false)}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+
+                        {/* Custom play/pause button at bottom-left corner */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (videoRef.current?.paused) {
+                              videoRef.current?.play()
+                            } else {
+                              videoRef.current?.pause()
+                            }
+                          }}
+                          className="absolute bottom-4 left-4 z-10 w-12 h-12 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                          aria-label={isPlayingVideo ? 'Pause video' : 'Play video'}
+                        >
+                          {isPlayingVideo ? (
+                            <svg viewBox="0 0 24 24" className="w-6 h-6 text-stone-900" fill="currentColor">
+                              <rect x="6" y="4" width="4" height="16" rx="1" />
+                              <rect x="14" y="4" width="4" height="16" rx="1" />
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" className="w-6 h-6 text-stone-900 ml-0.5" fill="currentColor">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          )}
+                        </button>
+
+                        {/* Fullscreen button at bottom-right corner */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (document.fullscreenElement) {
+                              document.exitFullscreen()
+                            } else {
+                              videoRef.current?.requestFullscreen?.()
+                            }
+                          }}
+                          className="absolute bottom-4 right-4 z-10 w-12 h-12 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                          aria-label={typeof document !== 'undefined' && document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen'}
+                        >
+                          <svg viewBox="0 0 24 24" className="w-6 h-6 text-stone-900" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                            <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                            <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                            <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsImageLightboxOpen(true)}
+                        className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left"
+                        aria-label={`Open ${product.name} image fullscreen`}
+                      >
+                        <img
+                          src={
+                            mobileSlides[activeImageIndex]?.src ||
+                            selectedImage
+                          }
+                          alt={product.name}
+                          className="h-full w-full object-cover transition-transform duration-[1000ms] ease-out group-hover:scale-[1.06]" />
+                        {/* Zoom hint */}
+                        <div className="pointer-events-none absolute bottom-5 right-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-white/90 text-[#3A2117] opacity-0 shadow-lg backdrop-blur transition-all duration-300 group-hover:scale-100 group-hover:opacity-100">
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                          >
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="m20 20-3.5-3.5" />
+                            <path d="M11 8v6" />
+                            <path d="M8 11h6" />
+                          </svg>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Arrow nav (hover) */}
+                  {mobileSlides.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveImageIndex((prev) =>
+                            prev === 0 ? mobileSlides.length - 1 : prev - 1,
+                          )
+                        }
+                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center bg-white/85 hover:bg-white text-stone-700 rounded-full shadow transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        aria-label="Previous"
+                      >
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M15 18l-6-6 6-6" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveImageIndex((prev) =>
+                            prev === mobileSlides.length - 1 ? 0 : prev + 1,
+                          )
+                        }
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center bg-white/85 hover:bg-white text-stone-700 rounded-full shadow transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        aria-label="Next"
+                      >
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </button>
+                    </>
+                  )}
+
+                  {/* Counter badge */}
+                  {mobileSlides.length > 1 && (
+                    <div className="absolute top-3 right-3 z-10 bg-black/40 backdrop-blur-sm text-white text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                      {activeImageIndex + 1} / {mobileSlides.length}
+                    </div>
+                  )}
+
+                  {/* Dot indicators (mobile only) */}
+                  {mobileSlides.length > 1 && (
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 sm:hidden z-10">
+                      {mobileSlides.map((slide, idx) => (
+                        <button
+                          key={`dot-${idx}`}
+                          type="button"
+                          onClick={() => setActiveImageIndex(idx)}
+                          className={classNames(
+                            'h-1.5 rounded-full transition-all duration-200',
+                            idx === activeImageIndex ? 'w-5 bg-stone-900' : 'w-1.5 bg-stone-400/60',
+                          )}
+                          aria-label={`Go to slide ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+
+              {/* ── Mobile horizontal thumbnail strip with images and videos ── */}
+              <div className="flex sm:hidden gap-2 overflow-x-auto pb-1">
+                {/* Images */}
+                {images.map((src, idx) => (
+                  <button
+                    key={`mobile-thumb-${idx}`}
+                    type="button"
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={classNames(
+                      'relative shrink-0 w-16 aspect-square overflow-hidden rounded-xl border-2 bg-white transition-all duration-200',
+                      idx === activeImageIndex
+                        ? 'border-stone-800 opacity-100 scale-[1.04] shadow'
+                        : 'border-transparent opacity-50 hover:opacity-80',
+                    )}
+                  >
+                    <img
+                      src={src}
+                      alt={`${product.name} view ${idx + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
+
+                {/* Videos (added at the end) */}
+                {product.videos && product.videos.map((videoUrl, idx) => {
+                  const videoSlideIndex = images.length + idx
+                  const isActive = activeImageIndex === videoSlideIndex
+
                   return (
                     <button
-                      key={`thumb-${idx}`}
+                      key={`mobile-video-${idx}`}
                       type="button"
-                      onClick={() => setActiveImageIndex(idx)}
+                      onClick={() => {
+                        // Just set the active index to show the video slide in main view
+                        setActiveImageIndex(videoSlideIndex)
+                      }}
                       className={classNames(
-                        'relative shrink-0 overflow-hidden transition-all duration-200 rounded-sm',
-                        'w-[70px] h-[86px]',
-                        idx === activeImageIndex
-                          ? 'border-2 border-stone-800 opacity-100 shadow-md scale-[1.03]'
-                          : 'border-2 border-transparent opacity-50 hover:opacity-80 hover:border-stone-300 hover:scale-[1.01]',
+                        'relative shrink-0 w-16 aspect-square overflow-hidden rounded-xl border-2 bg-white transition-all duration-200',
+                        isActive ? 'border-stone-800 opacity-100 scale-[1.04] shadow' : 'border-transparent opacity-50 hover:opacity-80',
                       )}
-                      aria-label={`View image ${idx + 1}`}
                     >
                       <img
-                        src={slide.src}
-                        alt={`${product.name} thumbnail ${idx + 1}`}
+                        src={product.image}
+                        alt={`${product.name} video ${idx + 1}`}
                         className="h-full w-full object-cover"
                       />
-                      {idx === activeImageIndex && (
-                        <span className="absolute left-0 top-0 h-full w-0.5 bg-stone-800" />
-                      )}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">
+                          <svg viewBox="0 0 24 24" className="w-4 h-4 text-stone-900 ml-0.5" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
                     </button>
                   )
                 })}
               </div>
-
-              {/* ── Main Image ── */}
-              <div className="relative flex-1 h-full overflow-hidden bg-stone-100 group rounded-sm">
-                {/* Badges */}
-                {product.isNewArrival && (
-                  <span className="absolute left-0 top-0 z-10 bg-[#F5F1EA]0 px-3 py-1.5 text-[11px] font-bold text-white tracking-wide uppercase">
-                    New Arrival
-                  </span>
-                )}
-                {hasDiscount && (
-                  <span
-                    className={classNames(
-                      'absolute z-10 bg-[#E53935] px-3 py-1.5 text-[11px] font-bold text-white tracking-wide uppercase',
-                      product.isNewArrival ? 'left-0 top-7' : 'left-0 top-0',
-                    )}
-                  >
-                    Sale
-                  </span>
-                )}
-
-                {/* Main photo — covers the full width */}
-                <div
-                  className="w-full h-full"
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                >
-                  {mobileSlides[activeImageIndex]?.type === 'video' ? (
-                    <div className="relative w-full h-full">
-                      <video
-                        key={mobileSlides[activeImageIndex].url}
-                        ref={videoRef}
-                        src={mobileSlides[activeImageIndex].url}
-                        poster={product.image}
-                        className={classNames(
-                          'w-full h-full transition-all duration-300',
-                          isPlayingVideo ? 'object-contain' : 'object-cover',
-                        )}
-                        style={{ minHeight: '500px' }}
-                        playsInline
-                        onPlay={() => setIsPlayingVideo(true)}
-                        onPause={() => setIsPlayingVideo(false)}
-                        onEnded={() => setIsPlayingVideo(false)}
-                      >
-                        Your browser does not support the video tag.
-                      </video>
-
-                      {/* Custom play/pause button at bottom-left corner */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (videoRef.current?.paused) {
-                            videoRef.current?.play()
-                          } else {
-                            videoRef.current?.pause()
-                          }
-                        }}
-                        className="absolute bottom-4 left-4 z-10 w-12 h-12 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
-                        aria-label={isPlayingVideo ? 'Pause video' : 'Play video'}
-                      >
-                        {isPlayingVideo ? (
-                          <svg viewBox="0 0 24 24" className="w-6 h-6 text-stone-900" fill="currentColor">
-                            <rect x="6" y="4" width="4" height="16" rx="1" />
-                            <rect x="14" y="4" width="4" height="16" rx="1" />
-                          </svg>
-                        ) : (
-                          <svg viewBox="0 0 24 24" className="w-6 h-6 text-stone-900 ml-0.5" fill="currentColor">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        )}
-                      </button>
-
-                      {/* Fullscreen button at bottom-right corner */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (document.fullscreenElement) {
-                            document.exitFullscreen()
-                          } else {
-                            videoRef.current?.requestFullscreen?.()
-                          }
-                        }}
-                        className="absolute bottom-4 right-4 z-10 w-12 h-12 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
-                        aria-label={typeof document !== 'undefined' && document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen'}
-                      >
-                        <svg viewBox="0 0 24 24" className="w-6 h-6 text-stone-900" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-                          <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-                          <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-                          <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-                        </svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <img
-                      src={mobileSlides[activeImageIndex]?.src || selectedImage}
-                      alt={product.name}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-                      style={{ minHeight: '500px' }}
-                    />
-                  )}
-                </div>
-
-                {/* Arrow nav (hover) */}
-                {mobileSlides.length > 1 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveImageIndex((prev) =>
-                          prev === 0 ? mobileSlides.length - 1 : prev - 1,
-                        )
-                      }
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center bg-white/85 hover:bg-white text-stone-700 rounded-full shadow transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                      aria-label="Previous"
-                    >
-                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M15 18l-6-6 6-6" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveImageIndex((prev) =>
-                          prev === mobileSlides.length - 1 ? 0 : prev + 1,
-                        )
-                      }
-                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center bg-white/85 hover:bg-white text-stone-700 rounded-full shadow transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                      aria-label="Next"
-                    >
-                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M9 18l6-6-6-6" />
-                      </svg>
-                    </button>
-                  </>
-                )}
-
-                {/* Counter badge */}
-                {mobileSlides.length > 1 && (
-                  <div className="absolute top-3 right-3 z-10 bg-black/40 backdrop-blur-sm text-white text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                    {activeImageIndex + 1} / {mobileSlides.length}
-                  </div>
-                )}
-
-                {/* Dot indicators (mobile only) */}
-                {mobileSlides.length > 1 && (
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 sm:hidden z-10">
-                    {mobileSlides.map((slide, idx) => (
-                      <button
-                        key={`dot-${idx}`}
-                        type="button"
-                        onClick={() => setActiveImageIndex(idx)}
-                        className={classNames(
-                          'h-1.5 rounded-full transition-all duration-200',
-                          idx === activeImageIndex ? 'w-5 bg-stone-900' : 'w-1.5 bg-stone-400/60',
-                        )}
-                        aria-label={`Go to slide ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-
-            {/* ── Mobile horizontal thumbnail strip with images and videos ── */}
-            <div className="flex sm:hidden gap-2 overflow-x-auto pb-1">
-              {/* Images */}
-              {images.map((src, idx) => (
-                <button
-                  key={`mobile-thumb-${idx}`}
-                  type="button"
-                  onClick={() => setActiveImageIndex(idx)}
-                  className={classNames(
-                    'relative shrink-0 w-16 aspect-square overflow-hidden border-2 transition-all duration-200 rounded-sm',
-                    idx === activeImageIndex
-                      ? 'border-stone-800 opacity-100 scale-[1.04] shadow'
-                      : 'border-transparent opacity-50 hover:opacity-80',
-                  )}
-                >
-                  <img
-                    src={src}
-                    alt={`${product.name} view ${idx + 1}`}
-                    className="h-full w-full object-cover"
-                  />
-                </button>
-              ))}
-              
-              {/* Videos (added at the end) */}
-              {product.videos && product.videos.map((videoUrl, idx) => {
-                const videoSlideIndex = images.length + idx
-                const isActive = activeImageIndex === videoSlideIndex
-                
-                return (
-                  <button
-                    key={`mobile-video-${idx}`}
-                    type="button"
-                    onClick={() => {
-                      // Just set the active index to show the video slide in main view
-                      setActiveImageIndex(videoSlideIndex)
-                    }}
-                    className={classNames(
-                      'relative shrink-0 w-16 aspect-square overflow-hidden border-2 transition-all duration-200 rounded-sm',
-                      isActive ? 'border-stone-800 opacity-100 scale-[1.04] shadow' : 'border-transparent opacity-50 hover:opacity-80',
-                    )}
-                  >
-                    <img
-                      src={product.image}
-                      alt={`${product.name} video ${idx + 1}`}
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                      <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">
-                        <svg viewBox="0 0 24 24" className="w-4 h-4 text-stone-900 ml-0.5" fill="currentColor">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
             </div>
           </div>
 
           {/* ─── RIGHT: Product Info ─── */}
-          <div className="lg:sticky lg:top-24">
+          <div className="rounded-[28px] border border-[#3A2117]/10 bg-[#FFFEFC] p-6 shadow-[0_22px_65px_rgba(58,33,23,0.07)] sm:p-8 lg:sticky lg:top-[108px]">
             {/* Title + Wishlist */}
             <div className="flex items-start justify-between gap-4">
-              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#222222] leading-tight">
+              <h1 className="max-w-xl text-[30px] font-medium leading-[1.08] tracking-[-0.035em] text-[#281912] sm:text-[38px]">
                 {product.name}
               </h1>
               <button
@@ -826,13 +1015,13 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                   <p className="text-base text-stone-400 line-through">
                     {formatPKR(effectiveOriginalPrice)}
                   </p>
-                  <p className="text-2xl font-bold text-[#E53935]">{formatPKR(effectivePrice)}</p>
+                  <p className="text-[28px] font-semibold tracking-[-0.025em] text-[#9B342B]">{formatPKR(effectivePrice)}</p>
                   <span className="inline-flex items-center bg-red-100 text-red-700 px-2 py-0.5 text-[11px] font-semibold rounded-sm">
                     Save {discountPercent}%
                   </span>
                 </>
               ) : (
-                <p className="text-2xl font-bold text-[#5A2D0C]">{formatPKR(effectivePrice)}</p>
+                <p className="text-[28px] font-semibold tracking-[-0.025em] text-[#5A3525]">{formatPKR(effectivePrice)}</p>
               )}
             </div>
 
@@ -871,160 +1060,160 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
               </div>
             </div>
 
-             {/* ── Color & Shade Selector ── */}
-             {(colorVariants.length > 0 || shadeColors.length > 0) && (
-               <div className="mt-5 border-t border-stone-200 pt-5">
-                 <div className="flex items-start gap-8">
-                   {/* Color Variants */}
-                   {colorVariants.length > 0 && (
-                     <div>
-                       <p className="text-[13px] font-semibold text-stone-800">
-                         Color: <span className="font-normal text-stone-500">{selectedColor}</span>
-                       </p>
-                       <div className="mt-3 flex items-center gap-3">
-                         {colorVariants.map((variant, idx) => {
-                           const active = idx === safeColorIndex
-                           return (
-                             <button
-                               key={`color-${variant.name}-${idx}`}
-                               type="button"
-                               onClick={() => {
-                                 // Toggle: if clicking the same color, deselect it
-                                 if (active) {
-                                   setSelectedColorIndex(null)
-                                 } else {
-                                   setSelectedColorIndex(idx)
-                                 }
-                                 setActiveImageIndex(0)
-                               }}
-                               className={classNames(
-                                 'rounded-full p-0.5 transition-all duration-200 hover:scale-110',
-                                 active
-                                   ? 'ring-2 ring-stone-900 ring-offset-2 ring-offset-white'
-                                   : 'ring-1 ring-stone-200 ring-offset-1 ring-offset-white hover:ring-stone-400',
-                               )}
-                               aria-label={`Select color ${variant.name}`}
-                             >
-                               <div className="h-10 w-10 rounded-full overflow-hidden border border-stone-200">
-                                 <img src={variant.image} alt={variant.name} className="h-full w-full object-cover" />
-                               </div>
-                             </button>
-                           )
-                         })}
-                       </div>
-                     </div>
-                   )}
+            {/* ── Color & Shade Selector ── */}
+            {(colorVariants.length > 0 || shadeColors.length > 0) && (
+              <div className="mt-5 border-t border-stone-200 pt-5">
+                <div className="flex items-start gap-8">
+                  {/* Color Variants */}
+                  {colorVariants.length > 0 && (
+                    <div>
+                      <p className="text-[13px] font-semibold text-stone-800">
+                        Color: <span className="font-normal text-stone-500">{selectedColor}</span>
+                      </p>
+                      <div className="mt-3 flex items-center gap-3">
+                        {colorVariants.map((variant, idx) => {
+                          const active = idx === safeColorIndex
+                          return (
+                            <button
+                              key={`color-${variant.name}-${idx}`}
+                              type="button"
+                              onClick={() => {
+                                // Toggle: if clicking the same color, deselect it
+                                if (active) {
+                                  setSelectedColorIndex(null)
+                                } else {
+                                  setSelectedColorIndex(idx)
+                                }
+                                setActiveImageIndex(0)
+                              }}
+                              className={classNames(
+                                'rounded-full p-0.5 transition-all duration-200 hover:-translate-y-0.5',
+                                active
+                                  ? 'ring-2 ring-stone-900 ring-offset-2 ring-offset-white'
+                                  : 'ring-1 ring-stone-200 ring-offset-1 ring-offset-white hover:ring-stone-400',
+                              )}
+                              aria-label={`Select color ${variant.name}`}
+                            >
+                              <div className="h-10 w-10 rounded-full overflow-hidden border border-stone-200">
+                                <img src={variant.image} alt={variant.name} className="h-full w-full object-cover" />
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
 
-                   {/* Shade Colors */}
-                   {shadeColors.length > 0 && (
-                     <div>
-                       <p className="text-[13px] font-semibold text-stone-800">
-                         Shade: <span className="font-normal text-stone-500">
-                           {shadeColors.find((_, i) => i === activeColorIndex)?.name || 'Select shade'}
-                         </span>
-                       </p>
-                       <div className="mt-3 flex items-center gap-3">
-                         {shadeColors.map((shade, idx) => {
-                           const active = idx === activeColorIndex
-                           return (
-                             <button
-                               key={`shade-${shade.name}-${idx}`}
-                               type="button"
-                               onClick={() => {
-                                 setActiveColorIndex(prev => prev === idx ? null : idx)
-                                 setActiveImageIndex(0)
-                               }}
-                               className={classNames(
-                                 'rounded-full p-0.5 transition-all duration-200 hover:scale-110',
-                                 active
-                                   ? 'ring-2 ring-stone-900 ring-offset-2 ring-offset-white'
-                                   : 'ring-1 ring-stone-200 ring-offset-1 ring-offset-white hover:ring-stone-400',
-                               )}
-                               aria-label={`Select shade ${shade.name}`}
-                             >
-                               <div className="h-10 w-10 rounded-full overflow-hidden border border-stone-200">
-                                 <img src={shade.image} alt={shade.name} className="h-full w-full object-cover" />
-                               </div>
-                             </button>
-                           )
-                         })}
-                       </div>
-                     </div>
-                   )}
-                 </div>
+                  {/* Shade Colors */}
+                  {shadeColors.length > 0 && (
+                    <div>
+                      <p className="text-[13px] font-semibold text-stone-800">
+                        Shade: <span className="font-normal text-stone-500">
+                          {shadeColors.find((_, i) => i === activeColorIndex)?.name || 'Select shade'}
+                        </span>
+                      </p>
+                      <div className="mt-3 flex items-center gap-3">
+                        {shadeColors.map((shade, idx) => {
+                          const active = idx === activeColorIndex
+                          return (
+                            <button
+                              key={`shade-${shade.name}-${idx}`}
+                              type="button"
+                              onClick={() => {
+                                setActiveColorIndex(prev => prev === idx ? null : idx)
+                                setActiveImageIndex(0)
+                              }}
+                              className={classNames(
+                                'rounded-full p-0.5 transition-all duration-200 hover:-translate-y-0.5',
+                                active
+                                  ? 'ring-2 ring-stone-900 ring-offset-2 ring-offset-white'
+                                  : 'ring-1 ring-stone-200 ring-offset-1 ring-offset-white hover:ring-stone-400',
+                              )}
+                              aria-label={`Select shade ${shade.name}`}
+                            >
+                              <div className="h-10 w-10 rounded-full overflow-hidden border border-stone-200">
+                                <img src={shade.image} alt={shade.name} className="h-full w-full object-cover" />
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-                 {/* Compare Color & Shade Button */}
-                 {(colorVariants.length > 1 || shadeColors.length > 1) && (
-                   <button
-                     type="button"
-                     onClick={() => setIsCompareOpen(true)}
-                     className="mt-4 flex items-center gap-2 text-[13px] font-medium text-stone-700 hover:text-stone-900 hover:underline transition-all"
-                   >
-                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-                       <circle cx="12" cy="12" r="10" stroke="url(#color-wheel-gradient)" strokeWidth="3" />
-                       <defs>
-                         <linearGradient id="color-wheel-gradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                           <stop offset="0%" stopColor="#f87171" />
-                           <stop offset="20%" stopColor="#fbbf24" />
-                           <stop offset="40%" stopColor="#34d399" />
-                           <stop offset="60%" stopColor="#60a5fa" />
-                           <stop offset="80%" stopColor="#818cf8" />
-                           <stop offset="100%" stopColor="#a78bfa" />
-                         </linearGradient>
-                       </defs>
-                     </svg>
-                      {shadeColors.length > 0 && colorVariants.length > 0
-                        ? 'Compare Color & Shade'
-                        : colorVariants.length > 1
-                          ? 'Compare Color'
-                          : 'Compare Shade'}
-                   </button>
-                 )}
-               </div>
-             )}
+                {/* Compare Color & Shade Button */}
+                {(colorVariants.length > 1 || shadeColors.length > 1) && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCompareOpen(true)}
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#3A2117]/15 bg-[#F8F3EE] px-4 py-2.5 text-[12px] font-semibold text-[#4B3024] transition-all hover:border-[#6B4228]/40 hover:bg-[#F2E8DF]"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+                      <circle cx="12" cy="12" r="10" stroke="url(#color-wheel-gradient)" strokeWidth="3" />
+                      <defs>
+                        <linearGradient id="color-wheel-gradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                          <stop offset="0%" stopColor="#f87171" />
+                          <stop offset="20%" stopColor="#fbbf24" />
+                          <stop offset="40%" stopColor="#34d399" />
+                          <stop offset="60%" stopColor="#60a5fa" />
+                          <stop offset="80%" stopColor="#818cf8" />
+                          <stop offset="100%" stopColor="#a78bfa" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    {shadeColors.length > 0 && colorVariants.length > 0
+                      ? 'Compare Color & Shade'
+                      : colorVariants.length > 1
+                        ? 'Compare Color'
+                        : 'Compare Shade'}
+                  </button>
+                )}
+              </div>
+            )}
 
-             {/* ── Bulb Option: With / Without ── */}
-             {(product.bulbEnabled || bulbOptions.length > 0) && (
-               <div className="mt-5 border-t border-stone-200 pt-5">
-                 <p className="text-[13px] font-semibold text-stone-800">
-                   Bulb Option
-                 </p>
-                 <div className="mt-3 flex items-center gap-4">
-                   <label className={classNames(
-                     'flex items-center gap-2 px-4 py-2.5 border text-[13px] cursor-pointer transition-all duration-200',
-                     selectedBulbOption === 'with'
-                       ? 'border-stone-900 bg-stone-900 text-white font-semibold'
-                       : 'border-stone-300 bg-white text-stone-700 hover:border-stone-500',
-                   )}>
-                     <input
-                       type="radio"
-                       name="bulbOption"
-                       value="with"
-                       checked={selectedBulbOption === 'with'}
-                       onChange={() => setSelectedBulbOption('with')}
-                       className="sr-only"
-                     />
-                     With Bulb
-                   </label>
-                   <label className={classNames(
-                     'flex items-center gap-2 px-4 py-2.5 border text-[13px] cursor-pointer transition-all duration-200',
-                     selectedBulbOption === 'without'
-                       ? 'border-stone-900 bg-stone-900 text-white font-semibold'
-                       : 'border-stone-300 bg-white text-stone-700 hover:border-stone-500',
-                   )}>
-                     <input
-                       type="radio"
-                       name="bulbOption"
-                       value="without"
-                       checked={selectedBulbOption === 'without'}
-                       onChange={() => setSelectedBulbOption('without')}
-                       className="sr-only"
-                     />
-                     Without Bulb
-                   </label>
-                 </div>
-               </div>
-             )}
+            {/* ── Bulb Option: With / Without ── */}
+            {(product.bulbEnabled || bulbOptions.length > 0) && (
+              <div className="mt-5 border-t border-stone-200 pt-5">
+                <p className="text-[13px] font-semibold text-stone-800">
+                  Bulb Option
+                </p>
+                <div className="mt-3 flex items-center gap-4">
+                  <label className={classNames(
+                    'flex items-center gap-2 rounded-full border px-4 py-2.5 text-[13px] cursor-pointer transition-all duration-200',
+                    selectedBulbOption === 'with'
+                      ? 'border-[#3A2117] bg-[#3A2117] text-white font-semibold'
+                      : 'border-stone-300 bg-white text-stone-700 hover:border-[#6B4228]',
+                  )}>
+                    <input
+                      type="radio"
+                      name="bulbOption"
+                      value="with"
+                      checked={selectedBulbOption === 'with'}
+                      onChange={() => setSelectedBulbOption('with')}
+                      className="sr-only"
+                    />
+                    With Bulb
+                  </label>
+                  <label className={classNames(
+                    'flex items-center gap-2 rounded-full border px-4 py-2.5 text-[13px] cursor-pointer transition-all duration-200',
+                    selectedBulbOption === 'without'
+                      ? 'border-[#3A2117] bg-[#3A2117] text-white font-semibold'
+                      : 'border-stone-300 bg-white text-stone-700 hover:border-[#6B4228]',
+                  )}>
+                    <input
+                      type="radio"
+                      name="bulbOption"
+                      value="without"
+                      checked={selectedBulbOption === 'without'}
+                      onChange={() => setSelectedBulbOption('without')}
+                      className="sr-only"
+                    />
+                    Without Bulb
+                  </label>
+                </div>
+              </div>
+            )}
 
             {/* ── Quantity + Add to Cart ── */}
             <div ref={actionRef} className="mt-6 border-t border-stone-200 pt-5">
@@ -1038,7 +1227,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
               <p className="mt-4 text-[13px] font-semibold text-stone-800">Quantity:</p>
 
               <div className="mt-2.5 flex items-center gap-3">
-                <div className="flex items-center border border-stone-300 bg-white">
+                <div className="flex items-center overflow-hidden rounded-full border border-stone-200 bg-white shadow-sm">
                   <button
                     type="button"
                     onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
@@ -1061,16 +1250,17 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                 </div>
 
                 <button
+                  ref={addToCartRef}
                   type="button"
                   onClick={addQuantityToCart}
                   className={classNames(
-                    'fill-btn fill-dark group relative h-12 flex-1 overflow-hidden bg-[#5A2D0C] text-white text-[13px] font-semibold tracking-wide uppercase',
+                    'fill-btn fill-dark group relative h-12 flex-1 overflow-hidden rounded-full bg-[#3A2117] text-white text-[12px] font-semibold uppercase tracking-[0.11em] shadow-[0_10px_26px_rgba(58,33,23,0.18)] transition-all duration-300 hover:-translate-y-0.5',
                     !inStock && 'opacity-50 cursor-not-allowed',
                   )}
                   disabled={!inStock}
                 >
                   <span className="fill-layer" aria-hidden="true" />
-                  <span className="relative z-10 transition-colors group-hover:text-[#222222]">Add To Cart</span>
+                  <span className="relative z-10 transition-colors group-hover:text-[#3A2117]">Add To Cart</span>
                 </button>
               </div>
 
@@ -1083,7 +1273,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                   navigate('/checkout')
                 }}
                 className={classNames(
-                  'fill-btn fill-amber group relative mt-3 h-12 w-full overflow-hidden bg-[#FFD400] text-[#222222] text-[13px] font-semibold tracking-wide uppercase',
+                  'fill-btn fill-amber group relative mt-3 h-12 w-full overflow-hidden rounded-full border border-[#3A2117] bg-[#F7F1EA] text-[#3A2117] text-[12px] font-semibold uppercase tracking-[0.11em] transition-all duration-300 hover:-translate-y-0.5',
                   !inStock && 'opacity-50 cursor-not-allowed',
                 )}
                 disabled={!inStock}
@@ -1230,192 +1420,357 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
           </div>
         </div>
       </div>
-
-      {/* ═══════════════ COMPARE COLOR & SHADE MODAL ═══════════════ */}
-      {(isCompareOpen && (colorVariants.length > 0 || shadeColors.length > 0)) && (
-        <div
-          className="fixed inset-0 z-[99998] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-          onClick={() => setIsCompareOpen(false)}
-          role="presentation"
-        >
+      {/* ═══════════════ PRODUCT IMAGE LIGHTBOX ═══════════════ */}
+      {
+        isImageLightboxOpen &&
+        mobileSlides[activeImageIndex]?.type !== 'video' && (
           <div
-            className="relative w-full max-w-4xl bg-white shadow-2xl max-h-[90vh] flex flex-col z-[99999]"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[100000] flex items-center justify-center bg-[#120B08]/95 p-3 backdrop-blur-md sm:p-6"
             role="dialog"
             aria-modal="true"
-            aria-label={shadeColors.length > 0 && colorVariants.length > 0
-              ? 'Compare Color & Shade'
-              : colorVariants.length > 1
-                ? 'Compare Color'
-                : 'Compare Shade'}
+            aria-label={`${product.name} image preview`}
+            onClick={() => setIsImageLightboxOpen(false)}
           >
+            {/* Close */}
             <button
               type="button"
-              onClick={() => setIsCompareOpen(false)}
-              className="absolute right-4 top-4 z-[99999] flex h-10 w-10 items-center justify-center bg-black text-white hover:bg-stone-800 transition-colors rounded-full shadow-lg"
-              aria-label="Close compare"
+              onClick={() => setIsImageLightboxOpen(false)}
+              className="absolute right-4 top-4 z-30 flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur transition-all duration-200 hover:rotate-90 hover:bg-white hover:text-[#281912] sm:right-7 sm:top-7"
+              aria-label="Close image preview"
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M1 13L13 1M1 1l12 12" />
+              <svg
+                viewBox="0 0 24 24"
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              >
+                <path d="M6 6l12 12" />
+                <path d="M18 6 6 18" />
               </svg>
             </button>
 
-            <div className="p-8 sm:p-12 overflow-y-auto">
-              <h3 className="mb-6 text-base font-bold text-stone-900">
-                {shadeColors.length > 0 && colorVariants.length > 0
-                  ? 'Compare Color & Shade'
-                  : colorVariants.length > 1
-                    ? 'Compare Color'
-                    : 'Compare Shade'}
-              </h3>
+            {/* Image */}
+            <div
+              className="relative flex h-full max-h-[92vh] w-full max-w-[1500px] items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={
+                  mobileSlides[activeImageIndex]?.src ||
+                  selectedImage
+                }
+                alt={product.name}
+                className="max-h-[92vh] max-w-full select-none object-contain"
+                draggable={false}
+              />
 
-              {/* Color & Shade Selection Buttons - Same Row */}
-              {(colorVariants.length > 0 || shadeColors.length > 0) && (
-                <div className="mb-8">
-                  <div className="flex items-center gap-8 flex-wrap">
-                    {/* Color Variants */}
-                    {colorVariants.length > 0 && (
-                      <div className="flex items-center gap-3">
-                        <p className="text-sm font-semibold text-stone-700">Colors:</p>
-                        <div className="flex items-center gap-3">
-                          {colorVariants.map((variant, idx) => (
-                            <button
-                              key={`compare-color-${variant.name}-${idx}`}
-                              type="button"
-                              onClick={() => {
-                                setCompareVisibleIndices((prev) =>
-                                  prev.includes(`color-${idx}`) ? prev.filter((i) => !i.startsWith('color-')) : [...prev.filter((i) => !i.startsWith('color-')), `color-${idx}`],
-                                )
-                              }}
-                              className={classNames(
-                                'rounded-full p-[3px] transition-all duration-200',
-                                compareVisibleIndices.includes(`color-${idx}`)
-                                  ? 'ring-1 ring-black opacity-100'
-                                  : 'ring-1 ring-stone-200 opacity-40 grayscale hover:opacity-70',
-                              )}
-                              aria-label={`Toggle visibility for ${variant.name}`}
-                            >
-                              <div className="h-10 w-10 rounded-full overflow-hidden border border-stone-200">
-                                <img src={variant.image} alt={variant.name} className="h-full w-full object-cover" />
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+              {/* Previous */}
+              {images.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
 
-                    {/* Shade Colors */}
-                    {shadeColors.length > 0 && (
-                      <div className="flex items-center gap-3">
-                        <p className="text-sm font-semibold text-stone-700">Shades:</p>
-                        <div className="flex items-center gap-3">
-                          {shadeColors.map((shade, idx) => (
-                            <button
-                              key={`compare-shade-${shade.name}-${idx}`}
-                              type="button"
-                              onClick={() => {
-                                setCompareVisibleIndices((prev) =>
-                                  prev.includes(`shade-${idx}`) ? prev.filter((i) => !i.startsWith('shade-')) : [...prev.filter((i) => !i.startsWith('shade-')), `shade-${idx}`],
-                                )
-                              }}
-                              className={classNames(
-                                'rounded-full p-[3px] transition-all duration-200',
-                                compareVisibleIndices.includes(`shade-${idx}`)
-                                  ? 'ring-1 ring-black opacity-100'
-                                  : 'ring-1 ring-stone-200 opacity-40 grayscale hover:opacity-70',
-                              )}
-                              aria-label={`Toggle visibility for ${shade.name}`}
-                            >
-                              <div className="h-10 w-10 rounded-full overflow-hidden border border-stone-200">
-                                <img src={shade.image} alt={shade.name} className="h-full w-full object-cover" />
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                    setActiveImageIndex((prev) => {
+                      let next = prev - 1
+
+                      while (next >= 0) {
+                        if (
+                          mobileSlides[next]?.type ===
+                          'image'
+                        ) {
+                          return next
+                        }
+
+                        next -= 1
+                      }
+
+                      for (
+                        let i =
+                          mobileSlides.length - 1;
+                        i >= 0;
+                        i -= 1
+                      ) {
+                        if (
+                          mobileSlides[i]?.type ===
+                          'image'
+                        ) {
+                          return i
+                        }
+                      }
+
+                      return prev
+                    })
+                  }}
+                  className="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur transition hover:bg-white hover:text-[#281912] sm:left-5 sm:h-13 sm:w-13"
+                  aria-label="Previous image"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
               )}
 
-              {/* Shade Images Grid */}
-              {shadeColors.length > 0 && compareVisibleIndices.some(idx => idx.startsWith('shade-')) && (
-                <div className="mb-8">
-                  <p className="text-sm font-semibold text-stone-700 mb-4">Shade Colors</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                    {shadeColors
-                      .map((shade, idx) => ({ shade, idx }))
-                      .filter(({ idx }) => compareVisibleIndices.includes(`shade-${idx}`))
-                      .map(({ shade, idx }) => {
-                        const imageSrc = shade.image || selectedImage
-                        return (
-                          <div
-                            key={`compare-shade-card-${shade.name}-${idx}`}
-                            className="group cursor-pointer flex flex-col items-center"
-                            onClick={() => { 
-                              setActiveColorIndex(idx)
-                              setIsCompareOpen(false)
-                            }}
-                          >
-                            <div className="aspect-[3/4] w-full overflow-hidden bg-stone-50 mb-4 transition-opacity group-hover:opacity-90">
-                              <img src={imageSrc} alt={shade.name} className="h-full w-full object-cover object-center" />
-                            </div>
-                            <p className="text-sm font-medium text-stone-600 group-hover:text-stone-900 transition-colors">{shade.name}</p>
-                          </div>
-                        )
-                      })}
-                  </div>
-                </div>
+              {/* Next */}
+              {images.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+
+                    setActiveImageIndex((prev) => {
+                      let next = prev + 1
+
+                      while (
+                        next <
+                        mobileSlides.length
+                      ) {
+                        if (
+                          mobileSlides[next]?.type ===
+                          'image'
+                        ) {
+                          return next
+                        }
+
+                        next += 1
+                      }
+
+                      for (
+                        let i = 0;
+                        i < mobileSlides.length;
+                        i += 1
+                      ) {
+                        if (
+                          mobileSlides[i]?.type ===
+                          'image'
+                        ) {
+                          return i
+                        }
+                      }
+
+                      return prev
+                    })
+                  }}
+                  className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur transition hover:bg-white hover:text-[#281912] sm:right-5 sm:h-13 sm:w-13"
+                  aria-label="Next image"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
               )}
 
-              {/* Color Images Grid */}
-              {colorVariants.length > 0 && compareVisibleIndices.some(idx => idx.startsWith('color-')) && (
-                <div>
-                  <p className="text-sm font-semibold text-stone-700 mb-4">Color Variants</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                    {colorVariants
-                      .map((variant, idx) => ({ variant, idx }))
-                      .filter(({ idx }) => compareVisibleIndices.includes(`color-${idx}`))
-                      .map(({ variant, idx }) => {
-                        const imageSrc = variant.image || selectedImage
-                        return (
-                          <div
-                            key={`compare-color-card-${variant.name}-${idx}`}
-                            className="group cursor-pointer flex flex-col items-center"
-                            onClick={() => { 
-                              setSelectedColorIndex(idx)
-                              setActiveColorIndex(null)
-                              setIsCompareOpen(false)
-                            }}
-                          >
-                            <div className="aspect-[3/4] w-full overflow-hidden bg-stone-50 mb-4 transition-opacity group-hover:opacity-90">
-                              <img src={imageSrc} alt={variant.name} className="h-full w-full object-cover object-center" />
-                            </div>
-                            <p className="text-sm font-medium text-stone-600 group-hover:text-stone-900 transition-colors">{variant.name}</p>
-                          </div>
-                        )
-                      })}
-                  </div>
-                </div>
-              )}
+              {/* Image counter */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-white/15 bg-black/35 px-4 py-2 text-[11px] font-semibold tracking-[0.12em] text-white backdrop-blur-md">
+                {activeImageIndex + 1}
+                {' / '}
+                {mobileSlides.length}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+      {/* ═══════════════ COMPARE COLOR & SHADE MODAL ═══════════════ */}
+      {
+        (isCompareOpen && (colorVariants.length > 0 || shadeColors.length > 0)) && (
+          <div
+            className="fixed inset-0 z-[99998] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+            onClick={() => setIsCompareOpen(false)}
+            role="presentation"
+          >
+            <div
+              className="relative z-[99999] flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#FFFEFC] shadow-[0_35px_100px_rgba(0,0,0,0.28)]"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label={shadeColors.length > 0 && colorVariants.length > 0
+                ? 'Compare Color & Shade'
+                : colorVariants.length > 1
+                  ? 'Compare Color'
+                  : 'Compare Shade'}
+            >
+              <button
+                type="button"
+                onClick={() => setIsCompareOpen(false)}
+                className="absolute right-4 top-4 z-[99999] flex h-10 w-10 items-center justify-center bg-black text-white hover:bg-stone-800 transition-colors rounded-full shadow-lg"
+                aria-label="Close compare"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M1 13L13 1M1 1l12 12" />
+                </svg>
+              </button>
+
+              <div className="overflow-y-auto p-6 sm:p-10">
+                <h3 className="mb-6 text-base font-bold text-stone-900">
+                  {shadeColors.length > 0 && colorVariants.length > 0
+                    ? 'Compare Color & Shade'
+                    : colorVariants.length > 1
+                      ? 'Compare Color'
+                      : 'Compare Shade'}
+                </h3>
+
+                {/* Color & Shade Selection Buttons - Same Row */}
+                {(colorVariants.length > 0 || shadeColors.length > 0) && (
+                  <div className="mb-8">
+                    <div className="flex items-center gap-8 flex-wrap">
+                      {/* Color Variants */}
+                      {colorVariants.length > 0 && (
+                        <div className="flex items-center gap-3">
+                          <p className="text-sm font-semibold text-stone-700">Colors:</p>
+                          <div className="flex items-center gap-3">
+                            {colorVariants.map((variant, idx) => (
+                              <button
+                                key={`compare-color-${variant.name}-${idx}`}
+                                type="button"
+                                onClick={() => {
+                                  setCompareVisibleIndices((prev) =>
+                                    prev.includes(`color-${idx}`) ? prev.filter((i) => !i.startsWith('color-')) : [...prev.filter((i) => !i.startsWith('color-')), `color-${idx}`],
+                                  )
+                                }}
+                                className={classNames(
+                                  'rounded-full p-[3px] transition-all duration-200',
+                                  compareVisibleIndices.includes(`color-${idx}`)
+                                    ? 'ring-1 ring-black opacity-100'
+                                    : 'ring-1 ring-stone-200 opacity-40 grayscale hover:opacity-70',
+                                )}
+                                aria-label={`Toggle visibility for ${variant.name}`}
+                              >
+                                <div className="h-10 w-10 rounded-full overflow-hidden border border-stone-200">
+                                  <img src={variant.image} alt={variant.name} className="h-full w-full object-cover" />
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Shade Colors */}
+                      {shadeColors.length > 0 && (
+                        <div className="flex items-center gap-3">
+                          <p className="text-sm font-semibold text-stone-700">Shades:</p>
+                          <div className="flex items-center gap-3">
+                            {shadeColors.map((shade, idx) => (
+                              <button
+                                key={`compare-shade-${shade.name}-${idx}`}
+                                type="button"
+                                onClick={() => {
+                                  setCompareVisibleIndices((prev) =>
+                                    prev.includes(`shade-${idx}`) ? prev.filter((i) => !i.startsWith('shade-')) : [...prev.filter((i) => !i.startsWith('shade-')), `shade-${idx}`],
+                                  )
+                                }}
+                                className={classNames(
+                                  'rounded-full p-[3px] transition-all duration-200',
+                                  compareVisibleIndices.includes(`shade-${idx}`)
+                                    ? 'ring-1 ring-black opacity-100'
+                                    : 'ring-1 ring-stone-200 opacity-40 grayscale hover:opacity-70',
+                                )}
+                                aria-label={`Toggle visibility for ${shade.name}`}
+                              >
+                                <div className="h-10 w-10 rounded-full overflow-hidden border border-stone-200">
+                                  <img src={shade.image} alt={shade.name} className="h-full w-full object-cover" />
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Shade Images Grid */}
+                {shadeColors.length > 0 && compareVisibleIndices.some(idx => idx.startsWith('shade-')) && (
+                  <div className="mb-8">
+                    <p className="text-sm font-semibold text-stone-700 mb-4">Shade Colors</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                      {shadeColors
+                        .map((shade, idx) => ({ shade, idx }))
+                        .filter(({ idx }) => compareVisibleIndices.includes(`shade-${idx}`))
+                        .map(({ shade, idx }) => {
+                          const imageSrc = shade.image || selectedImage
+                          return (
+                            <div
+                              key={`compare-shade-card-${shade.name}-${idx}`}
+                              className="group cursor-pointer flex flex-col items-center"
+                              onClick={() => {
+                                setActiveColorIndex(idx)
+                                setIsCompareOpen(false)
+                              }}
+                            >
+                              <div className="mb-4 aspect-[3/4] w-full overflow-hidden rounded-2xl bg-stone-100 transition-opacity group-hover:opacity-90">
+                                <img src={imageSrc} alt={shade.name} className="h-full w-full object-cover object-center" />
+                              </div>
+                              <p className="text-sm font-medium text-stone-600 group-hover:text-stone-900 transition-colors">{shade.name}</p>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Color Images Grid */}
+                {colorVariants.length > 0 && compareVisibleIndices.some(idx => idx.startsWith('color-')) && (
+                  <div>
+                    <p className="text-sm font-semibold text-stone-700 mb-4">Color Variants</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                      {colorVariants
+                        .map((variant, idx) => ({ variant, idx }))
+                        .filter(({ idx }) => compareVisibleIndices.includes(`color-${idx}`))
+                        .map(({ variant, idx }) => {
+                          const imageSrc = variant.image || selectedImage
+                          return (
+                            <div
+                              key={`compare-color-card-${variant.name}-${idx}`}
+                              className="group cursor-pointer flex flex-col items-center"
+                              onClick={() => {
+                                setSelectedColorIndex(idx)
+                                setActiveColorIndex(null)
+                                setIsCompareOpen(false)
+                              }}
+                            >
+                              <div className="mb-4 aspect-[3/4] w-full overflow-hidden rounded-2xl bg-stone-100 transition-opacity group-hover:opacity-90">
+                                <img src={imageSrc} alt={variant.name} className="h-full w-full object-cover object-center" />
+                              </div>
+                              <p className="text-sm font-medium text-stone-600 group-hover:text-stone-900 transition-colors">{variant.name}</p>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       {/* ═══════════════ TABS ═══════════════ */}
-      <div className="border-t border-stone-200 bg-stone-50/60">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-0 border-b border-stone-200 overflow-x-auto scrollbar-hide sm:justify-center">
+      <div className="border-t border-[#3A2117]/10 bg-[#FFFEFC]">
+        <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="flex items-center gap-0 overflow-x-auto border-b border-[#3A2117]/10 scrollbar-hide sm:justify-center">
             {['description', 'dimension', 'shipping', 'reviews'].map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={classNames(
-                  'relative px-6 py-4 text-[13px] font-semibold tracking-wide uppercase transition-colors duration-200 whitespace-nowrap flex-shrink-0',
+                  'relative flex-shrink-0 whitespace-nowrap px-6 py-5 text-[12px] font-semibold uppercase tracking-[0.11em] transition-colors duration-200',
                   activeTab === tab
-                    ? 'text-stone-900 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-stone-900'
+                    ? 'text-[#3A2117] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#3A2117]'
                     : 'text-stone-400 hover:text-stone-600',
                 )}
               >
@@ -1424,7 +1779,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
             ))}
           </div>
 
-          <div className="px-4 sm:px-6 lg:px-60 py-8 sm:py-10">
+          <div className="mx-auto max-w-4xl px-0 py-8 sm:py-12">
             {activeTab === 'description' ? (
               <div className="max-w-3xl text-sm text-stone-700 leading-7 space-y-6">
                 <div>
@@ -1562,8 +1917,8 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                   </>
                 )}
               </div>
-              ) : (
-                <div className="max-w-3xl space-y-8">
+            ) : (
+              <div className="max-w-3xl space-y-8">
                 <div className="flex items-center gap-6">
                   <div className="text-center">
                     <p className="text-5xl font-bold text-stone-900">{avgRating ? avgRating.toFixed(1) : '0.0'}</p>
@@ -1579,7 +1934,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                           <span className="w-4 text-stone-500 text-right">{star}</span>
                           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[#FFD400] fill-current"><path d="M12 17.27l-5.18 3.04 1.4-5.81-4.52-3.92 5.95-.5L12 4.5l2.35 5.58 5.95.5-4.52 3.92 1.4 5.81z" /></svg>
                           <div className="flex-1 h-2 bg-stone-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-[#F5F1EA]0 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                            <div className="h-full bg-[#3A2117] rounded-full transition-all" style={{ width: `${pct}%` }} />
                           </div>
                           <span className="w-6 text-stone-400">{count}</span>
                         </div>
@@ -1612,19 +1967,19 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                           {renderStars(review.rating)}
                         </div>
                         <p className="mt-3 text-[13px] text-stone-600 leading-relaxed">{review.comment}</p>
-                        
+
                         {/* Admin Reply */}
                         {review.adminReply && (
-                          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="mt-4 rounded-2xl border border-[#6B4228]/15 bg-[#F8F2EC] p-4">
                             <div className="flex items-start gap-3">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#3A2117] text-sm font-bold text-white">
                                 A
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <p className="font-semibold text-blue-900 text-sm">Admin Response</p>
+                                  <p className="text-sm font-semibold text-[#3A2117]">Lamp & Glow Reply</p>
                                   {review.adminReplyAt && (
-                                    <p className="text-xs text-blue-600">
+                                    <p className="text-xs text-[#8A654D]">
                                       {new Date(review.adminReplyAt).toLocaleDateString('en-US', {
                                         year: 'numeric',
                                         month: 'short',
@@ -1633,7 +1988,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                                     </p>
                                   )}
                                 </div>
-                                <p className="text-blue-800 text-sm leading-relaxed">{review.adminReply}</p>
+                                <p className="text-sm leading-relaxed text-stone-700">{review.adminReply}</p>
                               </div>
                             </div>
                           </div>
@@ -1706,7 +2061,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                           onChange={(e) => setLocalReviewForm((prev) => ({ ...prev, comment: e.target.value }))}
                           rows={4}
                           required
-                          className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#FFD400]"
+                          className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#6B4228] focus:ring-4 focus:ring-[#6B4228]/[0.08]"
                           placeholder="Share your experience with this product..."
                         />
                       </div>
@@ -1714,7 +2069,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                       <button
                         type="submit"
                         disabled={!localReviewForm.comment.trim()}
-                        className="inline-flex items-center justify-center rounded-full bg-[#5A2D0C] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#FFD400] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="inline-flex items-center justify-center rounded-full bg-[#3A2117] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#4A2B1F] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Submit Review
                       </button>
@@ -1727,7 +2082,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                     <p className="text-stone-600 mb-3">Please log in to write a review</p>
                     <button
                       onClick={() => navigate('/login')}
-                      className="inline-flex items-center justify-center rounded-full bg-[#5A2D0C] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#FFD400] transition-colors"
+                      className="inline-flex items-center justify-center rounded-full bg-[#3A2117] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#4A2B1F]"
                     >
                       Log In to Review
                     </button>
@@ -1747,8 +2102,8 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
       </div>
 
       {/* ═══════════════ TRUST BADGES ═══════════════ */}
-      <div className="border-t border-stone-200 bg-white">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-10">
+      <div className="border-t border-[#3A2117]/10 bg-[#F3EEE8]">
+        <div className="mx-auto w-full max-w-[1400px] px-4 py-10 sm:px-6 lg:px-10">
           {/* Mobile: 2 per row with arrow navigation */}
           <div className="sm:hidden">
             <div className="relative flex items-center gap-3">
@@ -1856,146 +2211,152 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
       </div>
 
       {/* ═══════════════ RELATED PRODUCTS ═══════════════ */}
-      {relatedProducts.length > 0 && (
-        <div className="border-t border-stone-200 bg-white">
-          <div className="w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-            <h2 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">Related Products</h2>
-            <p className="mt-1 text-sm text-stone-500">You may also like</p>
-            <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-              {relatedProducts.slice(0, 4).map((rp) => {
-                const rpInfo = getDiscountInfo(rp)
-                return (
-                  <Link
-                    key={rp.id}
-                    to={`/products/${slugify(rp.name)}`}
-                    onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}
-                    className="group block overflow-hidden bg-white border border-stone-200 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-stone-300"
-                  >
-                    <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">
-                      {rp.isNewArrival && (
-                        <span className="absolute left-0 top-0 z-10 bg-[#F5F1EA]0 px-2 py-1 text-[10px] font-bold text-white tracking-wide">New</span>
-                      )}
-                      {rpInfo.hasDiscount && (
-                        <span className={classNames('absolute z-10 bg-[#E53935] px-2 py-1 text-[10px] font-bold text-white tracking-wide', rp.isNewArrival ? 'left-0 top-6' : 'left-0 top-0')}>
-                          -{rpInfo.discountPercent}%
-                        </span>
-                      )}
-                      <img src={rp.image} alt={rp.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    </div>
-                    <div className="p-4">
-                      <h3 className="text-[13px] font-semibold text-stone-900 leading-snug line-clamp-2">{rp.name}</h3>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                        {rpInfo.hasDiscount ? (
-                          <>
-                            <span className="text-stone-400 line-through text-[12px]">Rs.{rpInfo.originalPrice.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
-                            <span className="font-bold text-[#E53935] text-[13px]">Rs.{rpInfo.discountedPrice.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
-                          </>
-                        ) : (
-                          <span className="font-bold text-stone-900 text-[13px]">Rs.{rp.price.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
+      {
+        relatedProducts.length > 0 && (
+          <div className="border-t border-[#3A2117]/10 bg-[#FFFEFC]">
+            <div className="mx-auto w-full max-w-[1400px] px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
+              <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#281912] sm:text-3xl">Related Products</h2>
+              <p className="mt-1 text-sm text-stone-500">You may also like</p>
+              <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
+                {relatedProducts.slice(0, 5).map((rp) => {
+                  const rpInfo = getDiscountInfo(rp)
+                  return (
+                    <Link
+                      key={rp.id}
+                      to={`/products/${slugify(rp.name)}`}
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}
+                      className="group block overflow-hidden rounded-2xl border border-[#3A2117]/10 bg-[#FFFEFC] transition-all duration-300 hover:-translate-y-1 hover:border-[#6B4228]/25 hover:shadow-[0_16px_38px_rgba(58,33,23,0.10)]"
+                    >
+                      <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">
+                        {rp.isNewArrival && (
+                          <span className="absolute left-0 top-0 z-10 bg-[#3A2117] px-2 py-1 text-[10px] font-bold text-white tracking-wide">New</span>
                         )}
+                        {rpInfo.hasDiscount && (
+                          <span className={classNames('absolute z-10 bg-[#E53935] px-2 py-1 text-[10px] font-bold text-white tracking-wide', rp.isNewArrival ? 'left-0 top-6' : 'left-0 top-0')}>
+                            -{rpInfo.discountPercent}%
+                          </span>
+                        )}
+                        <img src={rp.image} alt={rp.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       </div>
-                    </div>
-                  </Link>
-                )
-              })}
+                      <div className="p-4">
+                        <h3 className="text-[13px] font-semibold text-stone-900 leading-snug line-clamp-2">{rp.name}</h3>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                          {rpInfo.hasDiscount ? (
+                            <>
+                              <span className="text-stone-400 line-through text-[12px]">Rs.{rpInfo.originalPrice.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
+                              <span className="font-bold text-[#E53935] text-[13px]">Rs.{rpInfo.discountedPrice.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
+                            </>
+                          ) : (
+                            <span className="font-bold text-stone-900 text-[13px]">Rs.{rp.price.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* ═══════════════ FIXED BOTTOM BAR ═══════════════ */}
-      {showFixedBar && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-stone-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10 py-3">
-            <div className="flex items-center justify-center gap-3">
-              {/* Quantity Selector - hidden on mobile */}
-              <div className="hidden sm:flex items-center border border-stone-300 bg-white">
-                <button
-                  type="button"
-                  onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                  className="h-11 w-11 grid place-items-center text-stone-600 text-lg transition-colors hover:bg-stone-50"
-                  aria-label="Decrease quantity"
-                >
-                  −
-                </button>
-                <div className="h-11 w-12 grid place-items-center text-sm font-semibold text-stone-900 border-x border-stone-300">
-                  {quantity}
+      {
+        showFixedBar && (
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#3A2117]/10 bg-[#FFFEFC]/95 shadow-[0_-8px_30px_rgba(58,33,23,0.10)] backdrop-blur-xl">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10 py-3">
+              <div className="flex items-center justify-center gap-3">
+                {/* Quantity Selector - hidden on mobile */}
+                <div className="hidden items-center overflow-hidden rounded-full border border-stone-200 bg-white shadow-sm sm:flex">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                    className="h-11 w-11 grid place-items-center text-stone-600 text-lg transition-colors hover:bg-stone-50"
+                    aria-label="Decrease quantity"
+                  >
+                    −
+                  </button>
+                  <div className="h-11 w-12 grid place-items-center text-sm font-semibold text-stone-900 border-x border-stone-300">
+                    {quantity}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((prev) => Math.min(Math.max(stock, 99), prev + 1))}
+                    className="h-11 w-11 grid place-items-center text-stone-600 text-lg transition-colors hover:bg-stone-50"
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
                 </div>
+
                 <button
                   type="button"
-                  onClick={() => setQuantity((prev) => Math.min(Math.max(stock, 99), prev + 1))}
-                  className="h-11 w-11 grid place-items-center text-stone-600 text-lg transition-colors hover:bg-stone-50"
-                  aria-label="Increase quantity"
+                  onClick={addQuantityToCart}
+                  className={classNames(
+                    'fill-btn fill-dark group relative h-11 flex-1 sm:flex-none px-8 overflow-hidden rounded-full bg-[#3A2117] text-white text-[12px] font-semibold uppercase tracking-[0.1em] whitespace-nowrap',
+                    !inStock && 'opacity-50 cursor-not-allowed',
+                  )}
+                  disabled={!inStock}
                 >
-                  +
+                  <span className="fill-layer" aria-hidden="true" />
+                  <span className="relative z-10 transition-colors group-hover:text-[#3A2117]">Add To Cart</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    addQuantityToCart()
+                    if (!inStock) return
+                    navigate('/checkout')
+                  }}
+                  className={classNames(
+                    'fill-btn fill-amber group relative h-11 flex-1 sm:flex-none px-8 overflow-hidden rounded-full border border-[#3A2117] bg-[#F7F1EA] text-[#3A2117] text-[12px] font-semibold uppercase tracking-[0.1em] whitespace-nowrap',
+                    !inStock && 'opacity-50 cursor-not-allowed',
+                  )}
+                  disabled={!inStock}
+                >
+                  <span className="fill-layer" aria-hidden="true" />
+                  <span className="relative z-10 transition-colors group-hover:text-white">Buy It Now</span>
                 </button>
               </div>
-
-              <button
-                type="button"
-                onClick={addQuantityToCart}
-                className={classNames(
-                  'fill-btn fill-dark group relative h-11 flex-1 sm:flex-none px-8 overflow-hidden bg-[#5A2D0C] text-white text-[12px] font-semibold tracking-wide uppercase whitespace-nowrap',
-                  !inStock && 'opacity-50 cursor-not-allowed',
-                )}
-                disabled={!inStock}
-              >
-                <span className="fill-layer" aria-hidden="true" />
-                <span className="relative z-10 transition-colors group-hover:text-[#222222]">Add To Cart</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  addQuantityToCart()
-                  if (!inStock) return
-                  navigate('/checkout')
-                }}
-                className={classNames(
-                  'fill-btn fill-amber group relative h-11 flex-1 sm:flex-none px-8 overflow-hidden bg-[#FFD400] text-[#222222] text-[12px] font-semibold tracking-wide uppercase whitespace-nowrap',
-                  !inStock && 'opacity-50 cursor-not-allowed',
-                )}
-                disabled={!inStock}
-              >
-                <span className="fill-layer" aria-hidden="true" />
-                <span className="relative z-10 transition-colors group-hover:text-white">Buy It Now</span>
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* ═══════════════ RECENTLY VIEWED ═══════════════ */}
-      {relatedProducts.length > 2 && (
-        <div className="border-t border-stone-200 bg-stone-50/40">
-          <div className="w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-            <h2 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">Recently Viewed Products</h2>
-            <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {relatedProducts.slice(0, 5).map((rp) => {
-                const rpInfo = getDiscountInfo(rp)
-                return (
-                  <Link key={`rv-${rp.id}`} to={`/products/${slugify(rp.name)}`} onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })} className="group block overflow-hidden bg-white border border-stone-200 transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                    <div className="relative aspect-square overflow-hidden bg-stone-100">
-                      {rp.isNewArrival && (
-                        <span className="absolute left-0 top-0 z-10 bg-[#F5F1EA]0 px-1.5 py-0.5 text-[9px] font-bold text-white tracking-wide">New</span>
-                      )}
-                      <img src={rp.image} alt={rp.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="text-[12px] font-semibold text-stone-900 leading-snug line-clamp-2">{rp.name}</h3>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[12px]">
-                        {rpInfo.hasDiscount && <span className="text-stone-400 line-through">Rs.{rpInfo.originalPrice.toLocaleString('en-PK')}</span>}
-                        <span className={rpInfo.hasDiscount ? 'font-bold text-[#E53935]' : 'font-bold text-stone-900'}>
-                          Rs.{rpInfo.discountedPrice.toLocaleString('en-PK')}
-                        </span>
+      {
+        relatedProducts.length > 2 && (
+          <div className="border-t border-[#3A2117]/10 bg-[#F7F4EF]">
+            <div className="mx-auto w-full max-w-[1400px] px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
+              <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#281912] sm:text-3xl">Recently Viewed Products</h2>
+              <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                {relatedProducts.slice(0, 5).map((rp) => {
+                  const rpInfo = getDiscountInfo(rp)
+                  return (
+                    <Link key={`rv-${rp.id}`} to={`/products/${slugify(rp.name)}`} onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })} className="group block overflow-hidden rounded-2xl border border-[#3A2117]/10 bg-[#FFFEFC] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(58,33,23,0.09)]">
+                      <div className="relative aspect-square overflow-hidden bg-stone-100">
+                        {rp.isNewArrival && (
+                          <span className="absolute left-0 top-0 z-10 bg-[#3A2117] px-1.5 py-0.5 text-[9px] font-bold text-white tracking-wide">New</span>
+                        )}
+                        <img src={rp.image} alt={rp.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       </div>
-                    </div>
-                  </Link>
-                )
-              })}
+                      <div className="p-3">
+                        <h3 className="text-[12px] font-semibold text-stone-900 leading-snug line-clamp-2">{rp.name}</h3>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[12px]">
+                          {rpInfo.hasDiscount && <span className="text-stone-400 line-through">Rs.{rpInfo.originalPrice.toLocaleString('en-PK')}</span>}
+                          <span className={rpInfo.hasDiscount ? 'font-bold text-[#E53935]' : 'font-bold text-stone-900'}>
+                            Rs.{rpInfo.discountedPrice.toLocaleString('en-PK')}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </section>
+        )
+      }
+    </section >
   )
 }
