@@ -106,6 +106,25 @@ export default function HeroSlider({ slides, onPrimaryAction }) {
   return (
     <>
       <style>{`
+      .hero-slider .hero-image {
+  transform: scale(1.065);
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.hero-slider .slick-active .hero-image {
+  animation: heroImageZoom 5.8s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes heroImageZoom {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.065);
+  }
+}
         .hero-slider .slick-slide > div {
           line-height: 0;
         }
@@ -147,13 +166,18 @@ export default function HeroSlider({ slides, onPrimaryAction }) {
           }
         }
 
-        @media (prefers-reduced-motion: reduce) {
-          .hero-slider .hero-anim {
-            opacity: 1;
-            animation: none !important;
-            transform: none !important;
-          }
-        }
+     @media (prefers-reduced-motion: reduce) {
+  .hero-slider .hero-anim {
+    opacity: 1;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .hero-slider .hero-image {
+    animation: none !important;
+    transform: none !important;
+  }
+}
       `}</style>
 
       <section
@@ -197,6 +221,8 @@ export default function HeroSlider({ slides, onPrimaryAction }) {
                   }}
                 >
                   <img
+                    className="hero-image"
+
                     src={isMobile ? slide.imageMobile : slide.image}
                     alt={slide.alt || slide.title || 'Lamp & Glow'}
                     style={{
