@@ -82,7 +82,10 @@ export default function Footer({ theme = 'light' }) {
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [newsletterStatus, setNewsletterStatus] = useState('idle')
   const [newsletterMsg, setNewsletterMsg] = useState('')
-
+  const [waChatOpen, setWaChatOpen] = useState(false)
+  const [waMessage, setWaMessage] = useState('');
+  const waButtonRef = useRef(null)
+  const [waHasInteracted, setWaHasInteracted] = useState(false)
   // ── Draggable WhatsApp ──
   const [waPos, setWaPos] = useState(() => {
     if (typeof window === 'undefined') return null
@@ -104,7 +107,44 @@ export default function Footer({ theme = 'light' }) {
   })
 
   const waWasDragged = useRef(false)
+  useEffect(() => {
+    if (waHasInteracted) return
 
+    const prefersReducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches
+
+    if (prefersReducedMotion) return
+
+    const shake = () => {
+      if (!waButtonRef.current) return
+
+      waButtonRef.current.animate(
+        [
+          { transform: 'rotate(0deg)' },
+          { transform: 'rotate(-10deg)' },
+          { transform: 'rotate(10deg)' },
+          { transform: 'rotate(-8deg)' },
+          { transform: 'rotate(8deg)' },
+          { transform: 'rotate(-4deg)' },
+          { transform: 'rotate(4deg)' },
+          { transform: 'rotate(0deg)' },
+        ],
+        {
+          duration: 650,
+          easing: 'ease-in-out',
+        }
+      )
+    }
+
+    const firstShake = setTimeout(shake, 2500)
+    const interval = setInterval(shake, 7000)
+
+    return () => {
+      clearTimeout(firstShake)
+      clearInterval(interval)
+    }
+  }, [waHasInteracted])
   useEffect(() => {
     const loadSocial = async () => {
       try {
@@ -185,7 +225,21 @@ export default function Footer({ theme = 'light' }) {
       }, 4000)
     }
   }
+  const handleWhatsAppMessageSubmit = (e) => {
+    e.preventDefault()
 
+    const message = waMessage.trim()
+
+    if (!message || !footerConfig.whatsapp) return
+
+    const phone = footerConfig.whatsapp.replace(/\D/g, '')
+
+    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(
+      message
+    )}`
+
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
+  }
   const activeLinks = footerLinks.filter((l) => l.isActive !== false)
 
   const groupedLinks = activeLinks.reduce((acc, link) => {
@@ -489,85 +543,200 @@ export default function Footer({ theme = 'light' }) {
       </div>
 
       {/* Draggable WhatsApp */}
+      {/* Draggable WhatsApp Chat */}
       {footerConfig.whatsapp && (
-        <a
-          href={`https://wa.me/${footerConfig.whatsapp.replace(
-            /\D/g,
-            ''
-          )}?text=${encodeURIComponent(
-            `Hi! I'm interested in your products from Lamp and Glow. Website: ${typeof window !== 'undefined'
-              ? window.location.href
-              : 'https://lampandglow.pk'
-            }`
-          )}`}
-          target="_blank"
-          rel="noreferrer"
-          className="fixed z-40 inline-flex items-center justify-center rounded-full border border-white/20 bg-[#B96A18] p-2 text-white shadow-[0_14px_38px_rgba(0,0,0,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#C97B26] cursor-grab select-none touch-none active:cursor-grabbing"
-          aria-label="Chat on WhatsApp"
+        <div
+          className="fixed z-40"
           style={
             waPos
-              ? { bottom: waPos.y + 'px', right: waPos.x + 'px' }
-              : { bottom: '24px', right: '24px' }
+              ? {
+                bottom: waPos.y + 'px',
+                right: waPos.x + 'px',
+              }
+              : {
+                bottom: '24px',
+                right: '24px',
+              }
           }
-          onTouchStart={(e) => {
-            const touch = e.touches[0]
-            waWasDragged.current = false
-
-            waDrag.current = {
-              dragging: false,
-              startX: touch.clientX,
-              startY: touch.clientY,
-              posX: waPos?.x ?? 24,
-              posY: waPos?.y ?? 24,
-            }
-          }}
-          onTouchMove={(e) => {
-            const touch = e.touches[0]
-            const dx = Math.abs(touch.clientX - waDrag.current.startX)
-            const dy = Math.abs(touch.clientY - waDrag.current.startY)
-
-            if (dx > 5 || dy > 5) {
-              waWasDragged.current = true
-              waDrag.current.dragging = true
-
-              const newX = Math.max(
-                4,
-                Math.min(
-                  window.innerWidth - 80,
-                  waDrag.current.posX -
-                  (touch.clientX - waDrag.current.startX)
-                )
-              )
-
-              const newY = Math.max(
-                4,
-                Math.min(
-                  window.innerHeight - 120,
-                  waDrag.current.posY -
-                  (touch.clientY - waDrag.current.startY)
-                )
-              )
-
-              setWaPos({ x: newX, y: newY })
-            }
-          }}
-          onTouchEnd={(e) => {
-            if (waWasDragged.current) {
-              e.preventDefault()
-              localStorage.setItem('whatsappPos', JSON.stringify(waPos))
-            }
-          }}
-          onClick={(e) => {
-            if (waWasDragged.current) {
-              e.preventDefault()
-              waWasDragged.current = false
-            }
-          }}
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-            <FaWhatsapp className="h-5 w-5" />
-          </span>
-        </a>
+          {/* Chat Box */}
+          <div
+            className={`absolute bottom-[calc(100%+14px)] right-0 w-[min(350px,calc(100vw-32px))] origin-bottom-right transition-all duration-200 ${waChatOpen
+              ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
+              : 'pointer-events-none translate-y-2 scale-[0.98] opacity-0'
+              }`}
+          >
+            <div className="overflow-hidden rounded-[22px] border border-white/10 bg-[#18100B] shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#20140D] px-4 py-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white">
+                    <FaWhatsapp className="h-5 w-5" />
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-[#FFF7EF]">
+                      Lamp &amp; Glow
+                    </p>
+
+                    <p className="mt-0.5 text-[11px] text-[#9E8F83]">
+                      WhatsApp support
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setWaChatOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-[#9E8F83] transition-colors hover:bg-white/[0.06] hover:text-white"
+                  aria-label="Close WhatsApp chat"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  >
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="px-4 pb-4 pt-4">
+                <div className="mb-4 max-w-[88%] rounded-2xl rounded-tl-md bg-[#2A1B12] px-3.5 py-3 text-[13px] leading-5 text-[#D9CCC0]">
+                  Hi! How can we help you today?
+                </div>
+
+                <form onSubmit={handleWhatsAppMessageSubmit}>
+                  <div className="rounded-2xl border border-white/[0.10] bg-white/[0.035] p-2 focus-within:border-[#D1A16F]/45">
+                    <textarea
+                      value={waMessage}
+                      onChange={(e) => setWaMessage(e.target.value)}
+                      placeholder="Type your message..."
+                      rows={3}
+                      required
+                      className="block w-full resize-none bg-transparent px-2 py-1.5 text-sm leading-6 text-[#FFF7EF] outline-none placeholder:text-[#74665A]"
+                    />
+
+                    <div className="mt-1 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-2">
+                      <span className="pl-1 text-[10px] text-[#73665C]">
+                        Opens in WhatsApp
+                      </span>
+
+                      <button
+                        type="submit"
+                        disabled={!waMessage.trim()}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white transition-all duration-200 hover:scale-[1.04] hover:bg-[#2ADF70] disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Send message on WhatsApp"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-[18px] w-[18px]"
+                          fill="currentColor"
+                        >
+                          <path d="M21.6 3.2a1 1 0 0 0-1.04-.2L2.9 10.2a1 1 0 0 0 .08 1.88l7.02 2.34 2.34 7.02a1 1 0 0 0 .92.68h.04a1 1 0 0 0 .92-.6L21.8 4.24a1 1 0 0 0-.2-1.04ZM12.78 18.2l-1.35-4.05 5.06-5.06-6.1 4.07-4.05-1.35 12.37-5.04-5.93 11.43Z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Floating WhatsApp Button */}
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-full bg-[#25D366] p-2 text-white shadow-[0_14px_38px_rgba(37,211,102,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#20BD5A] cursor-grab select-none touch-none active:cursor-grabbing"
+            aria-label={
+              waChatOpen
+                ? 'Close WhatsApp chat'
+                : 'Open WhatsApp chat'
+            }
+            ref={waButtonRef}
+
+            aria-expanded={waChatOpen}
+            onTouchStart={(e) => {
+              const touch = e.touches[0]
+
+              waWasDragged.current = false
+
+              waDrag.current = {
+                dragging: false,
+                startX: touch.clientX,
+                startY: touch.clientY,
+                posX: waPos?.x ?? 24,
+                posY: waPos?.y ?? 24,
+              }
+            }}
+            onTouchMove={(e) => {
+              const touch = e.touches[0]
+
+              const dx = Math.abs(
+                touch.clientX - waDrag.current.startX
+              )
+
+              const dy = Math.abs(
+                touch.clientY - waDrag.current.startY
+              )
+
+              if (dx > 5 || dy > 5) {
+                waWasDragged.current = true
+                waDrag.current.dragging = true
+
+                const newX = Math.max(
+                  4,
+                  Math.min(
+                    window.innerWidth - 80,
+                    waDrag.current.posX -
+                    (touch.clientX - waDrag.current.startX)
+                  )
+                )
+
+                const newY = Math.max(
+                  4,
+                  Math.min(
+                    window.innerHeight - 120,
+                    waDrag.current.posY -
+                    (touch.clientY - waDrag.current.startY)
+                  )
+                )
+
+                setWaPos({
+                  x: newX,
+                  y: newY,
+                })
+              }
+            }}
+            onTouchEnd={(e) => {
+              if (waWasDragged.current) {
+                e.preventDefault()
+
+                localStorage.setItem(
+                  'whatsappPos',
+                  JSON.stringify(waPos)
+                )
+              }
+            }}
+            onClick={(e) => {
+              if (waWasDragged.current) {
+                e.preventDefault()
+                waWasDragged.current = false
+                return
+              }
+
+              setWaHasInteracted(true)
+              setWaChatOpen((open) => !open)
+            }}
+          >
+            <span className="flex h-10 w-10 items-center justify-center">
+              <FaWhatsapp className="h-6 w-6" />
+            </span>
+          </button>
+        </div>
       )}
     </footer>
   )
