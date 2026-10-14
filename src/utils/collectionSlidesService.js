@@ -1,4 +1,4 @@
-import { db, storage } from './firebase';
+import { db } from './firebase';
 import {
   collection,
   getDocs,
@@ -10,8 +10,7 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-
+import { uploadToXcdn } from './xcdnUpload';
 export const collectionSlidesService = {
   getAllSlides: async () => {
     try {
@@ -98,13 +97,29 @@ export const collectionSlidesService = {
   },
 
   uploadSlideImage: async (file) => {
+    if (!file) {
+      throw new Error('No collection image selected');
+    }
+
     try {
-      const storageRef = ref(storage, `collectionSlides/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const url = await uploadToXcdn(
+        file,
+        'heroBanners'
+      );
+
+      if (!url) {
+        throw new Error(
+          'XCDN did not return an image URL'
+        );
+      }
+
       return url;
     } catch (error) {
-      console.error('Error uploading collection slide image:', error);
+      console.error(
+        'Error uploading collection slide to XCDN:',
+        error
+      );
+
       throw error;
     }
   },

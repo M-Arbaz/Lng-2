@@ -10,7 +10,8 @@ const ALLOWED_PRODUCT_FOLDERS = new Set([
     'shade-colors',
     'profile-images',
     'hero-banners',
-    'heroBanners'
+    'heroBanners',
+    'custom-orders'
 ])
 
 function getAllowedOrigins() {

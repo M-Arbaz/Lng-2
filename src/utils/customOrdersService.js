@@ -1,4 +1,4 @@
-import { db, storage } from './firebase';
+import { db } from './firebase';
 import {
   collection,
   getDocs,
@@ -10,8 +10,7 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-
+import { uploadToXcdn } from './xcdnUpload';
 const COLLECTION_NAME = 'customOrders';
 
 export const customOrdersService = {
@@ -86,14 +85,31 @@ export const customOrdersService = {
       throw error;
     }
   },
-
+  // upload image to my CDN
   uploadOrderImage: async (file) => {
+    if (!file) {
+      throw new Error('No custom order file selected');
+    }
+
     try {
-      const storageRef = ref(storage, `customOrders/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      return await getDownloadURL(storageRef);
+      const url = await uploadToXcdn(
+        file,
+        'custom-orders'
+      );
+
+      if (!url) {
+        throw new Error(
+          'XCDN did not return a file URL'
+        );
+      }
+
+      return url;
     } catch (error) {
-      console.error('Error uploading custom order file:', error);
+      console.error(
+        'Error uploading custom order file to XCDN:',
+        error
+      );
+
       throw error;
     }
   },
