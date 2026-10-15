@@ -405,7 +405,7 @@ export default function HomeInstagramGrid({
         <p className="mx-auto mt-2.5 max-w-lg text-[11px] leading-5 text-[#8A7569] sm:text-xs">
           Inspiration, details and
           everyday moments from Lamp
-          &amp; Glow.
+          and  Glow.
         </p>
       </div>
 
