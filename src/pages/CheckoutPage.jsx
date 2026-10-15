@@ -28,7 +28,12 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
   const [shippingSettings, setShippingSettings] = useState({ cities: [], freeShippingThreshold: 15000 })
   const [shippingLoading, setShippingLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
-
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true)
+  const [billingAddressLine1, setBillingAddressLine1] = useState('')
+  const [billingAddressLine2, setBillingAddressLine2] = useState('')
+  const [billingCity, setBillingCity] = useState('')
+  const [billingState, setBillingState] = useState('')
+  const [billingPostalCode, setBillingPostalCode] = useState('')
   const checkoutSteps = [
     { id: 1, label: 'Customer' },
     { id: 2, label: 'Address' },
@@ -165,6 +170,18 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
       return false
     }
 
+    if (!billingSameAsShipping) {
+      if (!billingAddressLine1.trim()) {
+        setError('Please enter your billing address.')
+        return false
+      }
+
+      if (!billingCity.trim()) {
+        setError('Please enter your billing city.')
+        return false
+      }
+    }
+
     return true
   }
 
@@ -268,6 +285,32 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
       postalCode: postalCode.trim(),
       note: note.trim(),
       paymentMethod,
+
+      shippingMethod: {
+        id: 'standard',
+        name: 'Standard Delivery',
+        city: city.trim(),
+        fee: shipping || 0,
+      },
+
+      billingSameAsShipping,
+
+      billingAddress: billingSameAsShipping
+        ? {
+          addressLine1: addressLine1.trim(),
+          addressLine2: addressLine2.trim(),
+          city: city.trim(),
+          state: state.trim(),
+          postalCode: postalCode.trim(),
+        }
+        : {
+          addressLine1: billingAddressLine1.trim(),
+          addressLine2: billingAddressLine2.trim(),
+          city: billingCity.trim(),
+          state: billingState.trim(),
+          postalCode: billingPostalCode.trim(),
+        },
+
       items: cart.map((item) => ({
         id: item.id,
         productId: item.product?.id,
@@ -849,140 +892,113 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
           {/* ═══════════════ LEFT COLUMN ═══════════════ */}
           <div className="space-y-6">
 
-            {/* CUSTOMER + SHIPPING */}
-            <section className="overflow-hidden rounded-[26px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_12px_40px_rgba(58,33,23,0.05)]">
-              <div className="border-b border-[#3A2117]/10 bg-[#F2ECE5] px-5 py-5 sm:px-7">
-                <div className="flex items-start gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#3A2117] text-white">
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                    >
-                      <circle cx="12" cy="8" r="4" />
-                      <path d="M4 21a8 8 0 0116 0" />
-                    </svg>
+            {/* ═══════════════ STEP 01 — CUSTOMER ═══════════════ */}
+            {currentStep === 1 && (
+              <section className="overflow-hidden rounded-[26px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_12px_40px_rgba(58,33,23,0.05)]">
+                <div className="border-b border-[#3A2117]/10 bg-[#F2ECE5] px-5 py-5 sm:px-7">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A654D]">
+                    Step 01
+                  </p>
+
+                  <h2 className="mt-1 text-lg font-semibold text-[#281912]">
+                    Customer Information
+                  </h2>
+
+                  <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
+                    Tell us who we should contact about this order.
+                  </p>
+                </div>
+
+                <div className="p-5 sm:p-7">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
+                        Full name <span className="text-rose-500">*</span>
+                      </label>
+
+                      <input
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Your full name"
+                        className="h-12 w-full rounded-xl border border-[#3A2117]/15 bg-[#F7F4EF] px-4 text-sm text-[#281912] outline-none transition placeholder:text-[#A39287] focus:border-[#6B4228] focus:bg-[#FFFEFC] focus:ring-4 focus:ring-[#6B4228]/[0.06]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
+                        Phone number <span className="text-rose-500">*</span>
+                      </label>
+
+                      <input
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="03xx xxxxxxx"
+                        className="h-12 w-full rounded-xl border border-[#3A2117]/15 bg-[#F7F4EF] px-4 text-sm text-[#281912] outline-none transition placeholder:text-[#A39287] focus:border-[#6B4228] focus:bg-[#FFFEFC] focus:ring-4 focus:ring-[#6B4228]/[0.06]"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
+                        Email
+                        <span className="ml-1 font-normal text-[#9A8171]">
+                          (optional)
+                        </span>
+                      </label>
+
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="h-12 w-full rounded-xl border border-[#3A2117]/15 bg-[#F7F4EF] px-4 text-sm text-[#281912] outline-none transition placeholder:text-[#A39287] focus:border-[#6B4228] focus:bg-[#FFFEFC] focus:ring-4 focus:ring-[#6B4228]/[0.06]"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A654D]">
-                      Step 01 & 02
-                    </p>
-
-                    <h2 className="mt-1 text-lg font-semibold text-[#281912]">
-                      Customer & Delivery Details
-                    </h2>
-
-                    <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
-                      Tell us who the order is for and where it should be delivered.
-                    </p>
+                  <div className="mt-7 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#3A2117] px-7 text-sm font-semibold text-white transition-colors hover:bg-[#4A2B1F]"
+                    >
+                      Continue to Address
+                      <span>→</span>
+                    </button>
                   </div>
                 </div>
-              </div>
+              </section>
+            )}
 
-              <div className="p-5 sm:p-7">
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            {/* ═══════════════ STEP 02 — ADDRESS ═══════════════ */}
+            {currentStep === 2 && (
+              <section className="overflow-hidden rounded-[26px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_12px_40px_rgba(58,33,23,0.05)]">
+                <div className="border-b border-[#3A2117]/10 bg-[#F2ECE5] px-5 py-5 sm:px-7">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A654D]">
+                    Step 02
+                  </p>
 
-                  {/* FULL NAME */}
-                  <div>
-                    <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
-                      Full name <span className="text-rose-500">*</span>
-                    </label>
+                  <h2 className="mt-1 text-lg font-semibold text-[#281912]">
+                    Shipping Address
+                  </h2>
 
-                    <input
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="
-                      h-12 w-full rounded-xl
-                      border border-[#3A2117]/15
-                      bg-[#F7F4EF] px-4
-                      text-sm text-[#281912]
-                      outline-none transition
-                      placeholder:text-[#A39287]
-                      focus:border-[#6B4228]
-                      focus:bg-[#FFFEFC]
-                      focus:ring-4 focus:ring-[#6B4228]/[0.06]
-                    "
-                      placeholder="Your full name"
-                    />
-                  </div>
+                  <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
+                    Where should we deliver your Lamp & Glow order?
+                  </p>
+                </div>
 
-                  {/* PHONE */}
-                  <div>
-                    <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
-                      Phone number <span className="text-rose-500">*</span>
-                    </label>
+                <div className="p-5 sm:p-7">
+                  <div className="grid gap-5 sm:grid-cols-2">
 
-                    <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="
-                      h-12 w-full rounded-xl
-                      border border-[#3A2117]/15
-                      bg-[#F7F4EF] px-4
-                      text-sm text-[#281912]
-                      outline-none transition
-                      placeholder:text-[#A39287]
-                      focus:border-[#6B4228]
-                      focus:bg-[#FFFEFC]
-                      focus:ring-4 focus:ring-[#6B4228]/[0.06]
-                    "
-                      placeholder="03xx xxxxxxx"
-                    />
-                  </div>
+                    <div>
+                      <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
+                        Delivery city <span className="text-rose-500">*</span>
+                      </label>
 
-                  {/* EMAIL */}
-                  <div>
-                    <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
-                      Email
-                      <span className="ml-1 font-normal text-[#9A8171]">
-                        (optional)
-                      </span>
-                    </label>
-
-                    <input
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      type="email"
-                      className="
-                      h-12 w-full rounded-xl
-                      border border-[#3A2117]/15
-                      bg-[#F7F4EF] px-4
-                      text-sm text-[#281912]
-                      outline-none transition
-                      placeholder:text-[#A39287]
-                      focus:border-[#6B4228]
-                      focus:bg-[#FFFEFC]
-                      focus:ring-4 focus:ring-[#6B4228]/[0.06]
-                    "
-                      placeholder="you@example.com"
-                    />
-                  </div>
-
-                  {/* CITY */}
-                  <div>
-                    <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
-                      Delivery city <span className="text-rose-500">*</span>
-                    </label>
-
-                    <div className="relative">
                       <select
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         disabled={shippingLoading}
-                        className="
-                        h-12 w-full appearance-none rounded-xl
-                        border border-[#3A2117]/15
-                        bg-[#F7F4EF] px-4 pr-10
-                        text-sm text-[#281912]
-                        outline-none transition
-                        focus:border-[#6B4228]
-                        focus:bg-[#FFFEFC]
-                        focus:ring-4 focus:ring-[#6B4228]/[0.06]
-                        disabled:opacity-60
-                      "
+                        className="h-12 w-full rounded-xl border border-[#3A2117]/15 bg-[#F7F4EF] px-4 text-sm text-[#281912] outline-none focus:border-[#6B4228]"
                       >
                         <option value="">
                           {shippingLoading
@@ -996,388 +1012,512 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
                           </option>
                         ))}
                       </select>
-
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A6559]"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                      >
-                        <path d="M6 9l6 6 6-6" />
-                      </svg>
                     </div>
 
-                    {!shippingLoading &&
-                      shippingSettings.cities.length === 0 && (
-                        <p className="mt-2 text-[10px] text-amber-700">
-                          No delivery cities configured yet. Please contact support.
-                        </p>
-                      )}
+                    <div>
+                      <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
+                        State / Province
+                      </label>
+
+                      <input
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        placeholder="Punjab"
+                        className="h-12 w-full rounded-xl border border-[#3A2117]/15 bg-[#F7F4EF] px-4 text-sm text-[#281912] outline-none focus:border-[#6B4228]"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
+                        Address line 1 <span className="text-rose-500">*</span>
+                      </label>
+
+                      <input
+                        value={addressLine1}
+                        onChange={(e) => setAddressLine1(e.target.value)}
+                        placeholder="House, street, area"
+                        className="h-12 w-full rounded-xl border border-[#3A2117]/15 bg-[#F7F4EF] px-4 text-sm text-[#281912] outline-none focus:border-[#6B4228]"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
+                        Address line 2
+                        <span className="ml-1 font-normal text-[#9A8171]">
+                          (optional)
+                        </span>
+                      </label>
+
+                      <input
+                        value={addressLine2}
+                        onChange={(e) => setAddressLine2(e.target.value)}
+                        placeholder="Apartment, floor, landmark"
+                        className="h-12 w-full rounded-xl border border-[#3A2117]/15 bg-[#F7F4EF] px-4 text-sm text-[#281912] outline-none focus:border-[#6B4228]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
+                        Postal code
+                      </label>
+
+                      <input
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value)}
+                        placeholder="54000"
+                        className="h-12 w-full rounded-xl border border-[#3A2117]/15 bg-[#F7F4EF] px-4 text-sm text-[#281912] outline-none focus:border-[#6B4228]"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
+                        Delivery instructions
+                        <span className="ml-1 font-normal text-[#9A8171]">
+                          (optional)
+                        </span>
+                      </label>
+
+                      <textarea
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        rows={3}
+                        placeholder="Landmark or special instructions..."
+                        className="w-full resize-none rounded-xl border border-[#3A2117]/15 bg-[#F7F4EF] px-4 py-3 text-sm leading-6 text-[#281912] outline-none focus:border-[#6B4228]"
+                      />
+                    </div>
                   </div>
 
-                  {/* ADDRESS 1 */}
-                  <div className="sm:col-span-2">
-                    <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
-                      Address line 1 <span className="text-rose-500">*</span>
-                    </label>
-
+                  {/* BILLING TOGGLE */}
+                  <label className="mt-6 flex cursor-pointer items-center gap-3 rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] p-4">
                     <input
-                      value={addressLine1}
-                      onChange={(e) => setAddressLine1(e.target.value)}
-                      className="
-                      h-12 w-full rounded-xl
-                      border border-[#3A2117]/15
-                      bg-[#F7F4EF] px-4
-                      text-sm text-[#281912]
-                      outline-none transition
-                      placeholder:text-[#A39287]
-                      focus:border-[#6B4228]
-                      focus:bg-[#FFFEFC]
-                      focus:ring-4 focus:ring-[#6B4228]/[0.06]
-                    "
-                      placeholder="House, street, area"
-                    />
-                  </div>
-
-                  {/* ADDRESS 2 */}
-                  <div className="sm:col-span-2">
-                    <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
-                      Address line 2
-                      <span className="ml-1 font-normal text-[#9A8171]">
-                        (optional)
-                      </span>
-                    </label>
-
-                    <input
-                      value={addressLine2}
-                      onChange={(e) => setAddressLine2(e.target.value)}
-                      className="
-                      h-12 w-full rounded-xl
-                      border border-[#3A2117]/15
-                      bg-[#F7F4EF] px-4
-                      text-sm text-[#281912]
-                      outline-none transition
-                      placeholder:text-[#A39287]
-                      focus:border-[#6B4228]
-                      focus:bg-[#FFFEFC]
-                      focus:ring-4 focus:ring-[#6B4228]/[0.06]
-                    "
-                      placeholder="Apartment, floor, landmark"
-                    />
-                  </div>
-
-                  {/* STATE */}
-                  <div>
-                    <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
-                      State / Province
-                    </label>
-
-                    <input
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
-                      className="
-                      h-12 w-full rounded-xl
-                      border border-[#3A2117]/15
-                      bg-[#F7F4EF] px-4
-                      text-sm text-[#281912]
-                      outline-none transition
-                      placeholder:text-[#A39287]
-                      focus:border-[#6B4228]
-                      focus:bg-[#FFFEFC]
-                      focus:ring-4 focus:ring-[#6B4228]/[0.06]
-                    "
-                      placeholder="Punjab"
-                    />
-                  </div>
-
-                  {/* POSTAL CODE */}
-                  <div>
-                    <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
-                      Postal code
-                    </label>
-
-                    <input
-                      value={postalCode}
-                      onChange={(e) => setPostalCode(e.target.value)}
-                      className="
-                      h-12 w-full rounded-xl
-                      border border-[#3A2117]/15
-                      bg-[#F7F4EF] px-4
-                      text-sm text-[#281912]
-                      outline-none transition
-                      placeholder:text-[#A39287]
-                      focus:border-[#6B4228]
-                      focus:bg-[#FFFEFC]
-                      focus:ring-4 focus:ring-[#6B4228]/[0.06]
-                    "
-                      placeholder="54000"
-                    />
-                  </div>
-
-                  {/* NOTE */}
-                  <div className="sm:col-span-2">
-                    <label className="mb-2 block text-[11px] font-semibold text-[#4C3A31]">
-                      Delivery instructions
-                      <span className="ml-1 font-normal text-[#9A8171]">
-                        (optional)
-                      </span>
-                    </label>
-
-                    <textarea
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      rows={4}
-                      className="
-                      w-full resize-none rounded-xl
-                      border border-[#3A2117]/15
-                      bg-[#F7F4EF] px-4 py-3
-                      text-sm leading-6 text-[#281912]
-                      outline-none transition
-                      placeholder:text-[#A39287]
-                      focus:border-[#6B4228]
-                      focus:bg-[#FFFEFC]
-                      focus:ring-4 focus:ring-[#6B4228]/[0.06]
-                    "
-                      placeholder="Any delivery notes, landmark or special instructions..."
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* ═══════════════ PAYMENT ═══════════════ */}
-            <section className="overflow-hidden rounded-[26px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_12px_40px_rgba(58,33,23,0.05)]">
-              <div className="border-b border-[#3A2117]/10 bg-[#F2ECE5] px-5 py-5 sm:px-7">
-                <div className="flex items-start gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#3A2117] text-white">
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                    >
-                      <rect x="2" y="5" width="20" height="14" rx="2" />
-                      <path d="M2 10h20" />
-                    </svg>
-                  </div>
-
-                  <div>
-                    <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A654D]">
-                      Step 03
-                    </p>
-
-                    <h2 className="mt-1 text-lg font-semibold text-[#281912]">
-                      Choose Payment Method
-                    </h2>
-
-                    <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
-                      Select the payment option that works best for you.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-5 sm:p-7">
-                <div className="grid gap-3 sm:grid-cols-2">
-
-                  {/* COD */}
-                  <label
-                    className={classNames(
-                      'relative cursor-pointer rounded-2xl border p-4 transition-all',
-                      paymentMethod === 'cod'
-                        ? 'border-[#3A2117] bg-[#F2ECE5] shadow-[0_8px_24px_rgba(58,33,23,0.06)]'
-                        : 'border-[#3A2117]/10 bg-[#FFFEFC] hover:border-[#6B4228]/35',
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="cod"
-                      checked={paymentMethod === 'cod'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="sr-only"
+                      type="checkbox"
+                      checked={billingSameAsShipping}
+                      onChange={(e) =>
+                        setBillingSameAsShipping(e.target.checked)
+                      }
+                      className="h-4 w-4 accent-[#3A2117]"
                     />
 
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={classNames(
-                          'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border',
-                          paymentMethod === 'cod'
-                            ? 'border-[#3A2117] bg-[#3A2117]'
-                            : 'border-[#3A2117]/25',
-                        )}
-                      >
-                        {paymentMethod === 'cod' && (
-                          <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                        )}
-                      </div>
+                    <div>
+                      <p className="text-xs font-semibold text-[#281912]">
+                        Billing address same as shipping address
+                      </p>
 
-                      <div>
-                        <p className="text-sm font-semibold text-[#281912]">
-                          Cash on Delivery
-                        </p>
-
-                        <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
-                          Pay the remaining balance when your order arrives.
-                        </p>
-                      </div>
+                      <p className="mt-0.5 text-[10px] text-[#8A7569]">
+                        Uncheck this if your billing address is different.
+                      </p>
                     </div>
                   </label>
 
-                  {/* BANK */}
-                  <label
-                    className={classNames(
-                      'relative cursor-pointer rounded-2xl border p-4 transition-all',
-                      paymentMethod === 'bank'
-                        ? 'border-[#3A2117] bg-[#F2ECE5] shadow-[0_8px_24px_rgba(58,33,23,0.06)]'
-                        : 'border-[#3A2117]/10 bg-[#FFFEFC] hover:border-[#6B4228]/35',
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="bank"
-                      checked={paymentMethod === 'bank'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="sr-only"
-                    />
+                  {!billingSameAsShipping && (
+                    <div className="mt-5 rounded-[22px] border border-[#3A2117]/10 bg-[#F7F4EF] p-5">
+                      <p className="mb-4 text-sm font-semibold text-[#281912]">
+                        Billing Address
+                      </p>
 
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={classNames(
-                          'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border',
-                          paymentMethod === 'bank'
-                            ? 'border-[#3A2117] bg-[#3A2117]'
-                            : 'border-[#3A2117]/25',
-                        )}
-                      >
-                        {paymentMethod === 'bank' && (
-                          <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                        )}
-                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <input
+                          value={billingAddressLine1}
+                          onChange={(e) =>
+                            setBillingAddressLine1(e.target.value)
+                          }
+                          placeholder="Address line 1 *"
+                          className="h-11 rounded-xl border border-[#3A2117]/15 bg-[#FFFEFC] px-4 text-sm outline-none focus:border-[#6B4228] sm:col-span-2"
+                        />
 
-                      <div>
-                        <p className="text-sm font-semibold text-[#281912]">
-                          Bank Deposit
-                        </p>
+                        <input
+                          value={billingAddressLine2}
+                          onChange={(e) =>
+                            setBillingAddressLine2(e.target.value)
+                          }
+                          placeholder="Address line 2"
+                          className="h-11 rounded-xl border border-[#3A2117]/15 bg-[#FFFEFC] px-4 text-sm outline-none focus:border-[#6B4228] sm:col-span-2"
+                        />
 
-                        <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
-                          Transfer the payment directly to our bank account.
-                        </p>
-                      </div>
-                    </div>
-                  </label>
-                </div>
+                        <input
+                          value={billingCity}
+                          onChange={(e) =>
+                            setBillingCity(e.target.value)
+                          }
+                          placeholder="City *"
+                          className="h-11 rounded-xl border border-[#3A2117]/15 bg-[#FFFEFC] px-4 text-sm outline-none focus:border-[#6B4228]"
+                        />
 
-                {!paymentMethod && (
-                  <p className="mt-3 text-[11px] font-medium text-[#8A654D]">
-                    Please choose a payment method before placing your order.
-                  </p>
-                )}
+                        <input
+                          value={billingState}
+                          onChange={(e) =>
+                            setBillingState(e.target.value)
+                          }
+                          placeholder="State / Province"
+                          className="h-11 rounded-xl border border-[#3A2117]/15 bg-[#FFFEFC] px-4 text-sm outline-none focus:border-[#6B4228]"
+                        />
 
-                {/* BANK DETAILS */}
-                {(paymentMethod === 'bank' || paymentMethod === 'cod') &&
-                  bankDetails && (
-                    <div className="mt-5 overflow-hidden rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF]">
-                      <div className="border-b border-[#3A2117]/10 px-5 py-4">
-                        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#8A654D]">
-                          Payment Account
-                        </p>
-
-                        <h3 className="mt-1 text-sm font-semibold text-[#281912]">
-                          Bank Account Details
-                        </h3>
-                      </div>
-
-                      <div className="divide-y divide-[#3A2117]/10 px-5">
-                        {[
-                          ['Bank Name', bankDetails.bankName],
-                          ['Account Title', bankDetails.accountTitle],
-                          ['Account Number', bankDetails.accountNumber],
-                          ['IBAN', bankDetails.iban],
-                          ...(bankDetails.branchCode
-                            ? [['Branch Code', bankDetails.branchCode]]
-                            : []),
-                        ].map(([label, value]) => (
-                          <div
-                            key={label}
-                            className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5"
-                          >
-                            <span className="text-[11px] text-[#8A7569]">
-                              {label}
-                            </span>
-
-                            <span className="break-all text-xs font-semibold text-[#3A2117]">
-                              {value || '—'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="border-t border-[#3A2117]/10 bg-[#EEE5DC] px-5 py-4">
-                        {paymentMethod === 'bank' ? (
-                          <>
-                            <p className="text-sm font-semibold text-[#3A2117]">
-                              Amount to transfer: Rs.{formatPKR(grandTotal)}
-                            </p>
-
-                            <p className="mt-1.5 text-xs leading-5 text-[#7A6559]">
-                              Transfer the full order amount and share your payment
-                              receipt with us for confirmation.
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-sm font-semibold text-[#3A2117]">
-                              Advance required: Rs.{formatPKR(advanceAmount)}{' '}
-                              ({advancePercent}%)
-                            </p>
-
-                            <p className="mt-1.5 text-xs leading-5 text-[#7A6559]">
-                              Remaining Rs.{formatPKR(codAmount)} will be collected
-                              on delivery.
-                            </p>
-                          </>
-                        )}
+                        <input
+                          value={billingPostalCode}
+                          onChange={(e) =>
+                            setBillingPostalCode(e.target.value)
+                          }
+                          placeholder="Postal code"
+                          className="h-11 rounded-xl border border-[#3A2117]/15 bg-[#FFFEFC] px-4 text-sm outline-none focus:border-[#6B4228]"
+                        />
                       </div>
                     </div>
                   )}
 
-                {/* WHATSAPP */}
-                <div className="mt-5 rounded-2xl border border-emerald-700/15 bg-emerald-50/70 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-700 text-white">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-4 w-4"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                      >
-                        <path d="M21 11.5a8.4 8.4 0 01-9 8.5 9 9 0 01-4-.9L3 21l1.8-4.7A8.6 8.6 0 013 11.5a9 9 0 0118 0z" />
-                      </svg>
-                    </div>
+                  <div className="mt-7 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={handlePreviousStep}
+                      className="min-h-[46px] rounded-full border border-[#3A2117]/15 px-6 text-xs font-semibold text-[#3A2117]"
+                    >
+                      ← Back
+                    </button>
 
-                    <div>
-                      <p className="text-sm font-semibold text-emerald-900">
-                        Payment Confirmation
-                      </p>
-
-                      <p className="mt-1 text-xs leading-5 text-emerald-900/70">
-                        After payment, please share your payment screenshot on
-                        WhatsApp at{' '}
-                        <strong className="font-semibold">
-                          0309-9164751
-                        </strong>{' '}
-                        so we can process your order smoothly.
-                      </p>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="min-h-[48px] rounded-full bg-[#3A2117] px-7 text-sm font-semibold text-white hover:bg-[#4A2B1F]"
+                    >
+                      Continue to Shipping →
+                    </button>
                   </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
+
+            {/* ═══════════════ STEP 03 — SHIPPING ═══════════════ */}
+            {currentStep === 3 && (
+              <section className="overflow-hidden rounded-[26px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_12px_40px_rgba(58,33,23,0.05)]">
+                <div className="border-b border-[#3A2117]/10 bg-[#F2ECE5] px-5 py-5 sm:px-7">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A654D]">
+                    Step 03
+                  </p>
+
+                  <h2 className="mt-1 text-lg font-semibold text-[#281912]">
+                    Shipping Method
+                  </h2>
+
+                  <p className="mt-1 text-xs text-[#7A6A60]">
+                    Review your available delivery option.
+                  </p>
+                </div>
+
+                <div className="p-5 sm:p-7">
+                  <div className="rounded-[22px] border-2 border-[#3A2117] bg-[#F7F4EF] p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-1 grid h-5 w-5 place-items-center rounded-full bg-[#3A2117]">
+                        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-[#281912]">
+                              Standard Delivery
+                            </p>
+
+                            <p className="mt-1 text-xs text-[#7A6A60]">
+                              Delivery to {city}
+                            </p>
+                          </div>
+
+                          <p className="text-sm font-semibold text-[#6B4228]">
+                            {shipping === 0
+                              ? 'Free'
+                              : shipping === null
+                                ? 'Calculating...'
+                                : `Rs.${formatPKR(shipping)}`}
+                          </p>
+                        </div>
+
+                        {qualifiesForFreeShipping && (
+                          <p className="mt-3 text-[10px] font-medium text-emerald-700">
+                            Your order qualifies for free shipping.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-[#EEE5DC] p-4">
+                    <p className="text-[10px] leading-5 text-[#6B5A50]">
+                      Our team will confirm the exact delivery timeline after your
+                      order is reviewed.
+                    </p>
+                  </div>
+
+                  <div className="mt-7 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={handlePreviousStep}
+                      className="min-h-[46px] rounded-full border border-[#3A2117]/15 px-6 text-xs font-semibold text-[#3A2117]"
+                    >
+                      ← Back
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="min-h-[48px] rounded-full bg-[#3A2117] px-7 text-sm font-semibold text-white hover:bg-[#4A2B1F]"
+                    >
+                      Continue to Payment →
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* ═══════════════ STEP 04 — PAYMENT ═══════════════ */}
+            {currentStep === 4 && (
+              <section className="overflow-hidden rounded-[26px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_12px_40px_rgba(58,33,23,0.05)]">
+                <div className="border-b border-[#3A2117]/10 bg-[#F2ECE5] px-5 py-5 sm:px-7">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A654D]">
+                    Step 04
+                  </p>
+
+                  <h2 className="mt-1 text-lg font-semibold text-[#281912]">
+                    Payment Method
+                  </h2>
+                </div>
+
+                <div className="p-5 sm:p-7">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      ['cod', 'Cash on Delivery', 'Pay the remaining balance when your order arrives.'],
+                      ['bank', 'Bank Deposit', 'Transfer the payment directly to our bank account.'],
+                    ].map(([value, title, description]) => (
+                      <label
+                        key={value}
+                        className={classNames(
+                          'cursor-pointer rounded-2xl border p-4 transition-all',
+                          paymentMethod === value
+                            ? 'border-[#3A2117] bg-[#F2ECE5]'
+                            : 'border-[#3A2117]/10 hover:border-[#6B4228]/35',
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value={value}
+                          checked={paymentMethod === value}
+                          onChange={(e) =>
+                            setPaymentMethod(e.target.value)
+                          }
+                          className="sr-only"
+                        />
+
+                        <div className="flex gap-3">
+                          <div
+                            className={classNames(
+                              'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border',
+                              paymentMethod === value
+                                ? 'border-[#3A2117] bg-[#3A2117]'
+                                : 'border-[#3A2117]/25',
+                            )}
+                          >
+                            {paymentMethod === value && (
+                              <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-[#281912]">
+                              {title}
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
+                              {description}
+                            </p>
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  {(paymentMethod === 'bank' ||
+                    paymentMethod === 'cod') &&
+                    bankDetails && (
+                      <div className="mt-5 overflow-hidden rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF]">
+                        <div className="border-b border-[#3A2117]/10 px-5 py-4">
+                          <p className="text-sm font-semibold text-[#281912]">
+                            Bank Account Details
+                          </p>
+                        </div>
+
+                        <div className="divide-y divide-[#3A2117]/10 px-5">
+                          {[
+                            ['Bank Name', bankDetails.bankName],
+                            ['Account Title', bankDetails.accountTitle],
+                            ['Account Number', bankDetails.accountNumber],
+                            ['IBAN', bankDetails.iban],
+                          ].map(([label, value]) => (
+                            <div
+                              key={label}
+                              className="flex justify-between gap-5 py-3 text-xs"
+                            >
+                              <span className="text-[#8A7569]">
+                                {label}
+                              </span>
+
+                              <span className="break-all text-right font-semibold text-[#3A2117]">
+                                {value || '—'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="border-t border-[#3A2117]/10 bg-[#EEE5DC] px-5 py-4">
+                          {paymentMethod === 'bank' ? (
+                            <p className="text-xs font-semibold text-[#3A2117]">
+                              Amount to transfer: Rs.{formatPKR(grandTotal)}
+                            </p>
+                          ) : (
+                            <>
+                              <p className="text-xs font-semibold text-[#3A2117]">
+                                Advance required: Rs.{formatPKR(advanceAmount)} ({advancePercent}%)
+                              </p>
+
+                              <p className="mt-1 text-[10px] text-[#7A6559]">
+                                Remaining Rs.{formatPKR(codAmount)} will be collected on delivery.
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  <div className="mt-7 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={handlePreviousStep}
+                      className="min-h-[46px] rounded-full border border-[#3A2117]/15 px-6 text-xs font-semibold text-[#3A2117]"
+                    >
+                      ← Back
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="min-h-[48px] rounded-full bg-[#3A2117] px-7 text-sm font-semibold text-white hover:bg-[#4A2B1F]"
+                    >
+                      Review Order →
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* ═══════════════ STEP 05 — REVIEW ═══════════════ */}
+            {currentStep === 5 && (
+              <section className="overflow-hidden rounded-[26px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_12px_40px_rgba(58,33,23,0.05)]">
+                <div className="border-b border-[#3A2117]/10 bg-[#F2ECE5] px-5 py-5 sm:px-7">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A654D]">
+                    Step 05
+                  </p>
+
+                  <h2 className="mt-1 text-lg font-semibold text-[#281912]">
+                    Review Your Order
+                  </h2>
+
+                  <p className="mt-1 text-xs text-[#7A6A60]">
+                    Confirm everything before placing your order.
+                  </p>
+                </div>
+
+                <div className="space-y-4 p-5 sm:p-7">
+
+                  {[
+                    {
+                      title: 'Customer',
+                      step: 1,
+                      content: (
+                        <>
+                          <p>{fullName}</p>
+                          <p>{phone}</p>
+                          {email && <p>{email}</p>}
+                        </>
+                      ),
+                    },
+                    {
+                      title: 'Shipping Address',
+                      step: 2,
+                      content: (
+                        <>
+                          <p>{addressLine1}</p>
+                          {addressLine2 && <p>{addressLine2}</p>}
+                          <p>
+                            {[city, state, postalCode]
+                              .filter(Boolean)
+                              .join(', ')}
+                          </p>
+                        </>
+                      ),
+                    },
+                    {
+                      title: 'Shipping Method',
+                      step: 3,
+                      content: (
+                        <p>
+                          Standard Delivery —{' '}
+                          {shipping === 0
+                            ? 'Free'
+                            : `Rs.${formatPKR(shipping || 0)}`}
+                        </p>
+                      ),
+                    },
+                    {
+                      title: 'Payment',
+                      step: 4,
+                      content: (
+                        <p>
+                          {paymentMethod === 'cod'
+                            ? 'Cash on Delivery'
+                            : 'Bank Deposit'}
+                        </p>
+                      ),
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.title}
+                      className="flex items-start justify-between gap-5 rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] p-4"
+                    >
+                      <div>
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#8A654D]">
+                          {item.title}
+                        </p>
+
+                        <div className="mt-2 space-y-1 text-xs leading-5 text-[#5F4C42]">
+                          {item.content}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => goToStep(item.step)}
+                        className="shrink-0 text-[10px] font-semibold text-[#6B4228] underline underline-offset-4"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="rounded-2xl border border-[#6B4228]/10 bg-[#EEE5DC] p-4">
+                    <p className="text-xs leading-5 text-[#6B5A50]">
+                      Review the products and final total in the Order Summary.
+                      Once everything looks correct, place your order.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handlePreviousStep}
+                    className="min-h-[46px] rounded-full border border-[#3A2117]/15 px-6 text-xs font-semibold text-[#3A2117]"
+                  >
+                    ← Back to Payment
+                  </button>
+                </div>
+              </section>
+            )}
           </div>
 
           {/* ═══════════════ RIGHT SUMMARY ═══════════════ */}
@@ -1520,8 +1660,15 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
                 {/* PLACE ORDER */}
                 <button
                   type="button"
-                  onClick={handleSubmit}
-                  disabled={loading || !paymentMethod || !city}
+                  onClick={
+                    currentStep === 5
+                      ? handleSubmit
+                      : handleNextStep
+                  }
+                  disabled={
+                    loading ||
+                    (currentStep === 5 && (!paymentMethod || !city))
+                  }
                   className="
                   mt-6 inline-flex min-h-[52px] w-full
                   items-center justify-center gap-2
@@ -1565,7 +1712,15 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
                     </>
                   ) : (
                     <>
-                      Place Order
+                      {currentStep === 5
+                        ? 'Place Order'
+                        : currentStep === 1
+                          ? 'Continue to Address'
+                          : currentStep === 2
+                            ? 'Continue to Shipping'
+                            : currentStep === 3
+                              ? 'Continue to Payment'
+                              : 'Review Order'}
 
                       <svg
                         viewBox="0 0 24 24"
