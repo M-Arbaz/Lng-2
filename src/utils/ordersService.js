@@ -12,22 +12,59 @@ import {
   onSnapshot,
   arrayUnion,
 } from 'firebase/firestore';
+const PAYMENT_STATUS_LABELS = {
+  pending: 'Payment Pending',
+  partial: 'Partially Paid',
+  paid: 'Payment Paid',
+  failed: 'Payment Failed',
+  refunded: 'Payment Refunded',
+  cancelled: 'Payment Cancelled',
+};
 
+const normalizePaymentStatus = (value) => {
+  const normalized = String(value || 'pending')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  return PAYMENT_STATUS_LABELS[normalized]
+    ? normalized
+    : 'pending';
+};
 export const ordersService = {
   // Create a new order
   createOrder: async (userId, orderData) => {
     try {
       const createdAtIso = new Date().toISOString();
 
+      const initialPaymentStatus = normalizePaymentStatus(
+        orderData?.paymentStatus
+      );
+
       const orderRef = await addDoc(collection(db, 'orders'), {
         userId,
         ...orderData,
+
         status: 'pending',
 
         statusHistory: [
           {
             status: 'pending',
             label: 'Order Placed',
+            at: createdAtIso,
+            source: 'system',
+          },
+        ],
+
+        paymentStatus: initialPaymentStatus,
+
+        paymentStatusHistory: [
+          {
+            status: initialPaymentStatus,
+            label:
+              PAYMENT_STATUS_LABELS[
+              initialPaymentStatus
+              ],
             at: createdAtIso,
             source: 'system',
           },
@@ -41,6 +78,7 @@ export const ordersService = {
         userId,
         ...orderData,
         status: 'pending',
+        paymentStatus: initialPaymentStatus,
       };
     } catch (error) {
       console.error('Error creating order:', error);
@@ -188,7 +226,48 @@ export const ordersService = {
       throw error;
     }
   },
+  // Update payment status
+  updatePaymentStatus: async (orderId, paymentStatus) => {
+    try {
+      const docRef = doc(db, 'orders', orderId);
 
+      const normalizedStatus =
+        normalizePaymentStatus(paymentStatus);
+
+      const paymentStatusEvent = {
+        status: normalizedStatus,
+        label:
+          PAYMENT_STATUS_LABELS[
+          normalizedStatus
+          ],
+        at: new Date().toISOString(),
+        source: 'admin',
+      };
+
+      await updateDoc(docRef, {
+        paymentStatus: normalizedStatus,
+
+        paymentStatusHistory: arrayUnion(
+          paymentStatusEvent
+        ),
+
+        updatedAt: serverTimestamp(),
+      });
+
+      return {
+        id: orderId,
+        paymentStatus: normalizedStatus,
+        paymentStatusEvent,
+      };
+    } catch (error) {
+      console.error(
+        'Error updating payment status:',
+        error
+      );
+
+      throw error;
+    }
+  },
   // Update order tracking details
   updateOrderTracking: async (orderId, tracking) => {
     try {
