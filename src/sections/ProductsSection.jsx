@@ -92,8 +92,39 @@ export default function ProductsSection({
   const [customMaxPrice, setCustomMaxPrice] = useState('')
   const [availability, setAvailability] = useState('all')
   const [sortBy, setSortBy] = useState('featured')
-
+  const [selectedColors, setSelectedColors] = useState([])
   // ── Apply local filters on top of parent's category filter ──
+  const colorOptions = useMemo(() => {
+    const colors = new Map()
+
+    externalFilteredProducts.forEach((product) => {
+      const variants = Array.isArray(
+        product?.productDetails?.colorVariants
+      )
+        ? product.productDetails.colorVariants
+        : []
+
+      variants.forEach((variant) => {
+        const name = String(variant?.name || '').trim()
+
+        if (!name) return
+
+        const key = name.toLowerCase()
+
+        if (!colors.has(key)) {
+          colors.set(key, {
+            key,
+            name,
+            image: variant?.image || '',
+          })
+        }
+      })
+    })
+
+    return Array.from(colors.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    )
+  }, [externalFilteredProducts])
   const filteredProducts = useMemo(() => {
     const result = externalFilteredProducts.filter((product) => {
       if (showNewArrival && !product.isNewArrival) {
@@ -179,7 +210,27 @@ export default function ProductsSection({
       ) {
         return false
       }
+      if (selectedColors.length > 0) {
+        const productColors = Array.isArray(
+          product?.productDetails?.colorVariants
+        )
+          ? product.productDetails.colorVariants
+            .map((variant) =>
+              String(variant?.name || '')
+                .trim()
+                .toLowerCase()
+            )
+            .filter(Boolean)
+          : []
 
+        const matchesColor = selectedColors.some((color) =>
+          productColors.includes(color)
+        )
+
+        if (!matchesColor) {
+          return false
+        }
+      }
       return true
     })
 
@@ -257,6 +308,7 @@ export default function ProductsSection({
     customMinPrice,
     customMaxPrice,
     availability,
+    selectedColors,
     sortBy,
     productAverageRating,
   ])
@@ -267,6 +319,7 @@ export default function ProductsSection({
     (showDiscount ? 1 : 0) +
     (priceRange !== 'all' ? 1 : 0) +
     (availability !== 'all' ? 1 : 0) +
+    (selectedColors.length > 0 ? 1 : 0) +
     (sortBy !== 'featured' ? 1 : 0)
 
   const clearAll = () => {
@@ -278,6 +331,7 @@ export default function ProductsSection({
     setCustomMinPrice('')
     setCustomMaxPrice('')
     setAvailability('all')
+    setSelectedColors([])
     setSortBy('featured')
   }
 
@@ -413,6 +467,73 @@ export default function ProductsSection({
           ))}
         </div>
       </FilterGroup>
+      {/* COLOR */}
+      <FilterGroup title="Color">
+        {colorOptions.length === 0 ? (
+          <p className="px-2 py-2 text-[11px] text-[#9A897D]">
+            No colors available
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {colorOptions.map((color) => {
+              const active = selectedColors.includes(color.key)
+
+              return (
+                <button
+                  key={color.key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() =>
+                    setSelectedColors((prev) =>
+                      prev.includes(color.key)
+                        ? prev.filter(
+                          (item) => item !== color.key
+                        )
+                        : [...prev, color.key]
+                    )
+                  }
+                  className={classNames(
+                    'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[12px] transition-colors',
+                    active
+                      ? 'bg-[#F1E8DF] font-semibold text-[#5A3422]'
+                      : 'text-[#68584C] hover:bg-[#F8F3EE]',
+                  )}
+                >
+                  {color.image ? (
+                    <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-[#3A2117]/10 bg-[#F7F4EF]">
+                      <img
+                        src={color.image}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    </span>
+                  ) : (
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-[#3A2117]/10 bg-[#F7F4EF] text-[9px] font-semibold uppercase text-[#6B4228]">
+                      {color.name.slice(0, 1)}
+                    </span>
+                  )}
+
+                  <span className="min-w-0 flex-1 truncate">
+                    {color.name}
+                  </span>
+
+                  <span
+                    className={classNames(
+                      'grid h-4 w-4 shrink-0 place-items-center rounded border transition-colors',
+                      active
+                        ? 'border-[#6B4228] bg-[#6B4228] text-white'
+                        : 'border-[#CFC0B5] bg-white text-transparent',
+                    )}
+                  >
+                    ✓
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </FilterGroup>
+
       {/* SORT BY */}
       <FilterGroup title="Sort By">
         <select
