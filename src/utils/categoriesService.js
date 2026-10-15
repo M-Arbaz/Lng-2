@@ -1,4 +1,4 @@
-import { db, storage } from './firebase';
+import { db } from './firebase'
 import {
   collection,
   getDocs,
@@ -9,8 +9,9 @@ import {
   deleteDoc,
   query,
   orderBy,
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+} from 'firebase/firestore'
+
+import { uploadToXcdn } from './xcdnUpload'
 
 export const categoriesService = {
   // Get all categories
@@ -98,15 +99,24 @@ export const categoriesService = {
   },
 
   // Upload category image
+  // Upload category image to XCDN
   uploadCategoryImage: async (file) => {
     try {
-      const storageRef = ref(storage, `categories/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      return url;
+      if (!file) {
+        throw new Error('No category image selected')
+      }
+
+      return await uploadToXcdn(
+        file,
+        'categories'
+      )
     } catch (error) {
-      console.error('Error uploading category image:', error);
-      throw error;
+      console.error(
+        'Error uploading category image to XCDN:',
+        error
+      )
+
+      throw error
     }
   },
 };
