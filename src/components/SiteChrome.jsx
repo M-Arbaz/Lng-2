@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import AnnouncementBar from './AnnouncementBar'
 import Header from './Header'
@@ -14,6 +15,31 @@ export default function SiteChrome({ children }) {
   const app = useAppState()
   const isAdminRoute = pathname.startsWith('/admin')
   const isHomeHero = pathname === '/'
+
+  useEffect(() => {
+    if (isAdminRoute) return
+
+    const scrollToTop = () => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'auto',
+      })
+    }
+
+    // Run once immediately after route render.
+    scrollToTop()
+
+    // Run once more on the next frame so browser/Next scroll
+    // restoration cannot leave the new page at the old position.
+    const frame = window.requestAnimationFrame(scrollToTop)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+    }
+  }, [pathname, isAdminRoute])
+
+
 
   if (isAdminRoute) {
     return (
