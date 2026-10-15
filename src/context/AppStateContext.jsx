@@ -230,18 +230,31 @@ export function AppStateProvider({ children }) {
         fullName: payload.fullName,
         phone: payload.phone,
         email: payload.email,
+
         addressLine1: payload.addressLine1,
         addressLine2: payload.addressLine2,
         city: payload.city,
         state: payload.state,
         postalCode: payload.postalCode,
+
         note: payload.note,
+
+        shippingMethod: payload.shippingMethod || null,
+
+        billingSameAsShipping:
+          payload.billingSameAsShipping ?? true,
+
+        billingAddress:
+          payload.billingAddress || null,
+
         items: payload.items,
+
         subtotal: payload.subtotal,
         shipping: payload.shipping,
         total: payload.total,
-        status: 'pending',
-        paymentMethod: payload.paymentMethod || 'cash_on_delivery',
+
+        paymentMethod:
+          payload.paymentMethod || 'cash_on_delivery',
       })
       setOrders((prev) => [order, ...prev])
       setCart([])
