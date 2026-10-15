@@ -648,7 +648,7 @@ export default function ProductsSection({
                 </span>
               )}
             </div>
-            <SidebarContent />
+            {SidebarContent()}
           </div>
         </aside>
 
@@ -736,7 +736,7 @@ export default function ProductsSection({
                 </svg>
               </button>
             </div>
-            <SidebarContent />
+            {SidebarContent()}
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
