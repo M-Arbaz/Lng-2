@@ -9,6 +9,7 @@ import {
   where,
   updateDoc,
   serverTimestamp,
+  onSnapshot,
 } from 'firebase/firestore';
 
 export const ordersService = {
@@ -74,7 +75,32 @@ export const ordersService = {
       throw error;
     }
   },
+  // Listen to user's orders in real time
+  subscribeToUserOrders: (userId, onChange, onError) => {
+    const q = query(
+      collection(db, 'orders'),
+      where('userId', '==', userId)
+    );
 
+    return onSnapshot(
+      q,
+      (querySnapshot) => {
+        const orders = querySnapshot.docs.map((orderDoc) => ({
+          id: orderDoc.id,
+          ...orderDoc.data(),
+        }));
+
+        onChange(orders);
+      },
+      (error) => {
+        console.error('Error listening to user orders:', error);
+
+        if (onError) {
+          onError(error);
+        }
+      }
+    );
+  },
   // Get all orders (for admin)
   getAllOrders: async () => {
     try {

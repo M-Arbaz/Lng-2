@@ -86,27 +86,43 @@ export function AppStateProvider({ children }) {
     if (!user?.uid) {
       setOrders([])
       setWishlist([])
+      setOrdersLoading(false)
+      setWishlistLoading(false)
       return
     }
 
-    const loadUserData = async () => {
-      setOrdersLoading(true)
-      setWishlistLoading(true)
-      try {
-        const [userOrders, items] = await Promise.all([
-          ordersService.getUserOrders(user.uid),
-          wishlistService.getWishlist(user.uid),
-        ])
+    setOrdersLoading(true)
+    setWishlistLoading(true)
+
+    // Orders stay synced live with Firestore.
+    const unsubscribeOrders = ordersService.subscribeToUserOrders(
+      user.uid,
+      (userOrders) => {
         setOrders(userOrders)
-        setWishlist(items)
-      } catch (error) {
-        console.error('Error loading account data:', error)
-      } finally {
         setOrdersLoading(false)
-        setWishlistLoading(false)
+      },
+      (error) => {
+        console.error('Error syncing user orders:', error)
+        setOrdersLoading(false)
       }
+    )
+
+    // Wishlist stays on the existing loading flow for now.
+    wishlistService
+      .getWishlist(user.uid)
+      .then((items) => {
+        setWishlist(items)
+      })
+      .catch((error) => {
+        console.error('Error loading wishlist:', error)
+      })
+      .finally(() => {
+        setWishlistLoading(false)
+      })
+
+    return () => {
+      unsubscribeOrders()
     }
-    loadUserData()
   }, [user?.uid])
 
   useEffect(() => {
