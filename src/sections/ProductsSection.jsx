@@ -93,6 +93,8 @@ export default function ProductsSection({
   const [availability, setAvailability] = useState('all')
   const [sortBy, setSortBy] = useState('featured')
   const [selectedColors, setSelectedColors] = useState([])
+  const [selectedLampTypes, setSelectedLampTypes] = useState([])
+  const [bulbOption, setBulbOption] = useState('all')
   // ── Apply local filters on top of parent's category filter ──
   const colorOptions = useMemo(() => {
     const colors = new Map()
@@ -122,6 +124,29 @@ export default function ProductsSection({
     })
 
     return Array.from(colors.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    )
+  }, [externalFilteredProducts])
+
+  const lampTypeOptions = useMemo(() => {
+    const types = new Map()
+
+    externalFilteredProducts.forEach((product) => {
+      const name = String(product?.productType || '').trim()
+
+      if (!name) return
+
+      const key = name.toLowerCase()
+
+      if (!types.has(key)) {
+        types.set(key, {
+          key,
+          name,
+        })
+      }
+    })
+
+    return Array.from(types.values()).sort((a, b) =>
       a.name.localeCompare(b.name)
     )
   }, [externalFilteredProducts])
@@ -231,6 +256,31 @@ export default function ProductsSection({
           return false
         }
       }
+      if (selectedLampTypes.length > 0) {
+        const productType = String(
+          product?.productType || ''
+        )
+          .trim()
+          .toLowerCase()
+
+        if (!selectedLampTypes.includes(productType)) {
+          return false
+        }
+      }
+
+      if (
+        bulbOption === 'with' &&
+        product.bulbEnabled !== true
+      ) {
+        return false
+      }
+
+      if (
+        bulbOption === 'without' &&
+        product.bulbEnabled === true
+      ) {
+        return false
+      }
       return true
     })
 
@@ -309,6 +359,9 @@ export default function ProductsSection({
     customMaxPrice,
     availability,
     selectedColors,
+    selectedLampTypes,
+    bulbOption,
+
     sortBy,
     productAverageRating,
   ])
@@ -320,6 +373,8 @@ export default function ProductsSection({
     (priceRange !== 'all' ? 1 : 0) +
     (availability !== 'all' ? 1 : 0) +
     (selectedColors.length > 0 ? 1 : 0) +
+    (selectedLampTypes.length > 0 ? 1 : 0) +
+    (bulbOption !== 'all' ? 1 : 0) +
     (sortBy !== 'featured' ? 1 : 0)
 
   const clearAll = () => {
@@ -332,6 +387,8 @@ export default function ProductsSection({
     setCustomMaxPrice('')
     setAvailability('all')
     setSelectedColors([])
+    setSelectedLampTypes([])
+    setBulbOption('all')
     setSortBy('featured')
   }
 
@@ -533,7 +590,88 @@ export default function ProductsSection({
           </div>
         )}
       </FilterGroup>
+      {/* LAMP TYPE */}
+      <FilterGroup title="Lamp Type">
+        {lampTypeOptions.length === 0 ? (
+          <p className="px-2 py-2 text-[11px] text-[#9A897D]">
+            No lamp types available
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {lampTypeOptions.map((type) => {
+              const active = selectedLampTypes.includes(
+                type.key
+              )
 
+              return (
+                <button
+                  key={type.key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() =>
+                    setSelectedLampTypes((prev) =>
+                      prev.includes(type.key)
+                        ? prev.filter(
+                          (item) => item !== type.key
+                        )
+                        : [...prev, type.key]
+                    )
+                  }
+                  className={classNames(
+                    'flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[12px] transition-colors',
+                    active
+                      ? 'bg-[#F1E8DF] font-semibold text-[#5A3422]'
+                      : 'text-[#68584C] hover:bg-[#F8F3EE]',
+                  )}
+                >
+                  <span className="min-w-0 flex-1 truncate">
+                    {type.name}
+                  </span>
+
+                  <span
+                    className={classNames(
+                      'grid h-4 w-4 shrink-0 place-items-center rounded border transition-colors',
+                      active
+                        ? 'border-[#6B4228] bg-[#6B4228] text-white'
+                        : 'border-[#CFC0B5] bg-white text-transparent',
+                    )}
+                  >
+                    ✓
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </FilterGroup>
+      {/* BULB OPTION */}
+      <FilterGroup title="Bulb Option">
+        <div className="space-y-1">
+          {[
+            ['all', 'All'],
+            ['with', 'With Bulb'],
+            ['without', 'Without Bulb'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setBulbOption(value)}
+              className={classNames(
+                'flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[12px] transition-colors',
+                bulbOption === value
+                  ? 'bg-[#F1E8DF] font-semibold text-[#5A3422]'
+                  : 'text-[#68584C] hover:bg-[#F8F3EE]',
+              )}
+            >
+              {label}
+
+              {bulbOption === value && (
+                <span className="h-1.5 w-1.5 rounded-full bg-[#6B4228]" />
+              )}
+            </button>
+          ))}
+        </div>
+      </FilterGroup>
       {/* SORT BY */}
       <FilterGroup title="Sort By">
         <select
