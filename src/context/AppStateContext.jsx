@@ -53,7 +53,6 @@ export function AppStateProvider({ children }) {
   const [instagramImages, setInstagramImages] = useState([])
   const headerRef = useRef(null)
   const [headerHeight, setHeaderHeight] = useState(120)
-  const isFirstRouteChange = useRef(true)
 
   const activeSection = sectionFromPath(location.pathname)
 
@@ -313,28 +312,7 @@ export function AppStateProvider({ children }) {
     }
   }, [productsLoading, categoriesLoading])
 
-  useEffect(() => {
-    if (isFirstRouteChange.current) {
-      isFirstRouteChange.current = false
-      return
-    }
 
-    setLoading(true)
-    setLoadingProgress(30)
-
-    const progressTimer = window.setTimeout(() => {
-      setLoadingProgress(100)
-    }, 100)
-
-    const hideTimer = window.setTimeout(() => {
-      setLoading(false)
-    }, 300)
-
-    return () => {
-      window.clearTimeout(progressTimer)
-      window.clearTimeout(hideTimer)
-    }
-  }, [location.pathname])
 
   useEffect(() => {
     const header = headerRef.current
