@@ -1454,6 +1454,47 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
                       ),
                     },
                     {
+                      title: 'Billing Address',
+                      step: 2,
+                      content: billingSameAsShipping ? (
+                        <>
+                          <p>{addressLine1}</p>
+
+                          {addressLine2 && (
+                            <p>{addressLine2}</p>
+                          )}
+
+                          <p>
+                            {[city, state, postalCode]
+                              .filter(Boolean)
+                              .join(', ')}
+                          </p>
+
+                          <p className="pt-1 text-[10px] font-medium text-[#8A654D]">
+                            Same as shipping address
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p>{billingAddressLine1}</p>
+
+                          {billingAddressLine2 && (
+                            <p>{billingAddressLine2}</p>
+                          )}
+
+                          <p>
+                            {[
+                              billingCity,
+                              billingState,
+                              billingPostalCode,
+                            ]
+                              .filter(Boolean)
+                              .join(', ')}
+                          </p>
+                        </>
+                      ),
+                    },
+                    {
                       title: 'Shipping Method',
                       step: 3,
                       content: (
@@ -1526,7 +1567,7 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
 
               <div className="border-b border-[#3A2117]/10 bg-[#F2ECE5] px-5 py-5 sm:px-6">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A654D]">
-                  Step 04
+                  Step {String(currentStep).padStart(2, '0')} of 05
                 </p>
 
                 <h2 className="mt-1 text-lg font-semibold text-[#281912]">
