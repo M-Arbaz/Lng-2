@@ -7,6 +7,7 @@ import HomeTestimonials from './HomeTestimonials.jsx'
 import HomeBlogs from './HomeBlogs.jsx'
 import HomeInstagramGrid from './HomeInstagramGrid.jsx'
 import HomeStats from './HomeStats.jsx'
+import HomeShopByCategory from './HomeShopByCategory.jsx'
 
 export default function HomeSection({
   heroSlides,
@@ -18,6 +19,7 @@ export default function HomeSection({
   products,
   testimonials,
   theme,
+  categories,
   onViewAllProducts,
   onAddToCart,
   onToggleWishlist,
@@ -34,7 +36,10 @@ export default function HomeSection({
       style={{ marginTop: headerHeight ? `-${headerHeight}px` : 0 }}
     >
       <HeroSlider slides={heroSlides} onPrimaryAction={onHeroAction} />
-
+      <HomeShopByCategory
+        categories={categories}
+        theme={theme}
+      />
       <HomeHandpickCollection slides={collectionSlides} onAction={onCollectionAction} theme={theme}
       />
 

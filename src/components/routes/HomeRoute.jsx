@@ -9,6 +9,7 @@ export default function HomeRoute() {
   return (
     <HomeSection
       theme={app.theme}
+      categories={app.dynamicCategories}
       heroSlides={app.heroSlides}
       onHeroAction={app.handleHeroAction}
       headerHeight={app.headerHeight}
