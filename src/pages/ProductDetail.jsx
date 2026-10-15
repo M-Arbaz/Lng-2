@@ -6,7 +6,7 @@ import classNames from '../utils/classNames.js'
 import { getDiscountInfo } from '../utils/discountHelpers.js'
 import { slugify, resolveCategoryName } from '../utils/slugify.js'
 import useCategories from '../hooks/useCategories.js'
-
+import ProductCard from '../components/ProductCard.jsx'
 /* ────────── helper: accordion chevron icon ────────── */
 function ChevronDown({ open }) {
   return (
@@ -378,11 +378,11 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
     })
 
     // Add videos at the end
-    if (product.videos && product.videos.length > 0) {
+    if (product?.videos && product.videos.length > 0) {
       product.videos.forEach((videoUrl, idx) => {
         slides.push({ type: 'video', url: videoUrl, index: idx })
       })
-    } else if (product.videoUrl) {
+    } else if (product?.videoUrl) {
       slides.push({ type: 'video', url: product.videoUrl, index: 0 })
     }
 
@@ -657,7 +657,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                 <div
                   className="hidden sm:flex flex-col gap-3 overflow-y-auto pr-1"
                   style={{
-                    height: 'clamp(460px, 68vh, 680px)',
+                    height: 'clamp(400px, 58vh, 560px)',
                   }}
                 >
                   {mobileSlides.map((slide, idx) => {
@@ -1779,324 +1779,729 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
             ))}
           </div>
 
-          <div className="mx-auto max-w-4xl px-0 py-8 sm:py-12">
-            {activeTab === 'description' ? (
-              <div className="max-w-3xl text-sm text-stone-700 leading-7 space-y-6">
-                <div>
-                  <h3 className="text-lg font-bold text-stone-900">{product.name}</h3>
-                </div>
+          <div className="mx-auto max-w-5xl px-0 py-8 sm:py-12">
+            <div className="overflow-hidden rounded-[28px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_18px_55px_rgba(58,33,23,0.06)]">
 
-                {product.description ? (
-                  <div className="page-content" dangerouslySetInnerHTML={{ __html: product.description }} />
-                ) : (
-                  <p>{`The ${product.name} is an elegant tribute to creativity and craftsmanship, offering a versatile design with endless combinations. Handcrafted from solid wood, this lightweight yet durable piece is perfect for adding a stylish and functional element to your living space.`}</p>
-                )}
+              {/* ═══════════════ DESCRIPTION ═══════════════ */}
+              {activeTab === 'description' ? (
+                <>
+                  <div className="border-b border-[#3A2117]/10 bg-[#F7F4EF] px-6 py-6 sm:px-8 sm:py-7">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
+                      Product Details
+                    </p>
 
-                {Array.isArray(product.whyLoveItems) && product.whyLoveItems.length > 0 && product.whyLoveItems.some(item => item.trim()) && (
-                  <div>
-                    <h4 className="text-base font-bold text-stone-900">Why You'll Love It</h4>
-                    <ul className="mt-3 space-y-2">
-                      {product.whyLoveItems.filter(item => item.trim()).map((item, idx) => (
-                        <li key={idx} className="flex gap-2">
-                          <span className="text-[#FFD400] mt-0.5">✦</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <h3 className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-[#281912] sm:text-2xl">
+                      {product.name}
+                    </h3>
+
+                    <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#6B5A50]">
+                      Thoughtfully designed details, craftsmanship and care information.
+                    </p>
                   </div>
-                )}
 
-                {Array.isArray(product.careInstructions) && product.careInstructions.length > 0 && product.careInstructions.some(item => item.trim()) && (
-                  <div>
-                    <h4 className="text-base font-bold text-stone-900">Care Instructions</h4>
-                    <ul className="mt-3 list-disc pl-5 space-y-1.5 text-stone-600">
-                      {product.careInstructions.filter(item => item.trim()).map((item, idx) => (
-                        <li key={idx}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {product.noteText && product.noteText.trim() && (
-                  <p className="text-[12px] text-stone-400 italic mt-4">
-                    {product.noteText}
-                  </p>
-                )}
-              </div>
-            ) : activeTab === 'dimension' ? (
-              <div className="max-w-3xl">
-                {product.dimensions ? (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-bold text-stone-900">Product Dimensions</h3>
-                      <p className="mt-2 text-stone-600">Here are the detailed measurements of this product:</p>
-                    </div>
-
-                    <div className="bg-stone-50 rounded-xl p-6 border border-stone-200">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {product.dimensions.width && (
-                          <div className="text-center">
-                            <p className="text-xs text-stone-500 uppercase tracking-wide mb-1">Width</p>
-                            <p className="text-2xl font-bold text-stone-900">{product.dimensions.width}</p>
-                            <p className="text-xs text-stone-500 mt-0.5">{product.dimensions.unit || 'cm'}</p>
-                          </div>
-                        )}
-                        {product.dimensions.height && (
-                          <div className="text-center">
-                            <p className="text-xs text-stone-500 uppercase tracking-wide mb-1">Height</p>
-                            <p className="text-2xl font-bold text-stone-900">{product.dimensions.height}</p>
-                            <p className="text-xs text-stone-500 mt-0.5">{product.dimensions.unit || 'cm'}</p>
-                          </div>
-                        )}
-                        {product.dimensions.depth && (
-                          <div className="text-center">
-                            <p className="text-xs text-stone-500 uppercase tracking-wide mb-1">Depth</p>
-                            <p className="text-2xl font-bold text-stone-900">{product.dimensions.depth}</p>
-                            <p className="text-xs text-stone-500 mt-0.5">{product.dimensions.unit || 'cm'}</p>
-                          </div>
-                        )}
-                        {product.dimensions.weight && (
-                          <div className="text-center">
-                            <p className="text-xs text-stone-500 uppercase tracking-wide mb-1">Weight</p>
-                            <p className="text-2xl font-bold text-stone-900">{product.dimensions.weight}</p>
-                            <p className="text-xs text-stone-500 mt-0.5">{product.dimensions.weightUnit || 'kg'}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {product.dimensions.notes && (
-                        <div className="mt-6 pt-6 border-t border-stone-200">
-                          <p className="text-sm text-stone-600">{product.dimensions.notes}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <svg viewBox="0 0 24 24" className="w-16 h-16 mx-auto text-stone-300 mb-4" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                    </svg>
-                    <p className="text-stone-500">No dimensions specified for this product</p>
-                  </div>
-                )}
-              </div>
-            ) : activeTab === 'shipping' ? (
-              <div className="max-w-3xl text-sm text-stone-700 leading-7 space-y-6">
-                {product.shippingReturnContent ? (
-                  <div className="page-content" dangerouslySetInnerHTML={{ __html: product.shippingReturnContent }} />
-                ) : (
-                  <>
-                    <div>
-                      <h3 className="text-base font-bold text-stone-900">Returns Policy</h3>
-                      <p className="mt-2">
-                        You may return most new, unopened items within <strong>7 days</strong> of delivery for a full refund.
-                        We'll also pay the return shipping costs if the return is a result of our error (you received an incorrect or defective item, etc.).
+                  <div className="px-6 py-6 sm:px-8 sm:py-8">
+                    {product.description ? (
+                      <div
+                        className="
+                max-w-none break-words
+                text-[14px] leading-7 text-[#4C3A31]
+                [&_h1]:mb-3 [&_h1]:mt-6 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:text-[#281912]
+                [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-[#281912]
+                [&_h3]:mb-2 [&_h3]:mt-5 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-[#3A2117]
+                [&_p]:mb-4
+                [&_strong]:font-semibold [&_strong]:text-[#3A2117]
+                [&_ul]:my-4 [&_ul]:space-y-2 [&_ul]:pl-5
+                [&_ol]:my-4 [&_ol]:space-y-2 [&_ol]:pl-5
+                [&_li]:pl-1
+                [&_a]:font-medium [&_a]:text-[#6B4228] [&_a]:underline
+              "
+                        dangerouslySetInnerHTML={{ __html: product.description }}
+                      />
+                    ) : (
+                      <p className="text-[14px] leading-7 text-[#4C3A31]">
+                        {`The ${product.name} is an elegant tribute to creativity and craftsmanship, offering a versatile design with endless combinations. Handcrafted from solid wood, this lightweight yet durable piece is perfect for adding a stylish and functional element to your living space.`}
                       </p>
-                      <p className="mt-2">
-                        You should expect to receive your refund within four weeks of giving your package to the return shipper.
-                        This time period includes the transit time for us to receive your return from the shipper (5 to 10 business days),
-                        the time it takes us to process your return once we receive it (3 to 5 business days),
-                        and the time it takes your bank to process our refund request (5 to 10 business days).
-                      </p>
-                      <p className="mt-2">
-                        If you need to return an item, simply login to your account, view the order using the "Complete Orders" link under the My Account menu and click the Return Item(s) button. We'll notify you via e-mail of your refund once we've received and processed the returned item.
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-stone-900">Shipping</h3>
-                      <p className="mt-2">
-                        We can ship to virtually any address in Pakistan. Free standard shipping on orders over 10,000 PKR. Orders are typically dispatched within 1-2 business days.
-                      </p>
-                      <p className="mt-2">
-                        When you place an order, we will estimate shipping and delivery dates for you based on the availability of your items and the shipping options you choose.
-                      </p>
-                      <p className="mt-2">
-                        All in-stock products will be delivered within <strong>3 to 5 days</strong>. Custom designs will take 8 to 12 days to complete and ship.
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="max-w-3xl space-y-8">
-                <div className="flex items-center gap-6">
-                  <div className="text-center">
-                    <p className="text-5xl font-bold text-stone-900">{avgRating ? avgRating.toFixed(1) : '0.0'}</p>
-                    <div className="mt-1">{renderStars(avgRating || 0)}</div>
-                    <p className="mt-1 text-xs text-stone-500">Based on {productReviews.length} review{productReviews.length === 1 ? '' : 's'}</p>
-                  </div>
-                  <div className="flex-1 space-y-1.5">
-                    {[5, 4, 3, 2, 1].map((star) => {
-                      const count = productReviews.filter((r) => Math.round(r.rating) === star).length
-                      const pct = productReviews.length > 0 ? (count / productReviews.length) * 100 : 0
-                      return (
-                        <div key={star} className="flex items-center gap-2 text-xs">
-                          <span className="w-4 text-stone-500 text-right">{star}</span>
-                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[#FFD400] fill-current"><path d="M12 17.27l-5.18 3.04 1.4-5.81-4.52-3.92 5.95-.5L12 4.5l2.35 5.58 5.95.5-4.52 3.92 1.4 5.81z" /></svg>
-                          <div className="flex-1 h-2 bg-stone-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-[#3A2117] rounded-full transition-all" style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="w-6 text-stone-400">{count}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
+                    )}
 
-                {productReviews.length === 0 ? (
-                  <div className="text-center py-10">
-                    <p className="text-stone-400 text-sm">No reviews yet for this product.</p>
-                    <p className="text-stone-400 text-xs mt-1">Be the first to write a review!</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-stone-100">
-                    {productReviews.map((review) => (
-                      <div key={review.id} className="py-5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-full bg-stone-200 grid place-items-center text-sm font-bold text-stone-600">
-                              {review.name?.charAt(0)?.toUpperCase() || '?'}
+                    {(Array.isArray(product.whyLoveItems) &&
+                      product.whyLoveItems.some((item) => item.trim())) ||
+                      (Array.isArray(product.careInstructions) &&
+                        product.careInstructions.some((item) => item.trim())) ? (
+                      <div className="mt-7 grid gap-4 md:grid-cols-2">
+
+                        {Array.isArray(product.whyLoveItems) &&
+                          product.whyLoveItems.some((item) => item.trim()) && (
+                            <div className="rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] p-5 sm:p-6">
+                              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#3A2117] text-white">
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  className="h-5 w-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.6"
+                                >
+                                  <path d="M12 3l2.1 4.8L19 10l-4.9 2.2L12 17l-2.1-4.8L5 10l4.9-2.2L12 3z" />
+                                </svg>
+                              </div>
+
+                              <h4 className="text-base font-semibold text-[#281912]">
+                                Why You'll Love It
+                              </h4>
+
+                              <ul className="mt-4 space-y-3">
+                                {product.whyLoveItems
+                                  .filter((item) => item.trim())
+                                  .map((item, idx) => (
+                                    <li
+                                      key={idx}
+                                      className="flex gap-3 text-[13px] leading-6 text-[#6B5A50]"
+                                    >
+                                      <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#6B4228]" />
+                                      <span>{item}</span>
+                                    </li>
+                                  ))}
+                              </ul>
                             </div>
-                            <div>
-                              <p className="text-sm font-semibold text-stone-900">{review.name}</p>
-                              <p className="text-[11px] text-stone-400">
-                                {new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          )}
+
+                        {Array.isArray(product.careInstructions) &&
+                          product.careInstructions.some((item) => item.trim()) && (
+                            <div className="rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] p-5 sm:p-6">
+                              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#3A2117] text-white">
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  className="h-5 w-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.6"
+                                >
+                                  <path d="M12 21s7-3.5 7-10V5l-7-2-7 2v6c0 6.5 7 10 7 10z" />
+                                  <path d="M9 12l2 2 4-4" />
+                                </svg>
+                              </div>
+
+                              <h4 className="text-base font-semibold text-[#281912]">
+                                Care Instructions
+                              </h4>
+
+                              <ul className="mt-4 space-y-3">
+                                {product.careInstructions
+                                  .filter((item) => item.trim())
+                                  .map((item, idx) => (
+                                    <li
+                                      key={idx}
+                                      className="flex gap-3 text-[13px] leading-6 text-[#6B5A50]"
+                                    >
+                                      <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#6B4228]" />
+                                      <span>{item}</span>
+                                    </li>
+                                  ))}
+                              </ul>
+                            </div>
+                          )}
+                      </div>
+                    ) : null}
+
+                    {product.noteText && product.noteText.trim() && (
+                      <div className="mt-5 rounded-2xl border border-[#6B4228]/10 bg-[#6B4228]/[0.04] px-5 py-4">
+                        <p className="text-[12px] italic leading-6 text-[#7A6559]">
+                          {product.noteText}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+
+              ) : activeTab === 'dimension' ? (
+                <>
+                  {/* ═══════════════ DIMENSIONS ═══════════════ */}
+                  <div className="border-b border-[#3A2117]/10 bg-[#F7F4EF] px-6 py-6 sm:px-8 sm:py-7">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
+                      Measurements
+                    </p>
+
+                    <h3 className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-[#281912] sm:text-2xl">
+                      Product Dimensions
+                    </h3>
+
+                    <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#6B5A50]">
+                      Detailed measurements to help you find the perfect place for your piece.
+                    </p>
+                  </div>
+
+                  <div className="px-6 py-6 sm:px-8 sm:py-8">
+                    {product.dimensions ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+
+                          {product.dimensions.width && (
+                            <div className="rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] px-4 py-6 text-center">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A654D]">
+                                Width
+                              </p>
+
+                              <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                                {product.dimensions.width}
+                              </p>
+
+                              <p className="mt-1 text-[11px] text-[#8A7569]">
+                                {product.dimensions.unit || 'cm'}
                               </p>
                             </div>
-                          </div>
-                          {renderStars(review.rating)}
-                        </div>
-                        <p className="mt-3 text-[13px] text-stone-600 leading-relaxed">{review.comment}</p>
+                          )}
 
-                        {/* Admin Reply */}
-                        {review.adminReply && (
-                          <div className="mt-4 rounded-2xl border border-[#6B4228]/15 bg-[#F8F2EC] p-4">
-                            <div className="flex items-start gap-3">
-                              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#3A2117] text-sm font-bold text-white">
-                                A
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <p className="text-sm font-semibold text-[#3A2117]">Lamp & Glow Reply</p>
-                                  {review.adminReplyAt && (
-                                    <p className="text-xs text-[#8A654D]">
-                                      {new Date(review.adminReplyAt).toLocaleDateString('en-US', {
-                                        year: 'numeric',
-                                        month: 'short',
-                                        day: 'numeric'
-                                      })}
-                                    </p>
-                                  )}
-                                </div>
-                                <p className="text-sm leading-relaxed text-stone-700">{review.adminReply}</p>
-                              </div>
+                          {product.dimensions.height && (
+                            <div className="rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] px-4 py-6 text-center">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A654D]">
+                                Height
+                              </p>
+
+                              <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                                {product.dimensions.height}
+                              </p>
+
+                              <p className="mt-1 text-[11px] text-[#8A7569]">
+                                {product.dimensions.unit || 'cm'}
+                              </p>
                             </div>
+                          )}
+
+                          {product.dimensions.depth && (
+                            <div className="rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] px-4 py-6 text-center">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A654D]">
+                                Depth
+                              </p>
+
+                              <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                                {product.dimensions.depth}
+                              </p>
+
+                              <p className="mt-1 text-[11px] text-[#8A7569]">
+                                {product.dimensions.unit || 'cm'}
+                              </p>
+                            </div>
+                          )}
+
+                          {product.dimensions.weight && (
+                            <div className="rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] px-4 py-6 text-center">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A654D]">
+                                Weight
+                              </p>
+
+                              <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                                {product.dimensions.weight}
+                              </p>
+
+                              <p className="mt-1 text-[11px] text-[#8A7569]">
+                                {product.dimensions.weightUnit || 'kg'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {product.dimensions.notes && (
+                          <div className="mt-5 rounded-2xl border border-[#3A2117]/10 bg-[#FFFEFC] px-5 py-4">
+                            <p className="text-[13px] leading-6 text-[#6B5A50]">
+                              {product.dimensions.notes}
+                            </p>
                           </div>
                         )}
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F7F4EF] text-[#6B4228]">
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-6 w-6"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          >
+                            <path d="M4 7h16v10H4z" />
+                            <path d="M8 7v3M12 7v2M16 7v3" />
+                          </svg>
+                        </div>
+
+                        <p className="mt-4 text-sm font-medium text-[#3A2117]">
+                          Dimensions not available
+                        </p>
+
+                        <p className="mt-1 text-xs text-[#8A7569]">
+                          No measurements have been specified for this product yet.
+                        </p>
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
+                </>
 
-                {isLoggedIn && !hasUserReviewed && (
-                  <div className="mt-8 p-6 rounded-2xl border border-stone-200 bg-white">
-                    <h3 className="text-lg font-bold text-stone-900 mb-4">Write a Review</h3>
-                    <form onSubmit={(e) => {
-                      e.preventDefault()
-                      if (!localReviewForm.comment.trim() || !user) return
+              ) : activeTab === 'shipping' ? (
+                <>
+                  {/* ═══════════════ SHIPPING & RETURNS ═══════════════ */}
+                  <div className="border-b border-[#3A2117]/10 bg-[#F7F4EF] px-6 py-6 sm:px-8 sm:py-7">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
+                      Lamp & Glow Care
+                    </p>
 
-                      // Check if user already reviewed this product
-                      const hasAlreadyReviewed = reviews.some(
-                        (r) => r.productId === productId && r.userId === user.uid
-                      )
+                    <h3 className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-[#281912] sm:text-2xl">
+                      Shipping & Returns
+                    </h3>
 
-                      if (hasAlreadyReviewed) {
-                        alert('You have already reviewed this product.')
-                        return
-                      }
+                    <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#6B5A50]">
+                      Everything you need to know about delivery timelines, returns and order processing.
+                    </p>
+                  </div>
 
-                      const newReview = {
-                        id: Date.now(),
-                        productId: productId,
-                        userId: user.uid,
-                        name: user.displayName || user.email || 'Anonymous',
-                        rating: Number(localReviewForm.rating),
-                        comment: localReviewForm.comment.trim(),
-                        createdAt: new Date().toISOString(),
-                      }
+                  <div className="px-6 py-6 sm:px-8 sm:py-8">
+                    {product.shippingReturnContent ? (
+                      <div
+                        className="
+                max-w-none break-words
+                text-[14px] leading-7 text-[#4C3A31]
+                [&_h1]:mb-3 [&_h1]:mt-6 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:text-[#281912]
+                [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-[#281912]
+                [&_h3]:mb-2 [&_h3]:mt-5 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-[#3A2117]
+                [&_p]:mb-4
+                [&_strong]:font-semibold [&_strong]:text-[#3A2117]
+                [&_ul]:my-4 [&_ul]:space-y-2 [&_ul]:pl-5
+                [&_ol]:my-4 [&_ol]:space-y-2 [&_ol]:pl-5
+                [&_li]:pl-1
+                [&_a]:font-medium [&_a]:text-[#6B4228] [&_a]:underline
+              "
+                        dangerouslySetInnerHTML={{
+                          __html: product.shippingReturnContent,
+                        }}
+                      />
+                    ) : (
+                      <div className="grid gap-4 md:grid-cols-2">
 
-                      handleSubmitReview(newReview)
-                      setLocalReviewForm({ rating: 5, comment: '' })
-                    }} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-2">Your Rating</label>
-                        <div className="flex items-center gap-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              type="button"
-                              onClick={() => setLocalReviewForm((prev) => ({ ...prev, rating: star }))}
-                              className="focus:outline-none"
+                        {/* Returns */}
+                        <div className="rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] p-5 sm:p-6">
+                          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#3A2117] text-white">
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-5 w-5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
                             >
+                              <path d="M9 14l-4-4 4-4" />
+                              <path d="M5 10h10a4 4 0 010 8h-2" />
+                            </svg>
+                          </div>
+
+                          <h4 className="text-base font-semibold text-[#281912]">
+                            Returns Policy
+                          </h4>
+
+                          <div className="mt-4 space-y-3 text-[13px] leading-6 text-[#6B5A50]">
+                            <p>
+                              You may return most new, unopened items within{' '}
+                              <strong className="font-semibold text-[#3A2117]">
+                                7 days
+                              </strong>{' '}
+                              of delivery for a full refund.
+                            </p>
+
+                            <p>
+                              Return shipping costs are also covered when the return is
+                              the result of an incorrect or defective item received from us.
+                            </p>
+
+                            <p>
+                              Once we receive and process your return, we'll notify you by
+                              email regarding your refund.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Shipping */}
+                        <div className="rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] p-5 sm:p-6">
+                          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#3A2117] text-white">
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-5 w-5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                            >
+                              <path d="M3 6h11v11H3z" />
+                              <path d="M14 10h4l3 3v4h-7z" />
+                              <circle cx="7" cy="18" r="2" />
+                              <circle cx="18" cy="18" r="2" />
+                            </svg>
+                          </div>
+
+                          <h4 className="text-base font-semibold text-[#281912]">
+                            Shipping
+                          </h4>
+
+                          <div className="mt-4 space-y-3 text-[13px] leading-6 text-[#6B5A50]">
+                            <p>
+                              Orders are normally dispatched within{' '}
+                              <strong className="font-semibold text-[#3A2117]">
+                                1–2 business days
+                              </strong>
+                              .
+                            </p>
+
+                            <p>
+                              In-stock products are normally delivered within{' '}
+                              <strong className="font-semibold text-[#3A2117]">
+                                3–5 days
+                              </strong>
+                              .
+                            </p>
+
+                            <p>
+                              Custom designs usually require{' '}
+                              <strong className="font-semibold text-[#3A2117]">
+                                8–12 days
+                              </strong>{' '}
+                              to complete and ship.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+
+              ) : (
+                <>
+                  {/* ═══════════════ REVIEWS ═══════════════ */}
+                  <div className="border-b border-[#3A2117]/10 bg-[#F7F4EF] px-6 py-6 sm:px-8 sm:py-7">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
+                      Customer Feedback
+                    </p>
+
+                    <h3 className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-[#281912] sm:text-2xl">
+                      Customer Reviews
+                    </h3>
+
+                    <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#6B5A50]">
+                      Real experiences shared by Lamp & Glow customers.
+                    </p>
+                  </div>
+
+                  <div className="px-6 py-6 sm:px-8 sm:py-8">
+
+                    {/* Rating Summary */}
+                    <div className="grid gap-6 rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] p-5 sm:p-6 md:grid-cols-[180px_1fr] md:items-center">
+                      <div className="text-center md:border-r md:border-[#3A2117]/10 md:pr-6">
+                        <p className="text-5xl font-semibold tracking-[-0.05em] text-[#281912]">
+                          {avgRating ? avgRating.toFixed(1) : '0.0'}
+                        </p>
+
+                        <div className="mt-2 flex justify-center">
+                          {renderStars(avgRating || 0)}
+                        </div>
+
+                        <p className="mt-2 text-[11px] text-[#8A7569]">
+                          Based on {productReviews.length}{' '}
+                          review{productReviews.length === 1 ? '' : 's'}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        {[5, 4, 3, 2, 1].map((star) => {
+                          const count = productReviews.filter(
+                            (r) => Math.round(r.rating) === star
+                          ).length
+
+                          const pct =
+                            productReviews.length > 0
+                              ? (count / productReviews.length) * 100
+                              : 0
+
+                          return (
+                            <div
+                              key={star}
+                              className="flex items-center gap-3 text-xs"
+                            >
+                              <span className="w-3 text-right font-medium text-[#6B5A50]">
+                                {star}
+                              </span>
+
                               <svg
                                 viewBox="0 0 24 24"
-                                className={classNames(
-                                  'h-8 w-8 transition-colors',
-                                  star <= localReviewForm.rating ? 'text-[#FFD400] fill-current' : 'text-stone-300 fill-transparent'
-                                )}
-                                stroke="currentColor"
-                                strokeWidth="1.5"
+                                className="h-3.5 w-3.5 fill-current text-[#6B4228]"
                               >
                                 <path d="M12 17.27l-5.18 3.04 1.4-5.81-4.52-3.92 5.95-.5L12 4.5l2.35 5.58 5.95.5-4.52 3.92 1.4 5.81L12 17.27z" />
                               </svg>
-                            </button>
-                          ))}
+
+                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#3A2117]/10">
+                                <div
+                                  className="h-full rounded-full bg-[#3A2117] transition-all duration-500"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+
+                              <span className="w-6 text-[#8A7569]">
+                                {count}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Reviews List */}
+                    {productReviews.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F7F4EF] text-[#6B4228]">
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-6 w-6"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          >
+                            <path d="M21 15a4 4 0 01-4 4H8l-5 3V7a4 4 0 014-4h10a4 4 0 014 4z" />
+                          </svg>
                         </div>
+
+                        <p className="mt-4 text-sm font-semibold text-[#3A2117]">
+                          No reviews yet
+                        </p>
+
+                        <p className="mt-1 text-xs text-[#8A7569]">
+                          Be the first to share your experience with this product.
+                        </p>
                       </div>
+                    ) : (
+                      <div className="mt-6 space-y-4">
+                        {productReviews.map((review) => (
+                          <div
+                            key={review.id}
+                            className="rounded-2xl border border-[#3A2117]/10 bg-[#FFFEFC] p-5 sm:p-6"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#3A2117] text-sm font-semibold text-white">
+                                  {review.name?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-stone-700 mb-2">Your Review</label>
-                        <textarea
-                          value={localReviewForm.comment}
-                          onChange={(e) => setLocalReviewForm((prev) => ({ ...prev, comment: e.target.value }))}
-                          rows={4}
-                          required
-                          className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#6B4228] focus:ring-4 focus:ring-[#6B4228]/[0.08]"
-                          placeholder="Share your experience with this product..."
-                        />
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-[#281912]">
+                                    {review.name}
+                                  </p>
+
+                                  <p className="mt-0.5 text-[11px] text-[#8A7569]">
+                                    {new Date(review.createdAt).toLocaleDateString(
+                                      'en-US',
+                                      {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                      }
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0">
+                                {renderStars(review.rating)}
+                              </div>
+                            </div>
+
+                            <p className="mt-4 text-[13px] leading-6 text-[#5F4C42]">
+                              {review.comment}
+                            </p>
+
+                            {/* Admin Reply */}
+                            {review.adminReply && (
+                              <div className="mt-5 rounded-2xl border border-[#6B4228]/15 bg-[#F7F4EF] p-4 sm:p-5">
+                                <div className="flex items-start gap-3">
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#3A2117] text-xs font-semibold text-white">
+                                    L&G
+                                  </div>
+
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                      <p className="text-sm font-semibold text-[#3A2117]">
+                                        Lamp & Glow Reply
+                                      </p>
+
+                                      {review.adminReplyAt && (
+                                        <p className="text-[10px] text-[#8A7569]">
+                                          {new Date(
+                                            review.adminReplyAt
+                                          ).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                          })}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    <p className="mt-2 text-[13px] leading-6 text-[#5F4C42]">
+                                      {review.adminReply}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
+                    )}
 
-                      <button
-                        type="submit"
-                        disabled={!localReviewForm.comment.trim()}
-                        className="inline-flex items-center justify-center rounded-full bg-[#3A2117] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#4A2B1F] disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Submit Review
-                      </button>
-                    </form>
-                  </div>
-                )}
+                    {/* Review Form */}
+                    {isLoggedIn && !hasUserReviewed && (
+                      <div className="mt-7 rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] p-5 sm:p-6">
+                        <div className="mb-5">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A654D]">
+                            Your Experience
+                          </p>
 
-                {!isLoggedIn && (
-                  <div className="mt-8 p-6 rounded-2xl border border-stone-200 bg-white text-center">
-                    <p className="text-stone-600 mb-3">Please log in to write a review</p>
-                    <button
-                      onClick={() => navigate('/login')}
-                      className="inline-flex items-center justify-center rounded-full bg-[#3A2117] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#4A2B1F]"
-                    >
-                      Log In to Review
-                    </button>
-                  </div>
-                )}
+                          <h4 className="mt-1 text-lg font-semibold text-[#281912]">
+                            Write a Review
+                          </h4>
+                        </div>
 
-                {hasUserReviewed && (
-                  <div className="mt-8 p-6 rounded-2xl border border-[#FFD400]/30 bg-[#F5F1EA]/50 text-center">
-                    <p className="text-stone-700 font-medium">You have already reviewed this product</p>
-                    <p className="text-sm text-stone-500 mt-1">Thank you for your feedback!</p>
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault()
+
+                            if (!localReviewForm.comment.trim() || !user) return
+
+                            const hasAlreadyReviewed = reviews.some(
+                              (r) =>
+                                r.productId === productId &&
+                                r.userId === user.uid
+                            )
+
+                            if (hasAlreadyReviewed) {
+                              alert('You have already reviewed this product.')
+                              return
+                            }
+
+                            const newReview = {
+                              id: Date.now(),
+                              productId: productId,
+                              userId: user.uid,
+                              name:
+                                user.displayName ||
+                                user.email ||
+                                'Anonymous',
+                              rating: Number(localReviewForm.rating),
+                              comment: localReviewForm.comment.trim(),
+                              createdAt: new Date().toISOString(),
+                            }
+
+                            handleSubmitReview(newReview)
+
+                            setLocalReviewForm({
+                              rating: 5,
+                              comment: '',
+                            })
+                          }}
+                          className="space-y-5"
+                        >
+                          <div>
+                            <label className="mb-2 block text-xs font-semibold text-[#4C3A31]">
+                              Your Rating
+                            </label>
+
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onClick={() =>
+                                    setLocalReviewForm((prev) => ({
+                                      ...prev,
+                                      rating: star,
+                                    }))
+                                  }
+                                  className="rounded-md p-0.5 transition-transform hover:scale-110 focus:outline-none"
+                                  aria-label={`${star} star${star === 1 ? '' : 's'}`}
+                                >
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    className={classNames(
+                                      'h-7 w-7 transition-colors',
+                                      star <= localReviewForm.rating
+                                        ? 'fill-current text-[#6B4228]'
+                                        : 'fill-transparent text-[#3A2117]/20'
+                                    )}
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                  >
+                                    <path d="M12 17.27l-5.18 3.04 1.4-5.81-4.52-3.92 5.95-.5L12 4.5l2.35 5.58 5.95.5-4.52 3.92 1.4 5.81L12 17.27z" />
+                                  </svg>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-xs font-semibold text-[#4C3A31]">
+                              Your Review
+                            </label>
+
+                            <textarea
+                              value={localReviewForm.comment}
+                              onChange={(e) =>
+                                setLocalReviewForm((prev) => ({
+                                  ...prev,
+                                  comment: e.target.value,
+                                }))
+                              }
+                              rows={4}
+                              required
+                              className="w-full resize-none rounded-2xl border border-[#3A2117]/15 bg-[#FFFEFC] px-4 py-3 text-sm leading-6 text-[#281912] outline-none placeholder:text-[#9A8B82] focus:border-[#6B4228] focus:ring-4 focus:ring-[#6B4228]/[0.07]"
+                              placeholder="Share your experience with this product..."
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={!localReviewForm.comment.trim()}
+                            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[#3A2117] px-7 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#4A2B1F] hover:shadow-[0_10px_24px_rgba(58,33,23,0.18)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                          >
+                            Submit Review
+                          </button>
+                        </form>
+                      </div>
+                    )}
+
+                    {!isLoggedIn && (
+                      <div className="mt-7 rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] px-5 py-7 text-center sm:p-7">
+                        <p className="text-sm font-semibold text-[#281912]">
+                          Want to share your experience?
+                        </p>
+
+                        <p className="mt-1 text-xs leading-5 text-[#8A7569]">
+                          Log in to your Lamp & Glow account to write a review.
+                        </p>
+
+                        <button
+                          type="button"
+                          onClick={() => navigate('/login')}
+                          className="mt-4 inline-flex min-h-[42px] items-center justify-center rounded-full bg-[#3A2117] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#4A2B1F]"
+                        >
+                          Log In to Review
+                        </button>
+                      </div>
+                    )}
+
+                    {hasUserReviewed && (
+                      <div className="mt-7 rounded-2xl border border-[#6B4228]/15 bg-[#F7F4EF] px-5 py-5 text-center sm:px-6">
+                        <p className="text-sm font-semibold text-[#3A2117]">
+                          Thank you for your feedback
+                        </p>
+
+                        <p className="mt-1 text-xs text-[#8A7569]">
+                          You have already reviewed this product.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -2218,42 +2623,15 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
               <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#281912] sm:text-3xl">Related Products</h2>
               <p className="mt-1 text-sm text-stone-500">You may also like</p>
               <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
-                {relatedProducts.slice(0, 5).map((rp) => {
-                  const rpInfo = getDiscountInfo(rp)
-                  return (
-                    <Link
-                      key={rp.id}
-                      to={`/products/${slugify(rp.name)}`}
-                      onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}
-                      className="group block overflow-hidden rounded-2xl border border-[#3A2117]/10 bg-[#FFFEFC] transition-all duration-300 hover:-translate-y-1 hover:border-[#6B4228]/25 hover:shadow-[0_16px_38px_rgba(58,33,23,0.10)]"
-                    >
-                      <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">
-                        {rp.isNewArrival && (
-                          <span className="absolute left-0 top-0 z-10 bg-[#3A2117] px-2 py-1 text-[10px] font-bold text-white tracking-wide">New</span>
-                        )}
-                        {rpInfo.hasDiscount && (
-                          <span className={classNames('absolute z-10 bg-[#E53935] px-2 py-1 text-[10px] font-bold text-white tracking-wide', rp.isNewArrival ? 'left-0 top-6' : 'left-0 top-0')}>
-                            -{rpInfo.discountPercent}%
-                          </span>
-                        )}
-                        <img src={rp.image} alt={rp.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                      </div>
-                      <div className="p-4">
-                        <h3 className="text-[13px] font-semibold text-stone-900 leading-snug line-clamp-2">{rp.name}</h3>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                          {rpInfo.hasDiscount ? (
-                            <>
-                              <span className="text-stone-400 line-through text-[12px]">Rs.{rpInfo.originalPrice.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
-                              <span className="font-bold text-[#E53935] text-[13px]">Rs.{rpInfo.discountedPrice.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
-                            </>
-                          ) : (
-                            <span className="font-bold text-stone-900 text-[13px]">Rs.{rp.price.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                })}
+                {relatedProducts.slice(0, 5).map((rp) => (
+                  <ProductCard
+                    key={rp.id}
+                    product={rp}
+                    onAddToCart={onAddToCart}
+                    onToggleWishlist={handleToggleWishlist}
+                    isInWishlist={isInWishlist}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -2330,28 +2708,15 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
             <div className="mx-auto w-full max-w-[1400px] px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
               <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#281912] sm:text-3xl">Recently Viewed Products</h2>
               <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                {relatedProducts.slice(0, 5).map((rp) => {
-                  const rpInfo = getDiscountInfo(rp)
-                  return (
-                    <Link key={`rv-${rp.id}`} to={`/products/${slugify(rp.name)}`} onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })} className="group block overflow-hidden rounded-2xl border border-[#3A2117]/10 bg-[#FFFEFC] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(58,33,23,0.09)]">
-                      <div className="relative aspect-square overflow-hidden bg-stone-100">
-                        {rp.isNewArrival && (
-                          <span className="absolute left-0 top-0 z-10 bg-[#3A2117] px-1.5 py-0.5 text-[9px] font-bold text-white tracking-wide">New</span>
-                        )}
-                        <img src={rp.image} alt={rp.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                      </div>
-                      <div className="p-3">
-                        <h3 className="text-[12px] font-semibold text-stone-900 leading-snug line-clamp-2">{rp.name}</h3>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[12px]">
-                          {rpInfo.hasDiscount && <span className="text-stone-400 line-through">Rs.{rpInfo.originalPrice.toLocaleString('en-PK')}</span>}
-                          <span className={rpInfo.hasDiscount ? 'font-bold text-[#E53935]' : 'font-bold text-stone-900'}>
-                            Rs.{rpInfo.discountedPrice.toLocaleString('en-PK')}
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                })}
+                {relatedProducts.slice(0, 5).map((rp) => (
+                  <ProductCard
+                    key={rp.id}
+                    product={rp}
+                    onAddToCart={onAddToCart}
+                    onToggleWishlist={handleToggleWishlist}
+                    isInWishlist={isInWishlist}
+                  />
+                ))}
               </div>
             </div>
           </div>

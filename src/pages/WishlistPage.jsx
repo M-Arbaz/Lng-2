@@ -2,6 +2,7 @@
 
 import { useNavigate } from '@/lib/navigation'
 import { FaHeart, FaRegHeart, FaShoppingCart } from 'react-icons/fa'
+import { slugify } from '../utils/slugify.js'
 
 export default function WishlistPage({ wishlist = [], handleToggleWishlist, handleAddToCart, theme = 'light' }) {
   const navigate = useNavigate()
@@ -45,8 +46,7 @@ export default function WishlistPage({ wishlist = [], handleToggleWishlist, hand
             >
               <div
                 className="aspect-square bg-stone-100 cursor-pointer"
-                onClick={() => navigate(`/products/${product.slug || product.id}`)}
-              >
+                onClick={() => navigate(`/products/${slugify(product.name)}`)}              >
                 {product.image ? (
                   <img
                     src={product.image}
@@ -63,8 +63,7 @@ export default function WishlistPage({ wishlist = [], handleToggleWishlist, hand
               <div className="p-4">
                 <h3
                   className={theme === 'dark' ? 'text-sm font-semibold text-stone-100 truncate cursor-pointer hover:text-[#FFD400]' : 'text-sm font-semibold text-stone-900 truncate cursor-pointer hover:text-[#5A2D0C]'}
-                  onClick={() => navigate(`/products/${product.slug || product.id}`)}
-                >
+                  onClick={() => navigate(`/products/${slugify(product.name)}`)}                >
                   {product.name}
                 </h3>
                 <p className={theme === 'dark' ? 'mt-1 text-sm font-bold text-[#FFD400]' : 'mt-1 text-sm font-bold text-[#5A2D0C]'}>
