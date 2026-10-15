@@ -27,6 +27,10 @@ import {
   User,
   X,
   XCircle,
+  ChevronDown,
+  Download,
+  FileSpreadsheet,
+  FileText,
 } from 'lucide-react'
 
 import AdminLayout from '../components/AdminLayout'
@@ -416,7 +420,317 @@ function AddressBlock({
     </div>
   )
 }
+function safeExportText(value) {
+  const text = String(
+    value ?? ''
+  ).trim()
 
+  // Prevent spreadsheet formula injection
+  if (/^[=+\-@]/.test(text)) {
+    return `'${text}`
+  }
+
+  return text
+}
+
+function formatExportAddress(order) {
+  return [
+    order.addressLine1,
+    order.addressLine2,
+    order.city,
+    order.state,
+    order.postalCode,
+  ]
+    .filter(Boolean)
+    .map((value) =>
+      String(value).trim()
+    )
+    .join(', ')
+}
+
+function getExportPaymentStatus(order) {
+  return (
+    order.paymentStatus ||
+    order.payment?.status ||
+    ''
+  )
+}
+
+function buildOrderExportRows(orderList) {
+  return orderList.flatMap(
+    (order) => {
+      const items =
+        Array.isArray(order.items) &&
+          order.items.length > 0
+          ? order.items
+          : [null]
+
+      const tracking =
+        order.tracking || {}
+
+      return items.map(
+        (item, index) => {
+          const quantity =
+            Number(
+              item?.quantity || 0
+            )
+
+          const unitPrice =
+            Number(
+              item?.unitPrice ??
+              item?.product?.price ??
+              0
+            )
+
+          const productName =
+            item?.name ||
+            item?.product?.name ||
+            ''
+
+          return {
+            'Order ID':
+              safeExportText(
+                order.id
+              ),
+
+            'Order Date':
+              formatDateTime(
+                order.createdAt
+              ),
+
+            'Customer Name':
+              safeExportText(
+                order.fullName
+              ),
+
+            'Customer Email':
+              safeExportText(
+                order.email
+              ),
+
+            'Customer Phone':
+              safeExportText(
+                order.phone
+              ),
+
+            City:
+              safeExportText(
+                order.city
+              ),
+
+            'Item #':
+              index + 1,
+
+            'Product Name':
+              safeExportText(
+                productName
+              ),
+
+            'Product ID':
+              safeExportText(
+                item?.productId ||
+                item?.product?.id ||
+                ''
+              ),
+
+            'Base Color':
+              safeExportText(
+                formatVariantValue(
+                  item?.colorVariant
+                )
+              ),
+
+            'Shade Color':
+              safeExportText(
+                formatVariantValue(
+                  item?.shadeColor
+                )
+              ),
+
+            'Bulb Option':
+              safeExportText(
+                formatBulbOption(
+                  item?.bulbOption
+                )
+              ),
+
+            Quantity:
+              quantity,
+
+            'Unit Price (PKR)':
+              unitPrice,
+
+            'Line Total (PKR)':
+              unitPrice *
+              quantity,
+
+            'Order Subtotal (PKR)':
+              Number(
+                order.subtotal || 0
+              ),
+
+            'Shipping Charges (PKR)':
+              Number(
+                order.shipping || 0
+              ),
+
+            'Order Total (PKR)':
+              Number(
+                order.total || 0
+              ),
+
+            'Payment Method':
+              safeExportText(
+                formatPaymentMethod(
+                  order.paymentMethod
+                )
+              ),
+
+            'Payment Status':
+              safeExportText(
+                getExportPaymentStatus(
+                  order
+                )
+              ),
+
+            'Order Status':
+              safeExportText(
+                getStatusLabel(
+                  order.status
+                )
+              ),
+
+            'Shipping Address':
+              safeExportText(
+                formatExportAddress(
+                  order
+                )
+              ),
+
+            'Shipping Method':
+              safeExportText(
+                order.shippingMethod
+                  ?.name ||
+                ''
+              ),
+
+            Courier:
+              safeExportText(
+                tracking.carrier ||
+                tracking.courier ||
+                ''
+              ),
+
+            'Tracking Number':
+              safeExportText(
+                tracking.trackingNumber ||
+                ''
+              ),
+
+            'Tracking URL':
+              safeExportText(
+                tracking.trackingUrl ||
+                tracking.trackingLink ||
+                ''
+              ),
+
+            'Dispatch Date':
+              formatDate(
+                tracking.dispatchDate
+              ),
+
+            'Expected Delivery':
+              formatDate(
+                tracking.expectedDeliveryDate ||
+                tracking.estimatedDelivery
+              ),
+
+            'Delivery Status':
+              safeExportText(
+                tracking.deliveryStatus ||
+                ''
+              ),
+
+            'Order Notes':
+              safeExportText(
+                order.note ||
+                tracking.customerUpdate ||
+                ''
+              ),
+          }
+        }
+      )
+    }
+  )
+}
+
+function escapeCsvValue(value) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return '""'
+  }
+
+  const text = String(value)
+    .replace(/"/g, '""')
+
+  return `"${text}"`
+}
+
+function downloadCsv(rows, fileName) {
+  if (!rows.length) {
+    return
+  }
+
+  const headers =
+    Object.keys(rows[0])
+
+  const csvRows = [
+    headers
+      .map(escapeCsvValue)
+      .join(','),
+
+    ...rows.map((row) =>
+      headers
+        .map((header) =>
+          escapeCsvValue(
+            row[header]
+          )
+        )
+        .join(',')
+    ),
+  ]
+
+  const csvContent =
+    csvRows.join('\r\n')
+
+  const blob = new Blob(
+    [
+      '\uFEFF',
+      csvContent,
+    ],
+    {
+      type: 'text/csv;charset=utf-8;',
+    }
+  )
+
+  const url =
+    URL.createObjectURL(blob)
+
+  const link =
+    document.createElement('a')
+
+  link.href = url
+  link.download = fileName
+
+  document.body.appendChild(link)
+
+  link.click()
+  link.remove()
+
+  URL.revokeObjectURL(url)
+}
 export default function AdminOrdersPage() {
   const [orders, setOrders] =
     useState([])
@@ -426,7 +740,15 @@ export default function AdminOrdersPage() {
 
   const [saving, setSaving] =
     useState(false)
+  const [
+    exportMenuOpen,
+    setExportMenuOpen,
+  ] = useState(false)
 
+  const [
+    exporting,
+    setExporting,
+  ] = useState(false)
   const [searchQuery, setSearchQuery] =
     useState('')
 
@@ -934,7 +1256,149 @@ export default function AdminOrdersPage() {
       // Clipboard may be blocked by browser permissions.
     }
   }
+  const handleExport = async (
+    format,
+    scope = 'filtered'
+  ) => {
+    const sourceOrders =
+      scope === 'all'
+        ? orders
+        : filteredOrders
 
+    if (!sourceOrders.length) {
+      setMessage({
+        type: 'error',
+        text:
+          scope === 'all'
+            ? 'There are no orders to export.'
+            : 'There are no orders in the current filtered view.',
+      })
+
+      setExportMenuOpen(false)
+      return
+    }
+
+    try {
+      setExporting(true)
+      setExportMenuOpen(false)
+
+      const rows =
+        buildOrderExportRows(
+          sourceOrders
+        )
+
+      const date =
+        new Date()
+          .toISOString()
+          .slice(0, 10)
+
+      const scopeName =
+        scope === 'all'
+          ? 'all'
+          : 'filtered'
+
+      if (format === 'csv') {
+        downloadCsv(
+          rows,
+          `lamp-and-glow-orders-${scopeName}-${date}.csv`
+        )
+      } else {
+        // Dynamically load XLSX only when admin actually exports Excel.
+        const XLSX =
+          await import('xlsx')
+
+        const worksheet =
+          XLSX.utils.json_to_sheet(
+            rows
+          )
+
+        const workbook =
+          XLSX.utils.book_new()
+
+        XLSX.utils.book_append_sheet(
+          workbook,
+          worksheet,
+          'Orders'
+        )
+
+        // Helpful readable widths in Excel / Google Sheets.
+        worksheet['!cols'] = [
+          { wch: 24 }, // Order ID
+          { wch: 22 }, // Order Date
+          { wch: 24 }, // Customer
+          { wch: 28 }, // Email
+          { wch: 18 }, // Phone
+          { wch: 16 }, // City
+          { wch: 8 },  // Item #
+          { wch: 32 }, // Product
+          { wch: 24 }, // Product ID
+          { wch: 18 }, // Base Color
+          { wch: 18 }, // Shade
+          { wch: 18 }, // Bulb
+          { wch: 10 }, // Qty
+          { wch: 18 }, // Unit
+          { wch: 18 }, // Line total
+          { wch: 20 }, // Subtotal
+          { wch: 22 }, // Shipping
+          { wch: 20 }, // Total
+          { wch: 22 }, // Payment method
+          { wch: 18 }, // Payment status
+          { wch: 22 }, // Order status
+          { wch: 45 }, // Address
+          { wch: 24 }, // Shipping method
+          { wch: 20 }, // Courier
+          { wch: 24 }, // Tracking
+          { wch: 45 }, // URL
+          { wch: 18 }, // Dispatch
+          { wch: 20 }, // Expected
+          { wch: 22 }, // Delivery status
+          { wch: 45 }, // Notes
+        ]
+
+        if (worksheet['!ref']) {
+          worksheet[
+            '!autofilter'
+          ] = {
+            ref:
+              worksheet['!ref'],
+          }
+        }
+
+        XLSX.writeFile(
+          workbook,
+          `lamp-and-glow-orders-${scopeName}-${date}.xlsx`,
+          {
+            compression: true,
+          }
+        )
+      }
+
+      setMessage({
+        type: 'success',
+        text: `${scope === 'all'
+          ? 'All orders'
+          : 'Filtered orders'
+          } exported successfully as ${format === 'csv'
+            ? 'CSV'
+            : 'Excel'
+          }.`,
+      })
+    } catch (error) {
+      console.error(
+        'Order export failed:',
+        error
+      )
+
+      setMessage({
+        type: 'error',
+        text:
+          error?.message ||
+          'Unable to export orders.',
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
   return (
     <AdminLayout>
       <div className="mx-auto w-full max-w-[1600px] space-y-6">
@@ -973,8 +1437,8 @@ export default function AdminOrdersPage() {
             >
               <RefreshCw
                 className={`h-4 w-4 ${loading
-                    ? 'animate-spin'
-                    : ''
+                  ? 'animate-spin'
+                  : ''
                   }`}
               />
 
@@ -987,9 +1451,9 @@ export default function AdminOrdersPage() {
         {message.text && (
           <div
             className={`flex items-start justify-between gap-4 rounded-2xl border p-4 ${message.type ===
-                'success'
-                ? 'border-[#C8DEC9] bg-[#F2F9F2]'
-                : 'border-[#E5C3BB] bg-[#FFF3F0]'
+              'success'
+              ? 'border-[#C8DEC9] bg-[#F2F9F2]'
+              : 'border-[#E5C3BB] bg-[#FFF3F0]'
               }`}
           >
             <div className="flex items-start gap-3">
@@ -1002,9 +1466,9 @@ export default function AdminOrdersPage() {
 
               <p
                 className={`text-sm ${message.type ===
-                    'success'
-                    ? 'text-[#476D4E]'
-                    : 'text-[#8B463C]'
+                  'success'
+                  ? 'text-[#476D4E]'
+                  : 'text-[#8B463C]'
                   }`}
               >
                 {message.text}
@@ -1067,8 +1531,8 @@ export default function AdminOrdersPage() {
               <article
                 key={label}
                 className={`rounded-[22px] border border-[#E7DED7] bg-[#FFFEFC] p-5 shadow-[0_8px_28px_rgba(58,33,23,0.04)] ${wide
-                    ? 'col-span-2 xl:col-span-1'
-                    : ''
+                  ? 'col-span-2 xl:col-span-1'
+                  : ''
                   }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -1093,7 +1557,7 @@ export default function AdminOrdersPage() {
 
         {/* SEARCH & FILTER */}
         <section className="rounded-[22px] border border-[#E7DED7] bg-[#FFFEFC] p-4 shadow-[0_8px_28px_rgba(58,33,23,0.04)] sm:p-5">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px_auto]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#9A877B]" />
 
@@ -1154,6 +1618,199 @@ export default function AdminOrdersPage() {
                 )
               )}
             </select>
+            {/* Export Orders */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setExportMenuOpen(
+                    (prev) => !prev
+                  )
+                }
+                disabled={
+                  exporting ||
+                  loading ||
+                  orders.length === 0
+                }
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4C2D21] disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+
+                {exporting
+                  ? 'Exporting...'
+                  : 'Export'}
+
+                {!exporting && (
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${exportMenuOpen
+                        ? 'rotate-180'
+                        : ''
+                      }`}
+                  />
+                )}
+              </button>
+
+              {exportMenuOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Close export menu"
+                    onClick={() =>
+                      setExportMenuOpen(false)
+                    }
+                    className="fixed inset-0 z-40 cursor-default"
+                  />
+
+                  <div className="absolute right-0 z-50 mt-2 w-[290px] overflow-hidden rounded-2xl border border-[#E3D9D2] bg-[#FFFEFC] shadow-[0_18px_50px_rgba(58,33,23,0.16)]">
+                    {/* Current Filter */}
+                    <div className="border-b border-[#EEE6E0] p-2">
+                      <div className="px-3 pb-2 pt-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#927E72]">
+                          Current View
+                        </p>
+
+                        <p className="mt-0.5 text-xs text-[#766258]">
+                          {filteredOrders.length}{' '}
+                          filtered order
+                          {filteredOrders.length === 1
+                            ? ''
+                            : 's'}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleExport(
+                            'xlsx',
+                            'filtered'
+                          )
+                        }
+                        disabled={
+                          filteredOrders.length ===
+                          0
+                        }
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-[#F7F4EF] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF3EB] text-[#4F7557]">
+                          <FileSpreadsheet className="h-4 w-4" />
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-semibold text-[#34241C]">
+                            Excel (.xlsx)
+                          </p>
+
+                          <p className="mt-0.5 text-[10px] text-[#948075]">
+                            Export filtered orders
+                          </p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleExport(
+                            'csv',
+                            'filtered'
+                          )
+                        }
+                        disabled={
+                          filteredOrders.length ===
+                          0
+                        }
+                        className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-[#F7F4EF] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F0E9E4] text-[#6B4228]">
+                          <FileText className="h-4 w-4" />
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-semibold text-[#34241C]">
+                            CSV (.csv)
+                          </p>
+
+                          <p className="mt-0.5 text-[10px] text-[#948075]">
+                            Export filtered orders
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* All Orders */}
+                    <div className="p-2">
+                      <div className="px-3 pb-2 pt-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#927E72]">
+                          All Orders
+                        </p>
+
+                        <p className="mt-0.5 text-xs text-[#766258]">
+                          {orders.length}{' '}
+                          total order
+                          {orders.length === 1
+                            ? ''
+                            : 's'}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleExport(
+                            'xlsx',
+                            'all'
+                          )
+                        }
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-[#F7F4EF]"
+                      >
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF3EB] text-[#4F7557]">
+                          <FileSpreadsheet className="h-4 w-4" />
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-semibold text-[#34241C]">
+                            Excel (.xlsx)
+                          </p>
+
+                          <p className="mt-0.5 text-[10px] text-[#948075]">
+                            Export all orders
+                          </p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleExport(
+                            'csv',
+                            'all'
+                          )
+                        }
+                        className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-[#F7F4EF]"
+                      >
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F0E9E4] text-[#6B4228]">
+                          <FileText className="h-4 w-4" />
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-semibold text-[#34241C]">
+                            CSV (.csv)
+                          </p>
+
+                          <p className="mt-0.5 text-[10px] text-[#948075]">
+                            Export all orders
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </section>
 
@@ -2299,8 +2956,8 @@ export default function AdminOrdersPage() {
                                 )
                               }
                               className={`min-h-[42px] rounded-xl border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${active
-                                  ? 'border-[#3A2117] bg-[#3A2117] text-white shadow-sm'
-                                  : 'border-[#DDD2CA] bg-[#F8F5F2] text-[#5D493E] hover:border-[#BAA496] hover:bg-[#F2EBE6]'
+                                ? 'border-[#3A2117] bg-[#3A2117] text-white shadow-sm'
+                                : 'border-[#DDD2CA] bg-[#F8F5F2] text-[#5D493E] hover:border-[#BAA496] hover:bg-[#F2EBE6]'
                                 }`}
                             >
                               {status.label}
