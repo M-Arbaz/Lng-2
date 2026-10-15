@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from '@/lib/navigation'
 import { Loader2, AlertCircle } from 'lucide-react'
 import pagesService from '../utils/pagesService'
-
+import PublicContentLayout from '../components/PublicContentLayout'
 export default function PublicPage() {
   const { slug } = useParams()
   const [page, setPage] = useState(null)
@@ -64,34 +64,11 @@ export default function PublicPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Page Header */}
-      <div className="border-b border-stone-200 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl font-bold text-stone-900 mb-4">{page.title}</h1>
-          {page.description && (
-            <p className="text-lg text-stone-600">{page.description}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Page Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-        <div
-          className="page-content text-stone-700 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: page.content }}
-        />
-
-        {/* Back to Home */}
-        <div className="mt-12 pt-8 border-t border-stone-200">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-[#FFD400] hover:text-[#5A2D0C] font-semibold transition-colors"
-          >
-            ← Back to Home
-          </Link>
-        </div>
-      </div>
-    </div>
+    <PublicContentLayout
+      title={page.title}
+      description={page.description}
+      content={page.content}
+      emptyMessage="This page does not have any published content yet."
+    />
   )
 }
