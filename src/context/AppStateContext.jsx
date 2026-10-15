@@ -36,7 +36,7 @@ export function AppStateProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [theme, setTheme] = useState('light')
-
+  const [cart, setCart] = useState([])
   const [cartNotification, setCartNotification] =
     useState(null)
 
