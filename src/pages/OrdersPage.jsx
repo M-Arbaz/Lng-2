@@ -734,9 +734,26 @@ export default function OrdersPage({
                   const items = Array.isArray(order.items)
                     ? order.items
                     : []
-
                   const timeline = getOrderTimeline(order)
                   const isExpanded = expandedOrderId === order.id
+
+                  const tracking = order.tracking || {}
+
+                  const trackingCourier =
+                    tracking.courier ||
+                    tracking.carrier ||
+                    ''
+
+                  const trackingExpectedDelivery =
+                    tracking.expectedDeliveryDate ||
+                    tracking.estimatedDelivery ||
+                    ''
+
+                  const trackingLink =
+                    tracking.trackingLink ||
+                    tracking.trackingUrl ||
+                    tracking.url ||
+                    ''
 
                   return (
                     <article
@@ -1235,43 +1252,60 @@ export default function OrdersPage({
                           </div>
                           {/* TRACKING */}
                           {order.tracking &&
-                            (order.tracking.trackingNumber ||
-                              order.tracking.courier ||
-                              order.tracking.expectedDeliveryDate) && (
+                            (tracking.trackingNumber ||
+                              trackingCourier ||
+                              trackingExpectedDelivery ||
+                              trackingLink) && (
                               <div className="mt-5 rounded-2xl border border-[#6B4228]/10 bg-[#EEE5DC] p-4">
                                 <div className="flex items-start gap-3">
                                   <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#3A2117] text-white">
                                     <Truck size={15} strokeWidth={1.7} />
                                   </div>
 
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 flex-1">
                                     <p className="text-xs font-semibold text-[#281912]">
                                       Tracking Information
                                     </p>
 
-                                    {order.tracking.courier && (
+                                    {trackingCourier && (
                                       <p className="mt-1 text-[10px] text-[#7A6559]">
-                                        Courier: {order.tracking.courier}
-                                      </p>
-                                    )}
-
-                                    {order.tracking.trackingNumber && (
-                                      <p className="mt-1 break-all text-[10px] text-[#7A6559]">
-                                        Tracking ID:{' '}
+                                        Courier:{' '}
                                         <span className="font-semibold text-[#3A2117]">
-                                          {order.tracking.trackingNumber}
+                                          {trackingCourier}
                                         </span>
                                       </p>
                                     )}
 
-                                    {order.tracking.expectedDeliveryDate && (
+                                    {tracking.trackingNumber && (
+                                      <p className="mt-1 break-all text-[10px] text-[#7A6559]">
+                                        Tracking ID:{' '}
+                                        <span className="font-semibold text-[#3A2117]">
+                                          {tracking.trackingNumber}
+                                        </span>
+                                      </p>
+                                    )}
+
+                                    {trackingExpectedDelivery && (
                                       <p className="mt-1 text-[10px] text-[#7A6559]">
                                         Expected delivery:{' '}
-                                        {formatOrderDate(
-                                          order.tracking
-                                            .expectedDeliveryDate
-                                        )}
+                                        {formatOrderDate(trackingExpectedDelivery)}
                                       </p>
+                                    )}
+
+                                    {trackingLink && (
+                                      <a
+                                        href={trackingLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="
+                mt-3 inline-flex min-h-[36px] items-center
+                rounded-full bg-[#3A2117] px-4
+                text-[10px] font-semibold text-white
+                transition-colors hover:bg-[#4A2B1F]
+              "
+                                      >
+                                        Track Package →
+                                      </a>
                                     )}
                                   </div>
                                 </div>
