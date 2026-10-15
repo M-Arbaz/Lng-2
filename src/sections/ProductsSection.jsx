@@ -95,6 +95,9 @@ export default function ProductsSection({
   const [selectedColors, setSelectedColors] = useState([])
   const [selectedLampTypes, setSelectedLampTypes] = useState([])
   const [bulbOption, setBulbOption] = useState('all')
+  const [heightRange, setHeightRange] = useState('all')
+  const [customMinHeight, setCustomMinHeight] = useState('')
+  const [customMaxHeight, setCustomMaxHeight] = useState('')
   // ── Apply local filters on top of parent's category filter ──
   const colorOptions = useMemo(() => {
     const colors = new Map()
@@ -150,6 +153,26 @@ export default function ProductsSection({
       a.name.localeCompare(b.name)
     )
   }, [externalFilteredProducts])
+
+  const getHeightInCm = (product) => {
+    const rawHeight = parseFloat(product?.dimensions?.height)
+
+    if (Number.isNaN(rawHeight)) return null
+
+    const unit = String(
+      product?.dimensions?.unit || 'cm'
+    ).toLowerCase()
+
+    if (unit === 'inch' || unit === 'in') {
+      return rawHeight * 2.54
+    }
+
+    if (unit === 'mm') {
+      return rawHeight / 10
+    }
+
+    return rawHeight
+  }
   const filteredProducts = useMemo(() => {
     const result = externalFilteredProducts.filter((product) => {
       if (showNewArrival && !product.isNewArrival) {
@@ -281,6 +304,66 @@ export default function ProductsSection({
       ) {
         return false
       }
+      const heightCm = getHeightInCm(product)
+
+      if (heightRange !== 'all') {
+        if (heightCm === null) {
+          return false
+        }
+
+        // Standardized website ranges:
+        // Small  = under 50 cm
+        // Medium = 50–100 cm
+        // Large  = above 100 cm
+        if (
+          heightRange === 'small' &&
+          heightCm >= 50
+        ) {
+          return false
+        }
+
+        if (
+          heightRange === 'medium' &&
+          (heightCm < 50 || heightCm > 100)
+        ) {
+          return false
+        }
+
+        if (
+          heightRange === 'large' &&
+          heightCm <= 100
+        ) {
+          return false
+        }
+
+        if (heightRange === 'custom') {
+          const min =
+            customMinHeight === ''
+              ? null
+              : Number(customMinHeight)
+
+          const max =
+            customMaxHeight === ''
+              ? null
+              : Number(customMaxHeight)
+
+          if (
+            min !== null &&
+            !Number.isNaN(min) &&
+            heightCm < min
+          ) {
+            return false
+          }
+
+          if (
+            max !== null &&
+            !Number.isNaN(max) &&
+            heightCm > max
+          ) {
+            return false
+          }
+        }
+      }
       return true
     })
 
@@ -361,7 +444,9 @@ export default function ProductsSection({
     selectedColors,
     selectedLampTypes,
     bulbOption,
-
+    heightRange,
+    customMinHeight,
+    customMaxHeight,
     sortBy,
     productAverageRating,
   ])
@@ -375,8 +460,8 @@ export default function ProductsSection({
     (selectedColors.length > 0 ? 1 : 0) +
     (selectedLampTypes.length > 0 ? 1 : 0) +
     (bulbOption !== 'all' ? 1 : 0) +
+    (heightRange !== 'all' ? 1 : 0) +
     (sortBy !== 'featured' ? 1 : 0)
-
   const clearAll = () => {
     setSelectedCategory('All')
     setShowNewArrival(false)
@@ -389,6 +474,9 @@ export default function ProductsSection({
     setSelectedColors([])
     setSelectedLampTypes([])
     setBulbOption('all')
+    setHeightRange('all')
+    setCustomMinHeight('')
+    setCustomMaxHeight('')
     setSortBy('featured')
   }
 
@@ -670,6 +758,68 @@ export default function ProductsSection({
               )}
             </button>
           ))}
+        </div>
+      </FilterGroup>
+      {/* SIZE / HEIGHT */}
+      <FilterGroup title="Size / Height">
+        <div className="space-y-1">
+          {[
+            ['all', 'All Sizes'],
+            ['small', 'Small — Under 50 cm'],
+            ['medium', 'Medium — 50 to 100 cm'],
+            ['large', 'Large — Above 100 cm'],
+            ['custom', 'Custom Height'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setHeightRange(value)}
+              className={classNames(
+                'flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[12px] transition-colors',
+                heightRange === value
+                  ? 'bg-[#F1E8DF] font-semibold text-[#5A3422]'
+                  : 'text-[#68584C] hover:bg-[#F8F3EE]',
+              )}
+            >
+              <span>{label}</span>
+
+              {heightRange === value && (
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#6B4228]" />
+              )}
+            </button>
+          ))}
+
+          {heightRange === 'custom' && (
+            <div className="px-1 pt-2">
+              <p className="mb-2 text-[9px] uppercase tracking-[0.12em] text-[#9A897D]">
+                Height in centimeters
+              </p>
+
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  value={customMinHeight}
+                  onChange={(e) =>
+                    setCustomMinHeight(e.target.value)
+                  }
+                  placeholder="Min"
+                  className="min-w-0 rounded-lg border border-[#DACCC0] bg-[#FFFEFC] px-2 py-2 text-xs text-[#281912] outline-none focus:border-[#6B4228]"
+                />
+
+                <input
+                  type="number"
+                  min="0"
+                  value={customMaxHeight}
+                  onChange={(e) =>
+                    setCustomMaxHeight(e.target.value)
+                  }
+                  placeholder="Max"
+                  className="min-w-0 rounded-lg border border-[#DACCC0] bg-[#FFFEFC] px-2 py-2 text-xs text-[#281912] outline-none focus:border-[#6B4228]"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </FilterGroup>
       {/* SORT BY */}
