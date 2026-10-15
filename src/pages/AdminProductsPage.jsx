@@ -18,6 +18,13 @@ export default function AdminProductsPage() {
   const [editingId, setEditingId] = useState(null)
   const [message, setMessage] = useState({ type: '', text: '' })
   const [imageUploading, setImageUploading] = useState(false)
+
+  const [colorImageUploading, setColorImageUploading] = useState(false)
+  const [shadeImageUploading, setShadeImageUploading] = useState(false)
+
+  const [colorImagePreview, setColorImagePreview] = useState('')
+  const [shadeImagePreview, setShadeImagePreview] = useState('')
+
   const [saving, setSaving] = useState(false)
   const [categories, setCategories] = useState([])
   const [categoriesLoading, setCategoriesLoading] = useState(true)
@@ -423,6 +430,11 @@ export default function AdminProductsPage() {
       ourPromiseContent: 'Every product is handcrafted with premium-quality wood and materials. We ensure:\n\n- Built and shipped within 3-5 business days.\n- Quality check before every dispatch.\n- Dedicated customer support via WhatsApp and email.',
       shippingReturnContent: 'Returns Policy:\nYou may return most new, unopened items within 7 days of delivery for a full refund. We\'ll also pay the return shipping costs if the return is a result of our error (you received an incorrect or defective item, etc.).\n\nYou should expect to receive your refund within four weeks of giving your package to the return shipper.\n\nShipping:\nWe can ship to virtually any address in Pakistan. Free standard shipping on orders over 10,000 PKR. Orders are typically dispatched within 1-2 business days.\n\nAll in-stock products will be delivered within 3 to 5 days. Custom designs will take 8 to 12 days to complete and ship.',
     })
+    setColorImagePreview('')
+    setShadeImagePreview('')
+
+    setColorImageUploading(false)
+    setShadeImageUploading(false)
     setShowForm(false)
   }
 
@@ -636,24 +648,42 @@ export default function AdminProductsPage() {
 
         {/* Add/Edit Product Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              {/* Form Header */}
-              <div className="bg-gradient-to-r from-orange-500 to-[#F5F1EA]0 px-8 py-6 flex items-center justify-between text-white">
-                <h3 className="text-2xl font-bold">
-                  {editingId ? 'Edit Product' : 'Add New Product'}
-                </h3>
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#281912]/55 p-3 backdrop-blur-[2px] sm:p-5">
+            <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-[26px] border border-[#E6DCD4] bg-[#FFFEFC] shadow-[0_30px_90px_rgba(40,25,18,0.30)]">
+              {/* Fixed Form Header */}
+              <div className="flex flex-shrink-0 items-center justify-between gap-4 border-b border-[#E8DED7] bg-[#3A2117] px-5 py-4 text-white sm:px-7 sm:py-5">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#CEBBAF]">
+                    Product Management
+                  </p>
+
+                  <h3 className="mt-1 truncate text-xl font-semibold tracking-[-0.02em] text-white sm:text-2xl">
+                    {editingId ? 'Edit Product' : 'Add New Product'}
+                  </h3>
+
+                  <p className="mt-1 hidden text-xs text-[#CEBBAF] sm:block">
+                    {editingId
+                      ? 'Update product information, media, variants and storefront settings.'
+                      : 'Create a new product with media, pricing, variants and storefront details.'}
+                  </p>
+                </div>
+
                 <button
+                  type="button"
                   onClick={resetForm}
-                  className="p-1 hover:bg-white/20 rounded-lg transition"
+                  disabled={saving}
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Close product form"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
               {/* Form Content */}
-              <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form
+                onSubmit={handleSubmit}
+                className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-6 sm:px-7 sm:py-7"
+              >                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Product Name */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1145,58 +1175,173 @@ export default function AdminProductsPage() {
                           type="text"
                           id="newColorImage"
                           placeholder="https://... or upload below"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          onChange={(e) => setColorImagePreview(e.target.value.trim())}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B4228]"
                         />
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center gap-3">
-                      <label className={`flex-1 h-20 border-2 border-dashed rounded-lg transition flex flex-col items-center justify-center text-center cursor-pointer border-gray-300 hover:border-orange-500`}>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                      {/* Upload Area */}
+                      <label
+                        className={`flex min-h-24 flex-1 flex-col items-center justify-center rounded-xl border-2 border-dashed text-center transition ${colorImageUploading
+                          ? 'cursor-not-allowed border-[#CDBDB2] bg-[#F7F4EF]'
+                          : 'cursor-pointer border-[#D8CEC7] bg-[#FFFEFC] hover:border-[#6B4228] hover:bg-[#FAF7F3]'
+                          }`}
+                      >
                         <input
                           type="file"
                           accept="image/*"
                           id="newColorImageUpload"
                           className="hidden"
+                          disabled={colorImageUploading}
                           onChange={async (e) => {
                             const file = e.target.files?.[0]
+
                             if (!file) return
+
+                            const localPreview = URL.createObjectURL(file)
+
+                            setColorImagePreview(localPreview)
+                            setColorImageUploading(true)
+
                             try {
-                              const url =
-                                await uploadToXcdn(
-                                  file,
-                                  'color-variants'
-                                )
-                              document.getElementById('newColorImage').value = url
+                              const url = await uploadToXcdn(
+                                file,
+                                'color-variants'
+                              )
+
+                              const imageInput =
+                                document.getElementById('newColorImage')
+
+                              if (imageInput) {
+                                imageInput.value = url
+                              }
+
+                              setColorImagePreview(url)
                             } catch (err) {
-                              setMessage({ type: 'error', text: `Image upload failed: ${err.message}` })
+                              console.error(
+                                'Color variant image upload failed:',
+                                err
+                              )
+
+                              setColorImagePreview('')
+
+                              setMessage({
+                                type: 'error',
+                                text: `Color image upload failed: ${err.message}`,
+                              })
+                            } finally {
+                              setColorImageUploading(false)
+
+                              URL.revokeObjectURL(localPreview)
+
+                              e.target.value = ''
                             }
-                            e.target.value = ''
                           }}
                         />
-                        <ImagePlus className="w-5 h-5 text-gray-400 mb-1" />
-                        <span className="text-xs text-gray-500">Upload Image</span>
+
+                        {colorImageUploading ? (
+                          <>
+                            <Loader2 className="mb-2 h-6 w-6 animate-spin text-[#6B4228]" />
+
+                            <span className="text-xs font-semibold text-[#6B4228]">
+                              Uploading...
+                            </span>
+
+                            <span className="mt-1 text-[10px] text-[#988479]">
+                              Please wait
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <ImagePlus className="mb-2 h-6 w-6 text-[#8C776B]" />
+
+                            <span className="text-xs font-semibold text-[#4D392F]">
+                              Upload Color Image
+                            </span>
+
+                            <span className="mt-1 text-[10px] text-[#988479]">
+                              Click to select an image
+                            </span>
+                          </>
+                        )}
                       </label>
+
+                      {/* Selected Image Preview */}
+                      {colorImagePreview && (
+                        <div className="relative h-24 w-full overflow-hidden rounded-xl border border-[#DDD2CA] bg-[#F4EFEB] sm:w-28">
+                          <img
+                            src={colorImagePreview}
+                            alt="Selected color preview"
+                            className="h-full w-full object-cover"
+                          />
+
+                          {colorImageUploading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-[#281912]/40 backdrop-blur-[1px]">
+                              <Loader2 className="h-6 w-6 animate-spin text-white" />
+                            </div>
+                          )}
+
+                          {!colorImageUploading && (
+                            <div className="absolute bottom-1.5 left-1.5 rounded-md bg-[#3A2117]/90 px-2 py-1 text-[9px] font-semibold text-white">
+                              Preview
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Add Color */}
                       <button
                         type="button"
+                        disabled={colorImageUploading}
                         onClick={() => {
-                          const nameInput = document.getElementById('newColorName')
-                          const imageInput = document.getElementById('newColorImage')
-                          const name = nameInput.value.trim()
-                          const image = imageInput.value.trim()
+                          const nameInput =
+                            document.getElementById('newColorName')
+
+                          const imageInput =
+                            document.getElementById('newColorImage')
+
+                          const name =
+                            nameInput?.value.trim() || ''
+
+                          const image =
+                            imageInput?.value.trim() || ''
+
                           if (!name || !image) {
-                            setMessage({ type: 'error', text: 'Please enter both color name and image URL' })
+                            setMessage({
+                              type: 'error',
+                              text: 'Please enter both color name and image.',
+                            })
+
                             return
                           }
+
                           setFormData((prev) => ({
                             ...prev,
-                            colorVariants: [...prev.colorVariants, { name, image }],
+                            colorVariants: [
+                              ...prev.colorVariants,
+                              {
+                                name,
+                                image,
+                              },
+                            ],
                           }))
+
                           nameInput.value = ''
                           imageInput.value = ''
-                          setMessage({ type: '', text: '' })
+
+                          setColorImagePreview('')
+
+                          setMessage({
+                            type: '',
+                            text: '',
+                          })
                         }}
-                        className="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition"
+                        className="min-h-12 rounded-xl bg-[#3A2117] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4D2D21] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-24"
                       >
-                        Add Color
+                        {colorImageUploading
+                          ? 'Uploading...'
+                          : 'Add Color'}
                       </button>
                     </div>
                   </div>
@@ -1258,58 +1403,173 @@ export default function AdminProductsPage() {
                           type="text"
                           id="newShadeImage"
                           placeholder="https://... or upload below"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          onChange={(e) => setShadeImagePreview(e.target.value.trim())}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6B4228]"
                         />
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center gap-3">
-                      <label className={`flex-1 h-20 border-2 border-dashed rounded-lg transition flex flex-col items-center justify-center text-center cursor-pointer border-gray-300 hover:border-orange-500`}>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                      {/* Upload Area */}
+                      <label
+                        className={`flex min-h-24 flex-1 flex-col items-center justify-center rounded-xl border-2 border-dashed text-center transition ${shadeImageUploading
+                          ? 'cursor-not-allowed border-[#CDBDB2] bg-[#F7F4EF]'
+                          : 'cursor-pointer border-[#D8CEC7] bg-[#FFFEFC] hover:border-[#6B4228] hover:bg-[#FAF7F3]'
+                          }`}
+                      >
                         <input
                           type="file"
                           accept="image/*"
                           id="newShadeImageUpload"
                           className="hidden"
+                          disabled={shadeImageUploading}
                           onChange={async (e) => {
                             const file = e.target.files?.[0]
+
                             if (!file) return
+
+                            const localPreview = URL.createObjectURL(file)
+
+                            setShadeImagePreview(localPreview)
+                            setShadeImageUploading(true)
+
                             try {
-                              const url =
-                                await uploadToXcdn(
-                                  file,
-                                  'shade-colors'
-                                )
-                              document.getElementById('newShadeImage').value = url
+                              const url = await uploadToXcdn(
+                                file,
+                                'shade-colors'
+                              )
+
+                              const imageInput =
+                                document.getElementById('newShadeImage')
+
+                              if (imageInput) {
+                                imageInput.value = url
+                              }
+
+                              setShadeImagePreview(url)
                             } catch (err) {
-                              setMessage({ type: 'error', text: `Image upload failed: ${err.message}` })
+                              console.error(
+                                'Shade image upload failed:',
+                                err
+                              )
+
+                              setShadeImagePreview('')
+
+                              setMessage({
+                                type: 'error',
+                                text: `Shade image upload failed: ${err.message}`,
+                              })
+                            } finally {
+                              setShadeImageUploading(false)
+
+                              URL.revokeObjectURL(localPreview)
+
+                              e.target.value = ''
                             }
-                            e.target.value = ''
                           }}
                         />
-                        <ImagePlus className="w-5 h-5 text-gray-400 mb-1" />
-                        <span className="text-xs text-gray-500">Upload Image</span>
+
+                        {shadeImageUploading ? (
+                          <>
+                            <Loader2 className="mb-2 h-6 w-6 animate-spin text-[#6B4228]" />
+
+                            <span className="text-xs font-semibold text-[#6B4228]">
+                              Uploading...
+                            </span>
+
+                            <span className="mt-1 text-[10px] text-[#988479]">
+                              Please wait
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <ImagePlus className="mb-2 h-6 w-6 text-[#8C776B]" />
+
+                            <span className="text-xs font-semibold text-[#4D392F]">
+                              Upload Shade Image
+                            </span>
+
+                            <span className="mt-1 text-[10px] text-[#988479]">
+                              Click to select an image
+                            </span>
+                          </>
+                        )}
                       </label>
+
+                      {/* Selected Image Preview */}
+                      {shadeImagePreview && (
+                        <div className="relative h-24 w-full overflow-hidden rounded-xl border border-[#DDD2CA] bg-[#F4EFEB] sm:w-28">
+                          <img
+                            src={shadeImagePreview}
+                            alt="Selected shade preview"
+                            className="h-full w-full object-cover"
+                          />
+
+                          {shadeImageUploading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-[#281912]/40 backdrop-blur-[1px]">
+                              <Loader2 className="h-6 w-6 animate-spin text-white" />
+                            </div>
+                          )}
+
+                          {!shadeImageUploading && (
+                            <div className="absolute bottom-1.5 left-1.5 rounded-md bg-[#3A2117]/90 px-2 py-1 text-[9px] font-semibold text-white">
+                              Preview
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Add Shade */}
                       <button
                         type="button"
+                        disabled={shadeImageUploading}
                         onClick={() => {
-                          const nameInput = document.getElementById('newShadeName')
-                          const imageInput = document.getElementById('newShadeImage')
-                          const name = nameInput.value.trim()
-                          const image = imageInput.value.trim()
+                          const nameInput =
+                            document.getElementById('newShadeName')
+
+                          const imageInput =
+                            document.getElementById('newShadeImage')
+
+                          const name =
+                            nameInput?.value.trim() || ''
+
+                          const image =
+                            imageInput?.value.trim() || ''
+
                           if (!name || !image) {
-                            setMessage({ type: 'error', text: 'Please enter both shade name and image URL' })
+                            setMessage({
+                              type: 'error',
+                              text: 'Please enter both shade name and image.',
+                            })
+
                             return
                           }
+
                           setFormData((prev) => ({
                             ...prev,
-                            shadeColors: [...prev.shadeColors, { name, image }],
+                            shadeColors: [
+                              ...prev.shadeColors,
+                              {
+                                name,
+                                image,
+                              },
+                            ],
                           }))
+
                           nameInput.value = ''
                           imageInput.value = ''
-                          setMessage({ type: '', text: '' })
+
+                          setShadeImagePreview('')
+
+                          setMessage({
+                            type: '',
+                            text: '',
+                          })
                         }}
-                        className="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition"
+                        className="min-h-12 rounded-xl bg-[#3A2117] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4D2D21] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-24"
                       >
-                        Add Shade
+                        {shadeImageUploading
+                          ? 'Uploading...'
+                          : 'Add Shade'}
                       </button>
                     </div>
                   </div>
@@ -1578,34 +1838,57 @@ export default function AdminProductsPage() {
                     minHeight={220}
                   />
                 </div>
+                {/* Sticky Action Footer */}
+                <div className="sticky -bottom-6 z-30 -mx-5 mt-8 border-t border-[#E5DAD2] bg-[#FFFEFC]/95 px-5 py-4 shadow-[0_-12px_30px_rgba(58,33,23,0.08)] backdrop-blur-xl sm:-bottom-7 sm:-mx-7 sm:px-7">
+                  <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:items-center sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      disabled={saving}
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#DCCFC6] bg-white px-5 text-sm font-semibold text-[#5A4438] transition hover:border-[#BDA99C] hover:bg-[#F7F4EF] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
 
-                {/* Action Buttons */}
-                <div className="flex gap-3 pt-6 border-t border-gray-200">
-                  <button
-                    type="submit"
-                    disabled={saving || imageUploading}
-                    className="flex-1 bg-gradient-to-r from-orange-500 to-[#F5F1EA]0 text-white font-semibold py-3 rounded-lg hover:shadow-lg transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {saving && formData.status !== 'draft' && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {editingId ? 'Update & Publish' : 'Publish Product'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveAsDraft}
-                    disabled={saving || imageUploading}
-                    className="flex-1 bg-gray-600 text-white font-semibold py-3 rounded-lg hover:bg-gray-700 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {saving && formData.status === 'draft' && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {editingId ? 'Save as Draft' : 'Save as Draft'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    disabled={saving}
-                    className="flex-1 bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-300 transition disabled:opacity-60"
-                  >
-                    Cancel
-                  </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveAsDraft}
+                      disabled={
+                        saving ||
+                        imageUploading ||
+                        colorImageUploading ||
+                        shadeImageUploading
+                      } className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[#BDAA9D] bg-[#F3EDE8] px-5 text-sm font-semibold text-[#3A2117] transition hover:bg-[#EAE0D9] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {saving && formData.status === 'draft' && (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
+
+                      Save as Draft
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={
+                        saving ||
+                        imageUploading ||
+                        colorImageUploading ||
+                        shadeImageUploading
+                      } className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-6 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(58,33,23,0.20)] transition hover:bg-[#4C2D21] hover:shadow-[0_12px_28px_rgba(58,33,23,0.26)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {saving && formData.status !== 'draft' && (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
+
+                      {editingId ? 'Update & Publish' : 'Publish Product'}
+                    </button>
+                  </div>
+
+                  {imageUploading && (
+                    <p className="mt-2 text-right text-[11px] text-[#8A7468]">
+                      Please wait for media uploads to finish before saving.
+                    </p>
+                  )}
                 </div>
               </form>
             </div>
