@@ -182,7 +182,129 @@ function getStatusMeta(status) {
     icon: Package,
   }
 }
+const TRACKING_STEPS = [
+  { key: 'pending', label: 'Order Placed' },
+  { key: 'confirmed', label: 'Confirmed' },
+  { key: 'processing', label: 'Processing' },
+  { key: 'in_production', label: 'In Production' },
+  { key: 'ready', label: 'Ready' },
+  { key: 'shipped', label: 'Shipped' },
+  { key: 'out_for_delivery', label: 'Out for Delivery' },
+  { key: 'delivered', label: 'Delivered' },
+]
 
+function normalizeTrackingStatus(value) {
+  const status = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+
+  const aliases = {
+    approved: 'confirmed',
+    production: 'in_production',
+    dispatched: 'shipped',
+    canceled: 'cancelled',
+  }
+
+  return aliases[status] || status
+}
+
+function formatTrackingDate(value) {
+  if (!value) return ''
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return ''
+
+  return date.toLocaleString('en-PK', {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function getOrderTimeline(order) {
+  const history = Array.isArray(order.statusHistory)
+    ? order.statusHistory
+    : []
+
+  const currentStatus = normalizeTrackingStatus(order.status)
+
+  const eventsByStatus = {}
+
+  history.forEach((event) => {
+    const key = normalizeTrackingStatus(event?.status)
+
+    if (!key) return
+
+    eventsByStatus[key] = event
+  })
+
+  const currentIndex = TRACKING_STEPS.findIndex(
+    (step) => step.key === currentStatus
+  )
+
+  const historyIndexes = history
+    .map((event) => {
+      const key = normalizeTrackingStatus(event?.status)
+
+      return TRACKING_STEPS.findIndex(
+        (step) => step.key === key
+      )
+    })
+    .filter((index) => index >= 0)
+
+  const furthestHistoryIndex =
+    historyIndexes.length > 0
+      ? Math.max(...historyIndexes)
+      : -1
+
+  const furthestIndex =
+    currentIndex >= 0
+      ? currentIndex
+      : furthestHistoryIndex
+
+  const isStopped = ['cancelled', 'returned'].includes(
+    currentStatus
+  )
+
+  const steps = TRACKING_STEPS.map((step, index) => {
+    let state = 'upcoming'
+
+    if (isStopped) {
+      if (index <= furthestHistoryIndex) {
+        state = 'completed'
+      }
+    } else if (currentIndex >= 0) {
+      if (index < currentIndex) {
+        state = 'completed'
+      } else if (index === currentIndex) {
+        state = 'current'
+      }
+    } else if (index <= furthestIndex) {
+      state = 'completed'
+    }
+
+    const event = eventsByStatus[step.key]
+
+    return {
+      ...step,
+      state,
+      at: event?.at || '',
+    }
+  })
+
+  return {
+    steps,
+    currentStatus,
+    isStopped,
+    isCustom:
+      currentStatus &&
+      currentIndex === -1 &&
+      !isStopped,
+  }
+}
 export default function OrdersPage({
   orders = [],
   theme = 'light',
@@ -489,6 +611,8 @@ export default function OrdersPage({
                   ? order.items
                   : []
 
+                const timeline = getOrderTimeline(order)
+
                 return (
                   <article
                     key={order.id}
@@ -777,7 +901,188 @@ export default function OrdersPage({
                           </div>
                         </div>
                       )}
+                      {/* ORDER PROGRESS */}
+                      {/* ORDER PROGRESS */}
+                      <div
+                        className={
+                          isDark
+                            ? 'mt-5 rounded-[22px] border border-white/10 bg-white/[0.025] p-4 sm:p-5'
+                            : 'mt-5 rounded-[22px] border border-[#3A2117]/10 bg-[#F7F4EF] p-4 sm:p-5'
+                        }
+                      >
+                        <div className="mb-6 flex items-start justify-between gap-4">
+                          <div>
+                            <p
+                              className={
+                                isDark
+                                  ? 'text-[9px] font-semibold uppercase tracking-[0.16em] text-stone-500'
+                                  : 'text-[9px] font-semibold uppercase tracking-[0.16em] text-[#8A7569]'
+                              }
+                            >
+                              Order Progress
+                            </p>
 
+                            <p
+                              className={
+                                isDark
+                                  ? 'mt-1 text-sm font-semibold text-white'
+                                  : 'mt-1 text-sm font-semibold text-[#281912]'
+                              }
+                            >
+                              Track your order
+                            </p>
+                          </div>
+
+                          {!timeline.isStopped && (
+                            <span
+                              className={
+                                isDark
+                                  ? 'rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[9px] font-semibold text-stone-300'
+                                  : 'rounded-full border border-[#3A2117]/10 bg-[#FFFEFC] px-3 py-1 text-[9px] font-semibold text-[#6B4228]'
+                              }
+                            >
+                              Live updates
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="-mx-1 overflow-x-auto px-1 pb-2">
+                          <div className="flex min-w-[900px] items-start">
+                            {timeline.steps.map((step, index) => {
+                              const completed = step.state === 'completed'
+                              const current = step.state === 'current'
+
+                              return (
+                                <div
+                                  key={step.key}
+                                  className="relative flex min-w-0 flex-1 flex-col items-center text-center"
+                                >
+                                  {/* CONNECTOR */}
+                                  {index !== timeline.steps.length - 1 && (
+                                    <div
+                                      className={`absolute left-1/2 top-[14px] h-px w-full ${completed
+                                          ? 'bg-[#6B4228]'
+                                          : isDark
+                                            ? 'bg-white/10'
+                                            : 'bg-[#3A2117]/12'
+                                        }`}
+                                    />
+                                  )}
+
+                                  {/* STATUS ICON */}
+                                  <div
+                                    className={`relative z-10 grid h-7 w-7 place-items-center rounded-full border ${completed
+                                        ? 'border-[#6B4228] bg-[#6B4228] text-white'
+                                        : current
+                                          ? 'border-[#3A2117] bg-[#3A2117] text-white shadow-[0_0_0_4px_rgba(58,33,23,0.09)]'
+                                          : isDark
+                                            ? 'border-white/15 bg-[#29221E] text-stone-600'
+                                            : 'border-[#3A2117]/15 bg-[#FFFEFC] text-[#B6A69C]'
+                                      }`}
+                                  >
+                                    {completed ? (
+                                      <CheckCircle2 size={14} strokeWidth={2} />
+                                    ) : current ? (
+                                      <Clock3 size={13} strokeWidth={2} />
+                                    ) : (
+                                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                    )}
+                                  </div>
+
+                                  {/* LABEL */}
+                                  <p
+                                    className={`mt-3 px-1 text-[10px] leading-4 ${current
+                                        ? isDark
+                                          ? 'font-semibold text-white'
+                                          : 'font-semibold text-[#281912]'
+                                        : completed
+                                          ? isDark
+                                            ? 'font-medium text-stone-300'
+                                            : 'font-medium text-[#5F4C42]'
+                                          : isDark
+                                            ? 'text-stone-600'
+                                            : 'text-[#A18F84]'
+                                      }`}
+                                  >
+                                    {step.label}
+                                  </p>
+
+                                  {/* DATE / STATE */}
+                                  {step.at ? (
+                                    <span
+                                      className={
+                                        isDark
+                                          ? 'mt-1 px-1 text-[8px] leading-3 text-stone-500'
+                                          : 'mt-1 px-1 text-[8px] leading-3 text-[#9A8171]'
+                                      }
+                                    >
+                                      {formatTrackingDate(step.at)}
+                                    </span>
+                                  ) : current ? (
+                                    <span
+                                      className={
+                                        isDark
+                                          ? 'mt-1 text-[8px] text-stone-400'
+                                          : 'mt-1 text-[8px] font-medium text-[#6B4228]'
+                                      }
+                                    >
+                                      Current stage
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className={
+                                        isDark
+                                          ? 'mt-1 text-[8px] text-stone-600'
+                                          : 'mt-1 text-[8px] text-[#AD9D93]'
+                                      }
+                                    >
+                                      Upcoming
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {timeline.isStopped && (
+                          <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+                            <p className="text-xs font-semibold text-rose-800">
+                              {timeline.currentStatus === 'returned'
+                                ? 'Order Returned'
+                                : 'Order Cancelled'}
+                            </p>
+
+                            <p className="mt-1 text-[10px] leading-5 text-rose-700">
+                              This order will not continue through the remaining delivery stages.
+                            </p>
+                          </div>
+                        )}
+
+                        {timeline.isCustom && (
+                          <div
+                            className={
+                              isDark
+                                ? 'mt-5 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3'
+                                : 'mt-5 rounded-2xl border border-[#6B4228]/15 bg-[#EEE5DC] px-4 py-3'
+                            }
+                          >
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.13em] text-[#8A654D]">
+                              Current Update
+                            </p>
+
+                            <p
+                              className={
+                                isDark
+                                  ? 'mt-1 text-xs font-semibold text-white'
+                                  : 'mt-1 text-xs font-semibold text-[#281912]'
+                              }
+                            >
+                              {getStatusMeta(order.status).label}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                       {/* TRACKING */}
                       {order.tracking &&
                         (order.tracking.trackingNumber ||
