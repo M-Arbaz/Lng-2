@@ -7,7 +7,7 @@ import { slugify } from '../utils/slugify.js';
 import {
   User, Mail, Phone, MapPin, AlertCircle, Loader, CheckCircle,
   ShoppingBag, Heart, MapPin as MapPinIcon, Star, Bell, Settings,
-  LogOut, SlidersHorizontal, Home, Camera
+  LogOut, SlidersHorizontal, Home, Camera, Trash2
 } from 'lucide-react';
 
 export default function ProfileSection({
@@ -21,6 +21,7 @@ export default function ProfileSection({
 }) {
   const [profileImage, setProfileImage] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [removingImage, setRemovingImage] = useState(false);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('orders');   // desktop sidebar tab
   const [mobileTab, setMobileTab] = useState('orders');   // mobile tab: orders | wishlist | details
@@ -46,7 +47,7 @@ export default function ProfileSection({
         state: profile.state || '',
         postalCode: profile.postalCode || ''
       });
-      if (profile.photoURL) setProfileImage(profile.photoURL);
+      setProfileImage(profile.photoURL || null);
     }
   }, [profile]);
 
@@ -81,7 +82,39 @@ export default function ProfileSection({
       setUploadingImage(false);
     }
   };
+  const handleRemoveImage = async () => {
+    if (
+      !profile?.uid ||
+      (!profile?.photoURL && !profileImage) ||
+      removingImage
+    ) {
+      return
+    }
 
+    setError('')
+    setMessage('')
+    setRemovingImage(true)
+
+    try {
+      await handleProfileChange('photoURL', null)
+
+      setProfileImage(null)
+
+      setMessage('Profile image removed!')
+
+      setTimeout(() => {
+        setMessage('')
+      }, 3000)
+    } catch (err) {
+      console.error('Profile image removal failed:', err)
+
+      setError(
+        err?.message || 'Failed to remove profile image'
+      )
+    } finally {
+      setRemovingImage(false)
+    }
+  }
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -583,7 +616,36 @@ export default function ProfileSection({
                 </div>
               )}
             </div>
-
+            {(profile?.photoURL || profileImage) && (
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                disabled={removingImage || uploadingImage}
+                title="Remove profile photo"
+                aria-label="Remove profile photo"
+                className="
+      absolute bottom-0 left-0
+      grid h-9 w-9 place-items-center
+      rounded-full border-[3px] border-[#3A2117]
+      bg-[#FFFEFC] text-rose-700
+      shadow-lg transition-transform
+      active:scale-95
+      disabled:cursor-not-allowed disabled:opacity-60
+    "
+              >
+                {removingImage ? (
+                  <Loader
+                    size={14}
+                    className="animate-spin"
+                  />
+                ) : (
+                  <Trash2
+                    size={14}
+                    strokeWidth={1.8}
+                  />
+                )}
+              </button>
+            )}
             <label
               className="
               absolute bottom-0 right-0 grid h-9 w-9 cursor-pointer
@@ -1273,7 +1335,36 @@ export default function ProfileSection({
                     </div>
                   )}
                 </div>
-
+                {(profile?.photoURL || profileImage) && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    disabled={removingImage || uploadingImage}
+                    title="Remove profile photo"
+                    aria-label="Remove profile photo"
+                    className="
+      absolute bottom-0 left-0
+      grid h-9 w-9 place-items-center
+      rounded-full border-[3px] border-[#3A2117]
+      bg-[#FFFEFC] text-rose-700
+      shadow-lg transition-transform
+      hover:scale-105
+      disabled:cursor-not-allowed disabled:opacity-60
+    "
+                  >
+                    {removingImage ? (
+                      <Loader
+                        size={14}
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <Trash2
+                        size={14}
+                        strokeWidth={1.8}
+                      />
+                    )}
+                  </button>
+                )}
                 <label
                   className="
                   absolute bottom-0 right-0 grid h-9 w-9 cursor-pointer

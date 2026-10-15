@@ -236,11 +236,35 @@ export const AuthProvider = ({ children }) => {
       if (!firebaseUser) throw new Error('No user logged in');
 
       // Update Firebase profile if displayName is provided
-      if (profileData.displayName) {
-        await firebaseUpdateProfile(firebaseUser, {
-          displayName: profileData.displayName,
-          photoURL: profileData.photoURL || firebaseUser.photoURL,
-        });
+      const hasDisplayName = Object.prototype.hasOwnProperty.call(
+        profileData,
+        'displayName'
+      )
+
+      const hasPhotoURL = Object.prototype.hasOwnProperty.call(
+        profileData,
+        'photoURL'
+      )
+
+      // Keep Firebase Auth profile in sync with Firestore.
+      // Property checks are important so photoURL can also be cleared.
+      if (hasDisplayName || hasPhotoURL) {
+        const authProfileUpdates = {}
+
+        if (hasDisplayName) {
+          authProfileUpdates.displayName =
+            profileData.displayName || null
+        }
+
+        if (hasPhotoURL) {
+          authProfileUpdates.photoURL =
+            profileData.photoURL || null
+        }
+
+        await firebaseUpdateProfile(
+          firebaseUser,
+          authProfileUpdates
+        )
       }
 
       // Update Firestore user document
