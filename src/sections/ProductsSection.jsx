@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import ProductCard from '../components/ProductCard.jsx'
 import classNames from '../utils/classNames.js'
 import { getDiscountInfo } from '../utils/discountHelpers.js'
@@ -34,7 +34,7 @@ function Chevron({ open }) {
 }
 
 /* ── Collapsible filter group ── */
-function FilterGroup({ title, children, defaultOpen = true }) {
+function FilterGroup({ title, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen)
 
   return (
@@ -87,22 +87,198 @@ export default function ProductsSection({
   const [showDiscount, setShowDiscount] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  const [priceRange, setPriceRange] = useState('all')
+  const [customMinPrice, setCustomMinPrice] = useState('')
+  const [customMaxPrice, setCustomMaxPrice] = useState('')
+  const [availability, setAvailability] = useState('all')
+  const [sortBy, setSortBy] = useState('featured')
+
   // ── Apply local filters on top of parent's category filter ──
-  const filteredProducts = externalFilteredProducts.filter((p) => {
-    if (showNewArrival && !p.isNewArrival) return false
-    if (showDiscount && !getDiscountInfo(p).hasDiscount) return false
-    return true
-  })
+  const filteredProducts = useMemo(() => {
+    const result = externalFilteredProducts.filter((product) => {
+      if (showNewArrival && !product.isNewArrival) {
+        return false
+      }
+
+      const discountInfo = getDiscountInfo(product)
+
+      if (showDiscount && !discountInfo.hasDiscount) {
+        return false
+      }
+
+      const price = Number(discountInfo.discountedPrice || 0)
+      const stock = Number(product.stock || 0)
+
+      if (priceRange === 'under-10000' && price >= 10000) {
+        return false
+      }
+
+      if (
+        priceRange === '10000-20000' &&
+        (price < 10000 || price > 20000)
+      ) {
+        return false
+      }
+
+      if (
+        priceRange === '20000-30000' &&
+        (price < 20000 || price > 30000)
+      ) {
+        return false
+      }
+
+      if (priceRange === 'above-30000' && price <= 30000) {
+        return false
+      }
+
+      if (priceRange === 'custom') {
+        const min =
+          customMinPrice === ''
+            ? null
+            : Number(customMinPrice)
+
+        const max =
+          customMaxPrice === ''
+            ? null
+            : Number(customMaxPrice)
+
+        if (
+          min !== null &&
+          !Number.isNaN(min) &&
+          price < min
+        ) {
+          return false
+        }
+
+        if (
+          max !== null &&
+          !Number.isNaN(max) &&
+          price > max
+        ) {
+          return false
+        }
+      }
+
+      if (
+        availability === 'in-stock' &&
+        stock <= 0
+      ) {
+        return false
+      }
+
+      if (
+        availability === 'out-of-stock' &&
+        stock > 0
+      ) {
+        return false
+      }
+
+      if (
+        availability === 'on-sale' &&
+        !discountInfo.hasDiscount
+      ) {
+        return false
+      }
+
+      return true
+    })
+
+    const getCreatedTime = (value) => {
+      if (!value) return 0
+
+      if (typeof value?.toDate === 'function') {
+        return value.toDate().getTime()
+      }
+
+      if (typeof value?.seconds === 'number') {
+        return value.seconds * 1000
+      }
+
+      const time = new Date(value).getTime()
+
+      return Number.isNaN(time) ? 0 : time
+    }
+
+    return [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return (
+            getCreatedTime(b.createdAt) -
+            getCreatedTime(a.createdAt)
+          )
+
+        case 'best-selling':
+          return (
+            Number(
+              b.salesCount ??
+              b.soldCount ??
+              b.totalSold ??
+              0
+            ) -
+            Number(
+              a.salesCount ??
+              a.soldCount ??
+              a.totalSold ??
+              0
+            )
+          )
+
+        case 'price-low-high':
+          return (
+            getDiscountInfo(a).discountedPrice -
+            getDiscountInfo(b).discountedPrice
+          )
+
+        case 'price-high-low':
+          return (
+            getDiscountInfo(b).discountedPrice -
+            getDiscountInfo(a).discountedPrice
+          )
+
+        case 'highest-rated':
+          return (
+            Number(productAverageRating[b.id] || 0) -
+            Number(productAverageRating[a.id] || 0)
+          )
+
+        case 'featured':
+        default:
+          return (
+            Number(Boolean(b.featured)) -
+            Number(Boolean(a.featured))
+          )
+      }
+    })
+  }, [
+    externalFilteredProducts,
+    showNewArrival,
+    showDiscount,
+    priceRange,
+    customMinPrice,
+    customMaxPrice,
+    availability,
+    sortBy,
+    productAverageRating,
+  ])
 
   const activeFilterCount =
     (selectedCategory !== 'All' ? 1 : 0) +
     (showNewArrival ? 1 : 0) +
-    (showDiscount ? 1 : 0)
+    (showDiscount ? 1 : 0) +
+    (priceRange !== 'all' ? 1 : 0) +
+    (availability !== 'all' ? 1 : 0) +
+    (sortBy !== 'featured' ? 1 : 0)
 
   const clearAll = () => {
     setSelectedCategory('All')
     setShowNewArrival(false)
     setShowDiscount(false)
+
+    setPriceRange('all')
+    setCustomMinPrice('')
+    setCustomMaxPrice('')
+    setAvailability('all')
+    setSortBy('featured')
   }
 
   /* ── Sidebar content (shared between desktop + mobile drawer) ── */
@@ -151,7 +327,121 @@ export default function ProductsSection({
           ))}
         </div>
       </FilterGroup>
+      {/* PRICE */}
+      <FilterGroup title="Price">
+        <div className="space-y-1">
+          {[
+            ['all', 'All Prices'],
+            ['under-10000', 'Under Rs. 10,000'],
+            ['10000-20000', 'Rs. 10,000 – 20,000'],
+            ['20000-30000', 'Rs. 20,000 – 30,000'],
+            ['above-30000', 'Above Rs. 30,000'],
+            ['custom', 'Custom Range'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPriceRange(value)}
+              className={classNames(
+                'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[12px] transition-colors',
+                priceRange === value
+                  ? 'bg-[#F1E8DF] font-semibold text-[#5A3422]'
+                  : 'text-[#68584C] hover:bg-[#F8F3EE]',
+              )}
+            >
+              {label}
 
+              {priceRange === value && (
+                <span className="h-1.5 w-1.5 rounded-full bg-[#6B4228]" />
+              )}
+            </button>
+          ))}
+
+          {priceRange === 'custom' && (
+            <div className="grid grid-cols-2 gap-2 px-1 pt-2">
+              <input
+                type="number"
+                min="0"
+                value={customMinPrice}
+                onChange={(e) =>
+                  setCustomMinPrice(e.target.value)
+                }
+                placeholder="Min"
+                className="min-w-0 rounded-lg border border-[#DACCC0] bg-[#FFFEFC] px-2 py-2 text-xs text-[#281912] outline-none focus:border-[#6B4228]"
+              />
+
+              <input
+                type="number"
+                min="0"
+                value={customMaxPrice}
+                onChange={(e) =>
+                  setCustomMaxPrice(e.target.value)
+                }
+                placeholder="Max"
+                className="min-w-0 rounded-lg border border-[#DACCC0] bg-[#FFFEFC] px-2 py-2 text-xs text-[#281912] outline-none focus:border-[#6B4228]"
+              />
+            </div>
+          )}
+        </div>
+      </FilterGroup>
+      {/* AVAILABILITY */}
+      <FilterGroup title="Availability">
+        <div className="space-y-1">
+          {[
+            ['all', 'All'],
+            ['in-stock', 'In Stock'],
+            ['out-of-stock', 'Out of Stock'],
+            ['on-sale', 'On Sale'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setAvailability(value)}
+              className={classNames(
+                'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[12px] transition-colors',
+                availability === value
+                  ? 'bg-[#F1E8DF] font-semibold text-[#5A3422]'
+                  : 'text-[#68584C] hover:bg-[#F8F3EE]',
+              )}
+            >
+              {label}
+
+              {availability === value && (
+                <span className="h-1.5 w-1.5 rounded-full bg-[#6B4228]" />
+              )}
+            </button>
+          ))}
+        </div>
+      </FilterGroup>
+      {/* SORT BY */}
+      <FilterGroup title="Sort By">
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="
+      w-full rounded-xl
+      border border-[#DACCC0]
+      bg-[#FFFEFC]
+      px-3 py-2.5
+      text-xs text-[#3A2117]
+      outline-none
+      focus:border-[#6B4228]
+    "
+        >
+          <option value="featured">Featured</option>
+          <option value="newest">Newest</option>
+          <option value="best-selling">Best Selling</option>
+          <option value="price-low-high">
+            Price: Low to High
+          </option>
+          <option value="price-high-low">
+            Price: High to Low
+          </option>
+          <option value="highest-rated">
+            Highest Rated
+          </option>
+        </select>
+      </FilterGroup>
       {/* SPECIAL */}
       <FilterGroup title="Special">
         <div className="space-y-2">
