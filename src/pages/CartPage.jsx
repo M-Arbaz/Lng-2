@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@/lib/navigation'
+import shippingService from '../utils/shippingService'
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,6 +27,32 @@ export default function CartPage({
   const navigate = useNavigate()
   const isDark = theme === 'dark'
 
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(15000)
+
+  useEffect(() => {
+    let active = true
+
+    const loadShippingSettings = async () => {
+      try {
+        const settings = await shippingService.getShippingSettings()
+
+        if (!active) return
+
+        setFreeShippingThreshold(
+          Number(settings?.freeShippingThreshold) || 15000
+        )
+      } catch (error) {
+        console.error('Failed to load cart shipping settings:', error)
+      }
+    }
+
+    loadShippingSettings()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   const formatPrice = (value) => {
     if (typeof value !== 'number' || Number.isNaN(value)) return '0.00'
 
@@ -35,10 +63,20 @@ export default function CartPage({
   }
 
   // Preserve current cart shipping behaviour.
-  const shippingFee =
-    cartTotal >= 15000 || cartTotal === 0 ? 0 : 12
+  const qualifiesForFreeShipping =
+    cartTotal === 0 || cartTotal >= freeShippingThreshold
 
-  const grandTotal = cartTotal + shippingFee
+  // Cart page par city abhi select nahi hoti,
+  // isliye paid delivery fee guess nahi karni.
+  const shippingFee = qualifiesForFreeShipping ? 0 : null
+
+  const amountUntilFreeShipping = Math.max(
+    0,
+    freeShippingThreshold - cartTotal
+  )
+
+  // Exact shipping city select hone ke baad Checkout mein add hogi.
+  const grandTotal = cartTotal
 
   return (
     <main
@@ -567,7 +605,7 @@ export default function CartPage({
                         >
                           {shippingFee === 0
                             ? 'Free'
-                            : `Rs.${formatPrice(shippingFee)}`}
+                            : 'Calculated at checkout'}
                         </span>
                       </div>
 
@@ -589,6 +627,7 @@ export default function CartPage({
                             }
                           >
                             Total
+
                           </p>
 
                           <p
@@ -598,7 +637,10 @@ export default function CartPage({
                                 : 'mt-0.5 text-[10px] text-[#9A8171]'
                             }
                           >
-                            Shipping may update at checkout
+                            {qualifiesForFreeShipping
+                              ? 'Free shipping applied'
+                              : 'Delivery fee is based on your city'}
+
                           </p>
                         </div>
 
@@ -613,7 +655,29 @@ export default function CartPage({
                         </span>
                       </div>
                     </div>
-
+                    {!qualifiesForFreeShipping && amountUntilFreeShipping > 0 && (
+                      <div
+                        className={
+                          isDark
+                            ? 'rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5'
+                            : 'rounded-xl border border-[#6B4228]/10 bg-[#F7F4EF] px-3 py-2.5'
+                        }
+                      >
+                        <p
+                          className={
+                            isDark
+                              ? 'text-[10px] leading-4 text-stone-400'
+                              : 'text-[10px] leading-4 text-[#7A6559]'
+                          }
+                        >
+                          Add{' '}
+                          <span className="font-semibold">
+                            Rs.{formatPrice(amountUntilFreeShipping)}
+                          </span>{' '}
+                          more to unlock free shipping.
+                        </p>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => onCheckout?.()}
