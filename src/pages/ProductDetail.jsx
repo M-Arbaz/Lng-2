@@ -555,7 +555,9 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
     )
   }
 
-  const addQuantityToCart = () => {
+  const addQuantityToCart = (
+    options = {}
+  ) => {
     if (!inStock) return
     const count = Math.max(1, Math.min(quantity, Math.max(stock, 1)))
     const payload = {
@@ -566,7 +568,10 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
       unitPrice: effectivePrice,
     }
     for (let i = 0; i < count; i += 1) {
-      onAddToCart(payload)
+      onAddToCart(
+        payload,
+        options
+      )
     }
   }
 
@@ -1295,8 +1300,12 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
               <button
                 type="button"
                 onClick={() => {
-                  addQuantityToCart()
+                  addQuantityToCart({
+                    silent: true,
+                  })
+
                   if (!inStock) return
+
                   navigate('/checkout')
                 }}
                 className={classNames(

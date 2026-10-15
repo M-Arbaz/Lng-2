@@ -36,7 +36,12 @@ export function AppStateProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [theme, setTheme] = useState('light')
-  const [cart, setCart] = useState([])
+
+  const [cartNotification, setCartNotification] =
+    useState(null)
+
+  const cartNotificationSequenceRef =
+    useRef(0)
   const [wishlist, setWishlist] = useState([])
   const [wishlistLoading, setWishlistLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('All')
@@ -171,9 +176,124 @@ export function AppStateProvider({ children }) {
   function isInWishlist(productId) {
     return wishlist.some((p) => p.id === productId)
   }
+  function dismissCartNotification() {
+    setCartNotification(null)
+  }
 
-  function handleAddToCart(payload) {
-    const item = payload.product ? payload : { product: payload }
+  function showCartNotification(item) {
+    const product = item?.product
+
+    if (!product) return
+
+    const normalizeValue = (value) =>
+      String(value || '')
+        .trim()
+        .toLowerCase()
+
+    const productImages =
+      Array.isArray(product.images)
+        ? product.images.filter(Boolean)
+        : []
+
+    const colorVariants =
+      Array.isArray(
+        product.productDetails
+          ?.colorVariants
+      )
+        ? product.productDetails
+          .colorVariants
+        : []
+
+    const shadeColors =
+      Array.isArray(
+        product.shadeColors
+      )
+        ? product.shadeColors
+        : []
+
+    const matchedColor =
+      colorVariants.find(
+        (variant) =>
+          normalizeValue(
+            variant.name
+          ) ===
+          normalizeValue(
+            item.colorVariant
+          )
+      )
+
+    const matchedShade =
+      shadeColors.find(
+        (shade) =>
+          normalizeValue(
+            shade.name
+          ) ===
+          normalizeValue(
+            item.shadeColor
+          )
+      )
+
+    const image =
+      matchedShade?.image ||
+      matchedColor?.image ||
+      product.image ||
+      productImages[0] ||
+      ''
+
+    const lineKey = [
+      product.id,
+      item.bulbOption || '',
+      item.colorVariant || '',
+      item.shadeColor || '',
+    ].join('|')
+
+    cartNotificationSequenceRef.current += 1
+
+    const notificationKey =
+      cartNotificationSequenceRef.current
+
+    setCartNotification(
+      (previous) => {
+        const sameProduct =
+          previous?.lineKey ===
+          lineKey
+
+        return {
+          key: notificationKey,
+          lineKey,
+          productId: product.id,
+          name:
+            product.name ||
+            'Product',
+          image,
+          unitPrice:
+            item.unitPrice ??
+            product.price,
+          bulbOption:
+            item.bulbOption ||
+            null,
+          colorVariant:
+            item.colorVariant ||
+            null,
+          shadeColor:
+            item.shadeColor ||
+            null,
+          quantityAdded:
+            sameProduct
+              ? (previous.quantityAdded ||
+                1) + 1
+              : 1,
+        }
+      }
+    )
+  }
+  function handleAddToCart(
+    payload,
+    options = {}
+  ) {
+    const item = payload.product
+      ? payload
+      : { product: payload }
 
     const makeVariantKey = (value) =>
       String(value || 'default')
@@ -212,6 +332,9 @@ export function AppStateProvider({ children }) {
         },
       ]
     })
+    if (!options.silent) {
+      showCartNotification(item)
+    }
   }
 
   function handleUpdateCartQuantity(itemId, quantity) {
@@ -360,8 +483,15 @@ export function AppStateProvider({ children }) {
   const value = {
     user, isLoggedIn, activeSection, theme, toggleTheme, loading, loadingProgress,
     products, productsLoading, dynamicCategories, categoriesLoading,
-    cart, cartItemsCount, cartTotal, wishlist, wishlistLoading, orders, ordersLoading,
-    reviews, reviewsLoading, sortedReviews, reviewForm, setReviewForm, reviewSortBy, setReviewSortBy,
+    cart,
+    cartItemsCount,
+    cartTotal,
+    cartNotification,
+    dismissCartNotification,
+    wishlist,
+    wishlistLoading,
+    orders,
+    ordersLoading, reviews, reviewsLoading, sortedReviews, reviewForm, setReviewForm, reviewSortBy, setReviewSortBy,
     selectedCategory, setSelectedCategory, searchQuery, setSearchQuery, filteredProducts, productAverageRating,
     mobileNavOpen, setMobileNavOpen, headerRef, headerHeight,
     heroSlides, collectionSlides, instagramImages,

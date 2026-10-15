@@ -9,7 +9,7 @@ import WebsitePopup from './WebsitePopup'
 import RecentPurchasePopup from './RecentPurchasePopup'
 import ProgressLoader from './ProgressLoader'
 import { useAppState } from '@/context/AppStateContext'
-
+import CartAddedToast from './CartAddedToast'
 export default function SiteChrome({ children }) {
   const pathname = usePathname()
   const app = useAppState()
@@ -77,6 +77,23 @@ export default function SiteChrome({ children }) {
         transparentOverlay={isHomeHero}
         wishlistItemsCount={app.wishlist.length}
       />
+      {app.cartNotification && (
+        <CartAddedToast
+          key={
+            app.cartNotification.key
+          }
+          notification={
+            app.cartNotification
+          }
+          onClose={
+            app.dismissCartNotification
+          }
+          theme={app.theme}
+          headerHeight={
+            app.headerHeight
+          }
+        />
+      )}
       <main className="flex-1" style={{ paddingTop: `${app.headerHeight}px` }}>
         {children}
       </main>
