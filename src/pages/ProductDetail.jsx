@@ -434,7 +434,16 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
     Math.max(selectedColorIndex, 0),
     Math.max(colorVariants.length - 1, 0),
   ) : null
-  const selectedColor = safeColorIndex !== null ? colorVariants[safeColorIndex]?.name || '' : ''
+  const selectedColor =
+    safeColorIndex !== null
+      ? colorVariants[safeColorIndex]?.name || ''
+      : ''
+
+  const selectedShade =
+    activeColorIndex !== null
+      ? shadeColors[activeColorIndex]?.name || ''
+      : ''
+
   const selectedImage = images[Math.min(activeImageIndex, images.length - 1)]
 
   // ── Price Calculation ──
@@ -553,7 +562,8 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
       product,
       bulbOption: selectedBulb || null,
       colorVariant: selectedColor || null,
-      unitPrice: basePrice
+      shadeColor: selectedShade || null,
+      unitPrice: effectivePrice,
     }
     for (let i = 0; i < count; i += 1) {
       onAddToCart(payload)
@@ -1003,11 +1013,28 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
             {/* Short Description */}
             {product.shortDescription && (
               <div
-                className="page-content mt-4 text-[13px] text-stone-600 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: product.shortDescription }}
+                className="
+      mt-4
+      max-w-full
+      overflow-hidden
+      break-words
+      text-[13px]
+      leading-6
+      text-[#6B5A50]
+      [&_*]:max-w-full
+      [&_*]:whitespace-normal!
+      [&_p]:m-0
+      [&_p]:leading-6
+    "
+                style={{
+                  overflowWrap: 'anywhere',
+                  wordBreak: 'normal',
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: product.shortDescription,
+                }}
               />
             )}
-
             {/* Price */}
             <div className="mt-5 flex items-end gap-3">
               {hasDiscount ? (

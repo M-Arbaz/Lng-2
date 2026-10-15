@@ -159,12 +159,43 @@ export function AppStateProvider({ children }) {
 
   function handleAddToCart(payload) {
     const item = payload.product ? payload : { product: payload }
-    const bulbKey = item.bulbOption ? String(item.bulbOption).replace(/\s+/g, '_') : 'default'
-    const id = `${item.product.id}-${bulbKey}`
+
+    const makeVariantKey = (value) =>
+      String(value || 'default')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+
+    const bulbKey = makeVariantKey(item.bulbOption)
+    const colorKey = makeVariantKey(item.colorVariant)
+    const shadeKey = makeVariantKey(item.shadeColor)
+
+    // Every unique variant combination gets its own cart line.
+    const id = `${item.product.id}-${bulbKey}-${colorKey}-${shadeKey}`
+
     setCart((prev) => {
       const existing = prev.find((c) => c.id === id)
-      if (existing) return prev.map((c) => c.id === id ? { ...c, quantity: c.quantity + 1 } : c)
-      return [...prev, { id, product: item.product, quantity: 1, bulbOption: item.bulbOption || null, unitPrice: item.unitPrice ?? item.product.price }]
+
+      if (existing) {
+        return prev.map((c) =>
+          c.id === id
+            ? { ...c, quantity: c.quantity + 1 }
+            : c
+        )
+      }
+
+      return [
+        ...prev,
+        {
+          id,
+          product: item.product,
+          quantity: 1,
+          bulbOption: item.bulbOption || null,
+          colorVariant: item.colorVariant || null,
+          shadeColor: item.shadeColor || null,
+          unitPrice: item.unitPrice ?? item.product.price,
+        },
+      ]
     })
   }
 

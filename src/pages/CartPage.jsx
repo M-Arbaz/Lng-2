@@ -347,7 +347,7 @@ export default function CartPage({
                             </div>
 
                             {/* VARIANT DETAILS */}
-                            {(item.bulbOption || item.colorVariant) && (
+                            {(item.bulbOption || item.colorVariant || item.shadeColor) && (
                               <div className="mt-3 flex flex-wrap gap-2">
                                 {item.colorVariant && (
                                   <span
@@ -360,7 +360,17 @@ export default function CartPage({
                                     Color: {item.colorVariant}
                                   </span>
                                 )}
-
+                                {item.shadeColor && (
+                                  <span
+                                    className={
+                                      isDark
+                                        ? 'rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] text-stone-300'
+                                        : 'rounded-full border border-[#3A2117]/10 bg-[#F7F4EF] px-2.5 py-1 text-[10px] text-[#6B5A50]'
+                                    }
+                                  >
+                                    Shade: {item.shadeColor}
+                                  </span>
+                                )}
                                 {item.bulbOption && (
                                   <span
                                     className={
