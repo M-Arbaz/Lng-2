@@ -12,6 +12,8 @@ export default function ProfileRoute() {
         <ProfileSection
           orders={app.orders}
           wishlist={app.wishlist}
+          reviews={app.reviews}
+          products={app.products}
           profile={app.user}
           handleProfileChange={app.handleProfileChange}
           onLogout={app.handleLogout}

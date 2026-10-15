@@ -3,13 +3,22 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from '@/lib/navigation';
 import uploadToXcdn from '@/utils/xcdnUpload';
+import { slugify } from '../utils/slugify.js';
 import {
   User, Mail, Phone, MapPin, AlertCircle, Loader, CheckCircle,
   ShoppingBag, Heart, MapPin as MapPinIcon, Star, Bell, Settings,
   LogOut, SlidersHorizontal, Home, Camera
 } from 'lucide-react';
 
-export default function ProfileSection({ profile, orders, wishlist = [], handleProfileChange, onLogout }) {
+export default function ProfileSection({
+  profile,
+  orders,
+  wishlist = [],
+  reviews = [],
+  products = [],
+  handleProfileChange,
+  onLogout,
+}) {
   const [profileImage, setProfileImage] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const navigate = useNavigate();
@@ -106,7 +115,26 @@ export default function ProfileSection({ profile, orders, wishlist = [], handleP
   const initials = [profile?.firstName?.charAt(0), profile?.lastName?.charAt(0)]
     .filter(Boolean).join('').toUpperCase() || 'U';
   const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ');
+  const userReviews = reviews.filter(
+    (review) => review.userId === profile?.uid
+  )
 
+  const getReviewProduct = (review) =>
+    products.find((product) => product.id === review.productId)
+
+  const formatReviewDate = (value) => {
+    if (!value) return ''
+
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) return ''
+
+    return date.toLocaleDateString('en-PK', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
   const desktopNavItems = [
     { id: 'orders', icon: ShoppingBag, label: 'My orders' },
     { id: 'wishlist', icon: Heart, label: 'Wishlist' },
@@ -114,7 +142,150 @@ export default function ProfileSection({ profile, orders, wishlist = [], handleP
     { id: 'notifications', icon: Bell, label: 'Notifications' },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ];
+  const ReviewsList = ({ compact = false }) => {
+    if (userReviews.length === 0) {
+      return (
+        <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] px-5 py-12 text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+            <Star size={23} strokeWidth={1.5} />
+          </div>
 
+          <p className="mt-4 text-sm font-semibold text-[#281912]">
+            No reviews yet
+          </p>
+
+          <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-[#8A7569]">
+            Reviews you submit on products will appear here.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => navigate('/products')}
+            className="mt-5 min-h-[42px] rounded-full bg-[#3A2117] px-6 text-xs font-semibold text-white transition-colors hover:bg-[#4A2B1F]"
+          >
+            Browse Products
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-4">
+        {userReviews.map((review) => {
+          const product = getReviewProduct(review)
+
+          return (
+            <div
+              key={review.id}
+              className="overflow-hidden rounded-[22px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_8px_28px_rgba(58,33,23,0.04)]"
+            >
+              <div className={compact ? 'p-4' : 'p-5 sm:p-6'}>
+                <div className="flex items-start gap-3">
+                  {product?.image ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(`/products/${slugify(product.name)}`)
+                      }
+                      className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#EEE7E1]"
+                    >
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ) : (
+                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-[#F2ECE5] text-[#6B4228]">
+                      <Star size={18} strokeWidth={1.5} />
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#8A654D]">
+                          Product Review
+                        </p>
+
+                        <button
+                          type="button"
+                          disabled={!product}
+                          onClick={() =>
+                            product &&
+                            navigate(`/products/${slugify(product.name)}`)
+                          }
+                          className="mt-1 block max-w-full text-left text-sm font-semibold text-[#281912] hover:text-[#6B4228] disabled:pointer-events-none"
+                        >
+                          {product?.name || 'Reviewed Product'}
+                        </button>
+
+                        {review.createdAt && (
+                          <p className="mt-1 text-[10px] text-[#9A8171]">
+                            {formatReviewDate(review.createdAt)}
+                          </p>
+                        )}
+                      </div>
+
+                      <div
+                        className="flex shrink-0 items-center gap-0.5"
+                        aria-label={`${review.rating} out of 5 stars`}
+                      >
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            size={14}
+                            strokeWidth={1.5}
+                            className={
+                              star <= Number(review.rating || 0)
+                                ? 'fill-[#6B4228] text-[#6B4228]'
+                                : 'fill-transparent text-[#3A2117]/20'
+                            }
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <p className="mt-3 text-[13px] leading-6 text-[#5F4C42]">
+                      {review.comment}
+                    </p>
+                  </div>
+                </div>
+
+                {review.adminReply && (
+                  <div className="mt-4 rounded-2xl border border-[#6B4228]/15 bg-[#F7F4EF] p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#3A2117] text-[9px] font-semibold text-white">
+                        L&G
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-xs font-semibold text-[#3A2117]">
+                            Lamp & Glow Reply
+                          </p>
+
+                          {review.adminReplyAt && (
+                            <span className="text-[9px] text-[#9A8171]">
+                              {formatReviewDate(review.adminReplyAt)}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1.5 text-xs leading-5 text-[#6B5A50]">
+                          {review.adminReply}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
   // Shared order list — used in both mobile + desktop
   const OrdersList = ({ limit = 5, compact = false }) => (
     !orders || orders.length === 0 ? (
@@ -237,7 +408,7 @@ export default function ProfileSection({ profile, orders, wishlist = [], handleP
             },
             {
               label: 'Reviews',
-              value: 0,
+              value: userReviews.length,
             },
           ].map(({ label, value }, index) => (
             <div
@@ -263,6 +434,7 @@ export default function ProfileSection({ profile, orders, wishlist = [], handleP
           {[
             { id: 'orders', label: 'Orders' },
             { id: 'wishlist', label: 'Wishlist' },
+            { id: 'reviews', label: 'Reviews' },
             { id: 'details', label: 'Profile' },
           ].map(({ id, label }) => {
             const active = mobileTab === id
@@ -276,8 +448,8 @@ export default function ProfileSection({ profile, orders, wishlist = [], handleP
                   setMobileTab(id)
                 }}
                 className={`min-h-[40px] flex-1 rounded-full px-3 text-xs font-semibold transition-all ${active
-                    ? 'bg-[#3A2117] text-white shadow-[0_5px_14px_rgba(58,33,23,0.20)]'
-                    : 'text-[#7A6559]'
+                  ? 'bg-[#3A2117] text-white shadow-[0_5px_14px_rgba(58,33,23,0.20)]'
+                  : 'text-[#7A6559]'
                   }`}
               >
                 {label}
@@ -474,7 +646,22 @@ export default function ProfileSection({ profile, orders, wishlist = [], handleP
             )}
           </div>
         )}
+        {/* ───────── REVIEWS ───────── */}
+        {mobileTab === 'reviews' && (
+          <div>
+            <div className="mb-4">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8A654D]">
+                Your Feedback
+              </p>
 
+              <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#281912]">
+                My Reviews
+              </h2>
+            </div>
+
+            <ReviewsList compact />
+          </div>
+        )}
         {/* ───────── PROFILE DETAILS ───────── */}
         {mobileTab === 'details' && (
           <div>
@@ -953,7 +1140,7 @@ export default function ProfileSection({ profile, orders, wishlist = [], handleP
                   },
                   {
                     label: 'Reviews',
-                    value: 0,
+                    value: userReviews.length,
                     icon: Star,
                   },
                 ].map(({ label, value, icon: Icon }) => (
@@ -1122,27 +1309,15 @@ export default function ProfileSection({ profile, orders, wishlist = [], handleP
                 </p>
 
                 <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
-                  Reviews
+                  My Reviews
                 </h2>
 
                 <p className="mt-2 text-sm text-[#7A6A60]">
-                  Your product reviews will appear here.
+                  Review your feedback and replies from Lamp & Glow.
                 </p>
               </div>
 
-              <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] py-16 text-center">
-                <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
-                  <Star size={25} strokeWidth={1.5} />
-                </div>
-
-                <p className="mt-5 text-sm font-semibold text-[#281912]">
-                  No reviews yet
-                </p>
-
-                <p className="mt-1 text-xs text-[#8A7569]">
-                  Reviews you submit will be available here.
-                </p>
-              </div>
+              <ReviewsList />
             </div>
           )}
 
