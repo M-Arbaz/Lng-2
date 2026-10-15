@@ -153,7 +153,9 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
         image: item.product?.image,
         quantity: item.quantity,
         unitPrice: item.unitPrice ?? item.product?.price,
-        bulbOption: item.bulbOption,
+        colorVariant: item.colorVariant || null,
+        shadeColor: item.shadeColor || null,
+        bulbOption: item.bulbOption || null,
       })),
       subtotal: numericTotal,
       shipping: shipping || 0,
@@ -1248,6 +1250,12 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
                           {item.colorVariant && (
                             <span className="rounded-full bg-[#F2ECE5] px-2 py-0.5 text-[9px] text-[#7A6559]">
                               Color: {item.colorVariant}
+                            </span>
+                          )}
+
+                          {item.shadeColor && (
+                            <span className="rounded-full bg-[#F2ECE5] px-2 py-0.5 text-[9px] text-[#7A6559]">
+                              Shade: {item.shadeColor}
                             </span>
                           )}
 
