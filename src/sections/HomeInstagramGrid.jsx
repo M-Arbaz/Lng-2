@@ -1,166 +1,54 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import Slider from 'react-slick'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { Instagram } from 'lucide-react'
 
-function getGalleryLayout() {
-  if (typeof window === 'undefined') {
-    return {
-      itemsPerPage: 10,
-      columns: 5,
-    }
-  }
-
-  if (window.matchMedia('(min-width: 1024px)').matches) {
-    return {
-      // Desktop: 5 columns × 2 rows
-      itemsPerPage: 10,
-      columns: 5,
-    }
-  }
-
-  if (window.matchMedia('(min-width: 640px)').matches) {
-    return {
-      // Tablet: 3 columns × 2 rows
-      itemsPerPage: 6,
-      columns: 3,
-    }
-  }
-
-  return {
-    // Mobile: 2 columns × 3 rows
-    itemsPerPage: 6,
-    columns: 2,
-  }
-}
-
-function useGalleryLayout() {
-  const [layout, setLayout] = useState(getGalleryLayout)
-
-  useEffect(() => {
-    const handleResize = () => {
-      setLayout(getGalleryLayout())
-    }
-
-    window.addEventListener('resize', handleResize)
-
-    handleResize()
-
-    return () => {
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [])
-
-  return layout
-}
-
-function chunkItems(items, size) {
-  const pages = []
-
-  for (let index = 0; index < items.length; index += size) {
-    pages.push(items.slice(index, index + size))
-  }
-
-  return pages
-}
-
-function GridTile({ item, index }) {
+function InstagramTile({
+  item,
+  index,
+  duplicate = false,
+}) {
   const content = (
     <>
       <img
         src={item.image}
-        alt={item.alt || `Instagram post ${index + 1}`}
+        alt={
+          item.alt ||
+          `Instagram post ${index + 1}`
+        }
         loading="lazy"
-        className="
-          h-full w-full
-          object-cover
-          transition-transform
-          duration-500
-          ease-out
-          group-hover:scale-[1.035]
-        "
+        draggable={false}
+        className="h-full w-full select-none object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
       />
 
-      {/* subtle image treatment */}
-      <div
-        className="
-          pointer-events-none
-          absolute inset-0
-          bg-gradient-to-t
-          from-black/20
-          via-transparent
-          to-transparent
-          opacity-60
-        "
-      />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
 
-      {/* HOVER OVERLAY */}
-      <div
-        className="
-          absolute inset-0
-          flex flex-col
-          items-center justify-center
-          gap-2
-          bg-black/0
-          transition-all duration-300
-          group-hover:bg-black/45
-        "
-      >
-        <span
-          className="
-            flex h-10 w-10
-            translate-y-1
-            items-center justify-center
-            rounded-full
-            border border-white/30
-            bg-white/10
-            text-white
-            opacity-0
-            backdrop-blur-sm
-            transition-all duration-300
-            group-hover:translate-y-0
-            group-hover:opacity-100
-          "
-        >
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/0 transition-all duration-300 group-hover:bg-black/45">
+        <span className="grid h-10 w-10 translate-y-1 place-items-center rounded-full border border-white/30 bg-white/10 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <Instagram
-            className="h-[18px] w-[18px]"
+            size={18}
             strokeWidth={1.8}
           />
         </span>
 
-        <span
-          className="
-            translate-y-1
-            text-[10px]
-            font-semibold uppercase
-            tracking-[0.15em]
-            text-white
-            opacity-0
-            transition-all
-            delay-75 duration-300
-            group-hover:translate-y-0
-            group-hover:opacity-100
-          "
-        >
+        <span className="translate-y-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           View Post
         </span>
       </div>
     </>
   )
 
+  const classes =
+    'group relative block aspect-square w-[145px] shrink-0 select-none overflow-hidden rounded-[18px] bg-[#EEE7E0] outline-none ring-[#6B4228] transition-shadow duration-300 hover:shadow-[0_14px_35px_rgba(58,33,23,0.14)] focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-[180px] lg:w-[215px] xl:w-[235px]'
+
   if (!item.url) {
     return (
-      <div
-        className="
-          group
-          relative block
-          aspect-square
-          overflow-hidden
-          rounded-xl
-          bg-[#EEE7E0]
-        "
-      >
+      <div className={classes}>
         {content}
       </div>
     )
@@ -171,238 +59,435 @@ function GridTile({ item, index }) {
       href={item.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="
-        group
-        relative block
-        aspect-square
-        overflow-hidden
-        rounded-xl
-        bg-[#EEE7E0]
-        outline-none
-        ring-[#A86C40]
-        transition-shadow
-        focus-visible:ring-2
-        focus-visible:ring-offset-2
-      "
+      draggable={false}
+      tabIndex={duplicate ? -1 : undefined}
+      aria-hidden={
+        duplicate ? true : undefined
+      }
+      className={classes}
     >
       {content}
     </a>
   )
 }
 
-export default function HomeInstagramGrid({ images }) {
-  const sliderRef = useRef(null)
+export default function HomeInstagramGrid({
+  images,
+}) {
+  const trackRef = useRef(null)
+  const firstGroupRef = useRef(null)
 
-  const { itemsPerPage, columns } = useGalleryLayout()
+  const offsetRef = useRef(0)
+  const groupWidthRef = useRef(0)
 
-  const [activePage, setActivePage] = useState(0)
+  // -1 = right to left
+  //  1 = left to right
+  const directionRef = useRef(-1)
 
-  const safeImages = useMemo(
-    () =>
-      Array.isArray(images)
-        ? images.filter((item) => item?.image)
-        : [],
-    [images],
-  )
+  const draggingRef = useRef(false)
+  const pointerDownRef = useRef(false)
+  const hoverRef = useRef(false)
 
-  const pages = useMemo(
-    () => chunkItems(safeImages, itemsPerPage),
-    [safeImages, itemsPerPage],
-  )
+  const pointerIdRef = useRef(null)
+
+  const lastPointerXRef = useRef(0)
+  const dragStartXRef = useRef(0)
+
+  const suppressClickUntilRef =
+    useRef(0)
+
+  const [isDragging, setIsDragging] =
+    useState(false)
+
+  const safeImages = useMemo(() => {
+    return Array.isArray(images)
+      ? images.filter(
+        (item) => item?.image
+      )
+      : []
+  }, [images])
+
+  const marqueeItems = useMemo(() => {
+    if (safeImages.length === 0) {
+      return []
+    }
+
+    const minimumItems = 10
+
+    const repeatCount = Math.max(
+      1,
+      Math.ceil(
+        minimumItems /
+        safeImages.length
+      )
+    )
+
+    return Array.from(
+      { length: repeatCount },
+      () => safeImages
+    ).flat()
+  }, [safeImages])
+
+  const applyTransform = () => {
+    if (!trackRef.current) return
+
+    trackRef.current.style.transform =
+      `translate3d(${offsetRef.current}px, 0, 0)`
+  }
+
+  const normalizeOffset = () => {
+    const width =
+      groupWidthRef.current
+
+    if (!width) return
+
+    while (
+      offsetRef.current <= -width
+    ) {
+      offsetRef.current += width
+    }
+
+    while (
+      offsetRef.current > 0
+    ) {
+      offsetRef.current -= width
+    }
+  }
 
   /*
-   * Reset to first page when breakpoint changes.
-   * Otherwise an old desktop page index could point
-   * beyond the mobile page structure.
+   * Automatic marquee engine.
+   *
+   * It uses JS instead of CSS animation so
+   * dragging can change both position and
+   * future movement direction seamlessly.
    */
   useEffect(() => {
-    setActivePage(0)
+    if (
+      marqueeItems.length === 0
+    ) {
+      return
+    }
 
-    sliderRef.current?.slickGoTo(0, true)
-  }, [itemsPerPage])
+    let frameId
+    let previousTime = null
+
+    const reducedMotion =
+      window.matchMedia(
+        '(prefers-reduced-motion: reduce)'
+      )
+
+    const measure = () => {
+      if (!firstGroupRef.current) {
+        return
+      }
+
+      groupWidthRef.current =
+        firstGroupRef.current.getBoundingClientRect()
+          .width
+
+      normalizeOffset()
+      applyTransform()
+    }
+
+    const animate = (time) => {
+      if (previousTime === null) {
+        previousTime = time
+      }
+
+      const deltaSeconds = Math.min(
+        (time - previousTime) / 1000,
+        0.05
+      )
+
+      previousTime = time
+
+      const width =
+        groupWidthRef.current
+
+      if (
+        width &&
+        !draggingRef.current &&
+        !hoverRef.current &&
+        !reducedMotion.matches
+      ) {
+        /*
+         * Keep approximately the slower speed
+         * we selected earlier:
+         *
+         * Desktop = one loop in ~52 sec
+         * Mobile  = one loop in ~40 sec
+         */
+        const duration =
+          window.innerWidth < 640
+            ? 40
+            : 52
+
+        const pixelsPerSecond =
+          width / duration
+
+        offsetRef.current +=
+          directionRef.current *
+          pixelsPerSecond *
+          deltaSeconds
+
+        normalizeOffset()
+        applyTransform()
+      }
+
+      frameId =
+        requestAnimationFrame(
+          animate
+        )
+    }
+
+    measure()
+
+    window.addEventListener(
+      'resize',
+      measure
+    )
+
+    frameId =
+      requestAnimationFrame(
+        animate
+      )
+
+    return () => {
+      cancelAnimationFrame(frameId)
+
+      window.removeEventListener(
+        'resize',
+        measure
+      )
+    }
+  }, [marqueeItems])
+
+  const handlePointerDown = (event) => {
+    if (
+      event.pointerType === 'mouse' &&
+      event.button !== 0
+    ) {
+      return
+    }
+
+    pointerDownRef.current = true
+    draggingRef.current = false
+
+    pointerIdRef.current = event.pointerId
+
+    dragStartXRef.current = event.clientX
+    lastPointerXRef.current = event.clientX
+  }
+
+  const handlePointerMove = (event) => {
+    if (
+      !pointerDownRef.current ||
+      pointerIdRef.current !== event.pointerId
+    ) {
+      return
+    }
+
+    const totalDragDistance =
+      Math.abs(
+        event.clientX -
+        dragStartXRef.current
+      )
+
+    /*
+     * Normal click ko drag na samjho.
+     * 6px movement cross hone ke baad hi
+     * actual marquee dragging start hogi.
+     */
+    if (
+      !draggingRef.current &&
+      totalDragDistance > 6
+    ) {
+      draggingRef.current = true
+      setIsDragging(true)
+
+      event.currentTarget.setPointerCapture?.(
+        event.pointerId
+      )
+    }
+
+    if (!draggingRef.current) {
+      return
+    }
+
+    const deltaX =
+      event.clientX -
+      lastPointerXRef.current
+
+    lastPointerXRef.current =
+      event.clientX
+
+    offsetRef.current += deltaX
+
+    if (Math.abs(deltaX) > 0.25) {
+      directionRef.current =
+        deltaX < 0 ? -1 : 1
+    }
+
+    normalizeOffset()
+    applyTransform()
+
+    event.preventDefault()
+  }
+  const finishDragging = (event) => {
+    if (
+      !pointerDownRef.current ||
+      pointerIdRef.current !== event.pointerId
+    ) {
+      return
+    }
+
+    const wasDragging =
+      draggingRef.current
+
+    if (wasDragging) {
+      suppressClickUntilRef.current =
+        performance.now() + 350
+    }
+
+    pointerDownRef.current = false
+    draggingRef.current = false
+    setIsDragging(false)
+
+    if (
+      event.currentTarget.hasPointerCapture?.(
+        event.pointerId
+      )
+    ) {
+      event.currentTarget.releasePointerCapture(
+        event.pointerId
+      )
+    }
+
+    pointerIdRef.current = null
+  }
+
+  const handleClickCapture = (
+    event
+  ) => {
+    if (
+      performance.now() <
+      suppressClickUntilRef.current
+    ) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+  }
 
   if (safeImages.length === 0) {
     return null
   }
 
-  const gridColumnsClass =
-    columns === 5
-      ? 'grid-cols-5'
-      : columns === 3
-        ? 'grid-cols-3'
-        : 'grid-cols-2'
-
-  const hasMultiplePages = pages.length > 1
-
-  const settings = {
-    dots: false,
-    arrows: false,
-
-    slidesToShow: 1,
-    slidesToScroll: 1,
-
-    infinite: hasMultiplePages,
-
-    autoplay: hasMultiplePages,
-    autoplaySpeed: 3600,
-
-    speed: 700,
-    cssEase: 'ease',
-
-    pauseOnHover: true,
-    pauseOnFocus: true,
-
-    swipe: true,
-    swipeToSlide: true,
-    draggable: true,
-    touchMove: true,
-
-    adaptiveHeight: false,
-
-    afterChange: (current) => {
-      setActivePage(current)
-    },
-  }
-
-  const handlePageChange = (pageIndex) => {
-    sliderRef.current?.slickGoTo(pageIndex)
-  }
-
   return (
-    <section
-      className="
-        w-full
-        overflow-hidden
-        bg-[#FAF8F5]
-        py-10
-        sm:py-14
-        lg:py-16
-      "
-    >
-      <div className="w-full px-3 sm:px-5 lg:px-8 xl:px-10">
-        {/* HEADING */}
-        <div className="mx-auto mb-7 text-center sm:mb-9">
-          <div
-            className="
-              mx-auto
-              flex h-9 w-9
-              items-center justify-center
-              rounded-full
-              border border-[#E4D5C8]
-              bg-white
-              text-[#855333]
-              shadow-[0_4px_14px_rgba(79,48,27,0.06)]
-            "
-          >
-            <Instagram
-              className="h-[17px] w-[17px]"
-              strokeWidth={1.8}
-            />
-          </div>
+    <section className="w-full overflow-hidden bg-[#FAF8F5] py-10 sm:py-14 lg:py-16">
 
-          <h2
-            className="
-              mt-3
-              text-2xl
-              font-semibold
-              tracking-[-0.02em]
-              text-[#30241D]
-              sm:text-3xl
-            "
-          >
-            Instagram
-          </h2>
-
-          <div className="mx-auto mt-3 h-px w-8 bg-[#B98255]" />
+      {/* HEADING */}
+      <div className="mx-auto mb-7 px-4 text-center sm:mb-9 sm:px-6">
+        <div className="mx-auto grid h-10 w-10 place-items-center rounded-full border border-[#E4D5C8] bg-[#FFFEFC] text-[#6B4228] shadow-[0_4px_14px_rgba(79,48,27,0.06)]">
+          <Instagram
+            size={18}
+            strokeWidth={1.8}
+          />
         </div>
 
-        {/* CAROUSEL */}
-        <div className="mx-auto w-full">
-          <Slider
-            key={`${itemsPerPage}-${columns}`}
-            ref={sliderRef}
-            {...settings}
-          >
-            {pages.map((pageItems, pageIndex) => (
-              <div
-                key={`instagram-page-${pageIndex}`}
-                className="outline-none"
-              >
-                <div
-                  className={`
-                    grid
-                    ${gridColumnsClass}
-                    gap-2
-                    sm:gap-2.5
-                    lg:gap-3
-                  `}
-                >
-                  {pageItems.map((item, itemIndex) => (
-                    <GridTile
-                      key={
-                        item.id ||
-                        `${pageIndex}-${itemIndex}`
-                      }
-                      item={item}
-                      index={
-                        pageIndex * itemsPerPage +
-                        itemIndex
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </Slider>
-        </div>
+        <p className="mt-4 text-[9px] font-semibold uppercase tracking-[0.25em] text-[#8A654D]">
+          Follow us <a href="https://www.instagram.com/lampandglow/" target="_blank" rel="noopener noreferrer" className="underline"> @lampandglow </a>
+        </p>
 
-        {/* MANUAL NAVIGATION — NO ARROWS */}
-        {hasMultiplePages && (
-          <div className="mt-6 flex items-center justify-center gap-2">
-            {pages.map((_, pageIndex) => (
-              <button
-                key={`instagram-dot-${pageIndex}`}
-                type="button"
-                onClick={() =>
-                  handlePageChange(pageIndex)
-                }
-                aria-label={`Go to Instagram gallery page ${pageIndex + 1
-                  }`}
-                aria-current={
-                  activePage === pageIndex
-                    ? 'true'
-                    : undefined
-                }
-                className={`
-                  h-2 rounded-full
-                  transition-all duration-300
-                  ${activePage === pageIndex
-                    ? 'w-7 bg-[#6A4027]'
-                    : 'w-2 bg-[#D6C7BA] hover:bg-[#B58F70]'
-                  }
-                `}
-              />
-            ))}
-          </div>
-        )}
+        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#30241D] sm:text-3xl">
+          Instagram
+        </h2>
 
-        {/* MOBILE HINT */}
-        {hasMultiplePages && (
-          <p
-            className="
-              mt-3
-              text-center
-              text-[9px]
-              font-medium uppercase
-              tracking-[0.16em]
-              text-[#A38E7E]
-              sm:hidden
-            "
-          >
-            Swipe to explore
-          </p>
-        )}
+        <p className="mx-auto mt-2.5 max-w-lg text-[11px] leading-5 text-[#8A7569] sm:text-xs">
+          Inspiration, details and
+          everyday moments from Lamp
+          &amp; Glow.
+        </p>
       </div>
+
+      {/* MARQUEE */}
+      <div
+        onPointerEnter={() => {
+          hoverRef.current = true
+        }}
+        onPointerLeave={() => {
+          hoverRef.current = false
+        }}
+        onPointerDown={
+          handlePointerDown
+        }
+        onPointerMove={
+          handlePointerMove
+        }
+        onPointerUp={
+          finishDragging
+        }
+        onPointerCancel={
+          finishDragging
+        }
+        onClickCapture={
+          handleClickCapture
+        }
+        onDragStart={(event) =>
+          event.preventDefault()
+        }
+        className={`instagram-marquee relative w-full touch-pan-y select-none overflow-hidden ${isDragging
+          ? 'cursor-grabbing'
+          : 'cursor-grab'
+          }`}
+      >
+        {/* LEFT FADE */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-8 bg-gradient-to-r from-[#FAF8F5] to-transparent sm:w-14 lg:w-20" />
+
+        {/* RIGHT FADE */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-8 bg-gradient-to-l from-[#FAF8F5] to-transparent sm:w-14 lg:w-20" />
+
+        <div
+          ref={trackRef}
+          className="flex w-max"
+          style={{
+            willChange: 'transform',
+          }}
+        >
+          {/* FIRST GROUP */}
+          <div
+            ref={firstGroupRef}
+            className="flex shrink-0 gap-2.5 pr-2.5 sm:gap-3 sm:pr-3 lg:gap-3.5 lg:pr-3.5"
+          >
+            {marqueeItems.map(
+              (item, index) => (
+                <InstagramTile
+                  key={`instagram-a-${item.id || index
+                    }-${index}`}
+                  item={item}
+                  index={index}
+                />
+              )
+            )}
+          </div>
+
+          {/* SECOND IDENTICAL GROUP */}
+          <div className="flex shrink-0 gap-2.5 pr-2.5 sm:gap-3 sm:pr-3 lg:gap-3.5 lg:pr-3.5">
+            {marqueeItems.map(
+              (item, index) => (
+                <InstagramTile
+                  key={`instagram-b-${item.id || index
+                    }-${index}`}
+                  item={item}
+                  index={index}
+                  duplicate
+                />
+              )
+            )}
+          </div>
+        </div>
+      </div>
+
+
     </section>
   )
 }
