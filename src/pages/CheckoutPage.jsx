@@ -27,6 +27,28 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
   const [bankDetails, setBankDetails] = useState(null)
   const [shippingSettings, setShippingSettings] = useState({ cities: [], freeShippingThreshold: 15000 })
   const [shippingLoading, setShippingLoading] = useState(true)
+  const [currentStep, setCurrentStep] = useState(1)
+
+  const checkoutSteps = [
+    { id: 1, label: 'Customer' },
+    { id: 2, label: 'Address' },
+    { id: 3, label: 'Shipping' },
+    { id: 4, label: 'Payment' },
+    { id: 5, label: 'Review' },
+  ]
+
+  const goToStep = (step) => {
+    setError('')
+    setCurrentStep(Math.min(5, Math.max(1, step)))
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'smooth',
+      })
+    })
+  }
 
   useEffect(() => {
     const loadBankDetails = async () => {
@@ -108,7 +130,107 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
   //  - the selected city's fee otherwise
   const shipping = qualifiesForFreeShipping ? 0 : city ? cityShippingFee : null
   const grandTotal = numericTotal + (shipping || 0)
+  const validateCustomerStep = () => {
+    if (!fullName.trim()) {
+      setError('Please enter your full name.')
+      return false
+    }
 
+    const cleanPhone = phone.replace(/\D/g, '')
+
+    if (!phone.trim() || cleanPhone.length < 10) {
+      setError('Please enter a valid phone number.')
+      return false
+    }
+
+    if (
+      email.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+    ) {
+      setError('Please enter a valid email address.')
+      return false
+    }
+
+    return true
+  }
+
+  const validateAddressStep = () => {
+    if (!addressLine1.trim()) {
+      setError('Please enter your delivery address.')
+      return false
+    }
+
+    if (!city) {
+      setError('Please select your delivery city.')
+      return false
+    }
+
+    return true
+  }
+
+  const validateShippingStep = () => {
+    if (!city) {
+      setError('Please select your delivery city first.')
+      return false
+    }
+
+    if (
+      !qualifiesForFreeShipping &&
+      shipping === null
+    ) {
+      setError('Shipping charges could not be calculated.')
+      return false
+    }
+
+    return true
+  }
+
+  const validatePaymentStep = () => {
+    if (!paymentMethod) {
+      setError('Please select a payment method.')
+      return false
+    }
+
+    return true
+  }
+
+  const handleNextStep = () => {
+    setError('')
+
+    if (
+      currentStep === 1 &&
+      !validateCustomerStep()
+    ) {
+      return
+    }
+
+    if (
+      currentStep === 2 &&
+      !validateAddressStep()
+    ) {
+      return
+    }
+
+    if (
+      currentStep === 3 &&
+      !validateShippingStep()
+    ) {
+      return
+    }
+
+    if (
+      currentStep === 4 &&
+      !validatePaymentStep()
+    ) {
+      return
+    }
+
+    goToStep(currentStep + 1)
+  }
+
+  const handlePreviousStep = () => {
+    goToStep(currentStep - 1)
+  }
   const handleSubmit = async () => {
     if (!isLoggedIn()) {
       setError('Please login to place an order.')
@@ -613,46 +735,102 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
         </div>
       </section>
 
-      {/* ═══════════════ PROGRESS ═══════════════ */}
+      {/* ═══════════════ CHECKOUT PROGRESS ═══════════════ */}
       <section className="border-b border-[#3A2117]/10 bg-[#F2ECE5]">
-        <div className="mx-auto max-w-[1400px] overflow-x-auto px-4 sm:px-6 lg:px-10">
-          <div className="flex min-w-[620px] items-center py-4">
-            {[
-              ['01', 'Customer'],
-              ['02', 'Delivery'],
-              ['03', 'Payment'],
-              ['04', 'Review'],
-            ].map(([number, label], index) => (
-              <div
-                key={label}
-                className="flex flex-1 items-center last:flex-none"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div
+        <div className="mx-auto w-full max-w-[1400px] overflow-x-auto px-4 sm:px-6 lg:px-10">
+          <div className="flex min-w-[760px] items-start py-5">
+            {checkoutSteps.map((step, index) => {
+              const completed = currentStep > step.id
+              const active = currentStep === step.id
+
+              return (
+                <div
+                  key={step.id}
+                  className="flex flex-1 items-start last:flex-none"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Customer can go back to completed sections,
+                      // but cannot skip unfinished steps.
+                      if (step.id <= currentStep) {
+                        goToStep(step.id)
+                      }
+                    }}
                     className={classNames(
-                      'grid h-8 w-8 shrink-0 place-items-center rounded-full text-[10px] font-semibold',
-                      index === 0
-                        ? 'bg-[#3A2117] text-white'
-                        : 'border border-[#3A2117]/15 bg-[#FFFEFC] text-[#6B4228]',
+                      'group flex shrink-0 items-center gap-2.5 text-left',
+                      step.id <= currentStep
+                        ? 'cursor-pointer'
+                        : 'cursor-default',
                     )}
                   >
-                    {number}
-                  </div>
+                    <div
+                      className={classNames(
+                        'grid h-8 w-8 shrink-0 place-items-center rounded-full border text-[10px] font-semibold transition-all',
+                        completed &&
+                        'border-[#6B4228] bg-[#6B4228] text-white',
+                        active &&
+                        'border-[#3A2117] bg-[#3A2117] text-white shadow-[0_0_0_4px_rgba(58,33,23,0.08)]',
+                        !completed &&
+                        !active &&
+                        'border-[#3A2117]/15 bg-[#FFFEFC] text-[#9A8171]',
+                      )}
+                    >
+                      {completed ? (
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M5 12l4 4L19 6" />
+                        </svg>
+                      ) : (
+                        String(step.id).padStart(2, '0')
+                      )}
+                    </div>
 
-                  <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B5A50]">
-                    {label}
-                  </span>
+                    <div>
+                      <p
+                        className={classNames(
+                          'whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.13em]',
+                          active
+                            ? 'text-[#281912]'
+                            : completed
+                              ? 'text-[#6B4228]'
+                              : 'text-[#9A8171]',
+                        )}
+                      >
+                        {step.label}
+                      </p>
+
+                      <p className="mt-0.5 whitespace-nowrap text-[8px] text-[#A08D81]">
+                        {completed
+                          ? 'Completed'
+                          : active
+                            ? 'Current step'
+                            : 'Upcoming'}
+                      </p>
+                    </div>
+                  </button>
+
+                  {index < checkoutSteps.length - 1 && (
+                    <div
+                      className={classNames(
+                        'mx-4 mt-4 h-px min-w-8 flex-1 transition-colors',
+                        currentStep > step.id
+                          ? 'bg-[#6B4228]/60'
+                          : 'bg-[#3A2117]/10',
+                      )}
+                    />
+                  )}
                 </div>
-
-                {index < 3 && (
-                  <div className="mx-4 h-px flex-1 bg-[#3A2117]/10" />
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
-
       <section className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
 
         {/* ERROR */}
