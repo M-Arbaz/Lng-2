@@ -153,341 +153,1224 @@ export default function ProfileSection({ profile, orders, wishlist = [], handleP
 
   // ─── MOBILE VIEW ───────────────────────────────────
   const MobileView = () => (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="min-h-screen bg-[#F7F4EF] pb-24">
 
-      {/* Brown banner + floating avatar */}
-      <div className="relative">
-        <div className="h-24 bg-[#3B1F04]" />
-        <div className="absolute left-1/2 -translate-x-1/2 -bottom-6">
-          <div className="relative">
-            <div className="w-12 h-12 rounded-full bg-[#EF9F27] border-2 border-white flex items-center justify-center overflow-hidden text-sm font-bold text-[#412402]">
+      {/* ═══════════════ PROFILE HERO ═══════════════ */}
+      <section className="relative overflow-hidden bg-[#3A2117] px-4 pb-16 pt-10 text-white">
+        <div className="absolute -right-14 -top-16 h-44 w-44 rounded-full bg-white/[0.04]" />
+        <div className="absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-white/[0.03]" />
+
+        <div className="relative mx-auto max-w-lg text-center">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#D7B99E]">
+            Lamp & Glow Account
+          </p>
+
+          {/* Avatar */}
+          <div className="relative mx-auto mt-6 h-24 w-24">
+            <div className="h-24 w-24 overflow-hidden rounded-full border-[4px] border-white/10 bg-[#F2E7DE] shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
               {profile?.photoURL || profileImage ? (
-                <img src={profile?.photoURL || profileImage} alt={fullName} className="w-full h-full object-cover" />
+                <img
+                  src={profile?.photoURL || profileImage}
+                  alt={fullName || 'Profile'}
+                  className="h-full w-full object-cover"
+                />
               ) : (
-                <span>{initials}</span>
+                <div className="grid h-full w-full place-items-center text-2xl font-semibold text-[#3A2117]">
+                  {initials}
+                </div>
               )}
             </div>
-            <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#5A2D0C] text-white flex items-center justify-center cursor-pointer">
-              <Camera size={12} />
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+
+            <label
+              className="
+              absolute bottom-0 right-0 grid h-9 w-9 cursor-pointer
+              place-items-center rounded-full border-[3px]
+              border-[#3A2117] bg-[#FFFEFC] text-[#3A2117]
+              shadow-lg transition-transform active:scale-95
+            "
+              title="Change profile photo"
+            >
+              {uploadingImage ? (
+                <Loader size={14} className="animate-spin" />
+              ) : (
+                <Camera size={14} strokeWidth={1.8} />
+              )}
+
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploadingImage}
+                onChange={handleImageUpload}
+              />
             </label>
           </div>
+
+          <h1 className="mt-4 text-xl font-semibold tracking-[-0.025em]">
+            {fullName || 'Lamp & Glow Customer'}
+          </h1>
+
+          <p className="mt-1 text-xs text-[#C9B8AD]">
+            {profile?.email || 'Your Lamp & Glow account'}
+          </p>
+
+          {profile?.city && (
+            <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-[#BCA89C]">
+              <MapPin size={11} strokeWidth={1.7} />
+              {profile.city}
+            </div>
+          )}
         </div>
-      </div>
+      </section>
 
-      {/* Name + location */}
-      <div className="pt-9 pb-3 text-center px-4">
-        <p className="text-sm font-semibold text-stone-900">{fullName || 'User'}</p>
-        <p className="text-xs text-stone-400 mt-0.5">
-          {profile?.city ? `${profile.city} · ` : ''}Member since 2024
-        </p>
-      </div>
+      {/* ═══════════════ STATS ═══════════════ */}
+      <section className="relative z-[2] -mt-9 px-4">
+        <div className="mx-auto grid max-w-lg grid-cols-3 overflow-hidden rounded-[22px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_14px_40px_rgba(58,33,23,0.10)]">
+          {[
+            {
+              label: 'Orders',
+              value: orders?.length || 0,
+            },
+            {
+              label: 'Wishlist',
+              value: wishlist?.length || 0,
+            },
+            {
+              label: 'Reviews',
+              value: 0,
+            },
+          ].map(({ label, value }, index) => (
+            <div
+              key={label}
+              className={`px-2 py-4 text-center ${index !== 2 ? 'border-r border-[#3A2117]/10' : ''
+                }`}
+            >
+              <span className="block text-lg font-semibold tracking-[-0.03em] text-[#281912]">
+                {value}
+              </span>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 px-4 mb-3">
-        {[
-          { label: 'Orders', value: orders?.length || 0 },
-          { label: 'Wishlist', value: 0 },
-          { label: 'Reviews', value: 0 },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-stone-50 border border-stone-100 rounded-xl p-2.5 text-center">
-            <span className="text-base font-bold text-[#BA7517] block">{value}</span>
-            <span className="text-[10px] text-stone-400">{label}</span>
-          </div>
-        ))}
-      </div>
+              <span className="mt-0.5 block text-[9px] font-medium uppercase tracking-[0.12em] text-[#9A8171]">
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      {/* Tab strip */}
-      <div className="flex border-b border-stone-100 px-4">
-        {[
-          { id: 'orders', label: 'Orders' },
-          { id: 'wishlist', label: 'Wishlist' },
-          { id: 'details', label: 'Details' },
-        ].map(({ id, label }) => (
-          <button key={id} onClick={() => setMobileTab(id)}
-            className={`flex-1 text-xs py-2.5 font-medium transition-colors border-b-2 -mb-px
-              ${mobileTab === id ? 'text-[#BA7517] border-[#EF9F27]' : 'text-stone-400 border-transparent'}`}>
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* ═══════════════ TAB SWITCHER ═══════════════ */}
+      <section className="px-4 pt-6">
+        <div className="mx-auto flex max-w-lg rounded-full border border-[#3A2117]/10 bg-[#EEE7E1] p-1">
+          {[
+            { id: 'orders', label: 'Orders' },
+            { id: 'wishlist', label: 'Wishlist' },
+            { id: 'details', label: 'Profile' },
+          ].map(({ id, label }) => {
+            const active = mobileTab === id
 
-      {/* Tab content */}
-      <div className="flex-1 px-4 pt-3 pb-24 overflow-y-auto">
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setEditing(false)
+                  setMobileTab(id)
+                }}
+                className={`min-h-[40px] flex-1 rounded-full px-3 text-xs font-semibold transition-all ${active
+                    ? 'bg-[#3A2117] text-white shadow-[0_5px_14px_rgba(58,33,23,0.20)]'
+                    : 'text-[#7A6559]'
+                  }`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </section>
 
-        {mobileTab === 'orders' && <OrdersList limit={10} compact />}
+      {/* ═══════════════ CONTENT ═══════════════ */}
+      <section className="mx-auto max-w-lg px-4 pb-8 pt-5">
 
-        {mobileTab === 'wishlist' && (
-          <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <Heart size={28} className="text-stone-200" />
-            <p className="text-xs text-stone-400">Your wishlist is empty</p>
+        {/* ───────── ORDERS ───────── */}
+        {mobileTab === 'orders' && (
+          <div>
+            <div className="mb-4">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8A654D]">
+                Order History
+              </p>
+
+              <div className="mt-1 flex items-end justify-between gap-3">
+                <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#281912]">
+                  My Orders
+                </h2>
+
+                {orders?.length > 0 && (
+                  <Link
+                    to="/orders"
+                    className="text-[11px] font-semibold text-[#6B4228]"
+                  >
+                    View all
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {!orders || orders.length === 0 ? (
+              <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] px-6 py-12 text-center shadow-[0_8px_28px_rgba(58,33,23,0.04)]">
+                <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+                  <ShoppingBag size={23} strokeWidth={1.5} />
+                </div>
+
+                <h3 className="mt-4 text-sm font-semibold text-[#281912]">
+                  No orders yet
+                </h3>
+
+                <p className="mx-auto mt-1 max-w-[260px] text-xs leading-5 text-[#8A7569]">
+                  Your Lamp & Glow orders will appear here once you start shopping.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/products')}
+                  className="mt-5 min-h-[42px] rounded-full bg-[#3A2117] px-6 text-xs font-semibold text-white"
+                >
+                  Explore Products
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {orders.slice(0, 10).map((order) => (
+                  <div
+                    key={order._id || order.id}
+                    className="rounded-[20px] border border-[#3A2117]/10 bg-[#FFFEFC] p-4 shadow-[0_6px_24px_rgba(58,33,23,0.04)]"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F2ECE5] text-[#6B4228]">
+                        <ShoppingBag size={17} strokeWidth={1.6} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[#281912]">
+                              {order.items?.[0]?.productName || 'Lamp & Glow Order'}
+                            </p>
+
+                            <p className="mt-1 text-[10px] text-[#9A8171]">
+                              #{(order._id || order.id)?.substring(0, 8)}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-semibold ${getStatusStyle(
+                              order.orderStatus
+                            )}`}
+                          >
+                            {getStatusLabel(order.orderStatus)}
+                          </span>
+                        </div>
+
+                        <div className="mt-3 border-t border-[#3A2117]/10 pt-3">
+                          <p className="text-[10px] text-[#8A7569]">
+                            {order.createdAt
+                              ? new Date(order.createdAt).toLocaleDateString(
+                                'en-US',
+                                {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                }
+                              )
+                              : 'Date unavailable'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
+        {/* ───────── WISHLIST ───────── */}
+        {mobileTab === 'wishlist' && (
+          <div>
+            <div className="mb-4">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8A654D]">
+                Saved Collection
+              </p>
+
+              <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#281912]">
+                My Wishlist
+              </h2>
+            </div>
+
+            {!wishlist || wishlist.length === 0 ? (
+              <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] px-6 py-12 text-center shadow-[0_8px_28px_rgba(58,33,23,0.04)]">
+                <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+                  <Heart size={23} strokeWidth={1.5} />
+                </div>
+
+                <h3 className="mt-4 text-sm font-semibold text-[#281912]">
+                  No favourites yet
+                </h3>
+
+                <p className="mx-auto mt-1 max-w-[260px] text-xs leading-5 text-[#8A7569]">
+                  Save products you love and they'll stay ready for you here.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/products')}
+                  className="mt-5 min-h-[42px] rounded-full bg-[#3A2117] px-6 text-xs font-semibold text-white"
+                >
+                  Browse Products
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {wishlist.map((product) => (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/products/${product.name
+                          ?.toLowerCase()
+                          .trim()
+                          .replace(/[^a-z0-9]+/g, '-')
+                          .replace(/^-+|-+$/g, '')}`
+                      )
+                    }
+                    className="group overflow-hidden rounded-[20px] border border-[#3A2117]/10 bg-[#FFFEFC] text-left shadow-[0_6px_20px_rgba(58,33,23,0.04)]"
+                  >
+                    <div className="aspect-square overflow-hidden bg-[#EEE7E1]">
+                      {product.image ? (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-active:scale-[1.03]"
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-[#9A8171]">
+                          <Heart size={22} strokeWidth={1.4} />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-3">
+                      <p className="line-clamp-2 text-xs font-semibold leading-5 text-[#281912]">
+                        {product.name}
+                      </p>
+
+                      <p className="mt-1.5 text-xs font-semibold text-[#6B4228]">
+                        Rs.{' '}
+                        {Number(product.price || 0).toLocaleString('en-PK')}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ───────── PROFILE DETAILS ───────── */}
         {mobileTab === 'details' && (
           <div>
+            <div className="mb-4">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8A654D]">
+                Personal Details
+              </p>
+
+              <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#281912]">
+                Profile Information
+              </h2>
+            </div>
+
             {!editing ? (
               <>
-                <div className="flex flex-col gap-3 mb-4">
-                  {profile?.email && <InfoRow icon={<Mail size={14} className="text-stone-400" />} label="Email" value={profile.email} compact />}
-                  {profile?.mobile && <InfoRow icon={<Phone size={14} className="text-stone-400" />} label="Phone" value={profile.mobile} compact />}
-                  {(profile?.addressLine1 || profile?.city) && (
-                    <InfoRow
-                      icon={<MapPin size={14} className="text-stone-400 mt-0.5" />}
-                      label="Address"
-                      value={[profile?.addressLine1, profile?.addressLine2, profile?.city, profile?.state, profile?.postalCode].filter(Boolean).join(', ')}
-                      compact
-                    />
-                  )}
+                <div className="overflow-hidden rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_8px_28px_rgba(58,33,23,0.04)]">
+
+                  {/* Email */}
+                  <div className="flex gap-3 border-b border-[#3A2117]/10 p-4">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+                      <Mail size={16} strokeWidth={1.6} />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#9A8171]">
+                        Email
+                      </p>
+
+                      <p className="mt-1 break-all text-sm font-medium text-[#281912]">
+                        {profile?.email || '—'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Phone */}
+                  <div className="flex gap-3 border-b border-[#3A2117]/10 p-4">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+                      <Phone size={16} strokeWidth={1.6} />
+                    </div>
+
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#9A8171]">
+                        Phone
+                      </p>
+
+                      <p className="mt-1 text-sm font-medium text-[#281912]">
+                        {profile?.mobile || 'Not added'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  <div className="flex gap-3 p-4">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+                      <MapPin size={16} strokeWidth={1.6} />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#9A8171]">
+                        Delivery Address
+                      </p>
+
+                      <p className="mt-1 text-sm leading-6 text-[#281912]">
+                        {[
+                          profile?.addressLine1,
+                          profile?.addressLine2,
+                          profile?.city,
+                          profile?.state,
+                          profile?.postalCode,
+                        ]
+                          .filter(Boolean)
+                          .join(', ') || 'No address added yet'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <button onClick={() => setEditing(true)}
-                  className="w-full py-2 bg-[#5A2D0C] text-white text-xs font-medium rounded-lg mb-2">
-                  Edit profile
+
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="
+                  mt-4 min-h-[48px] w-full rounded-full
+                  bg-[#3A2117] px-6 text-sm font-semibold text-white
+                  shadow-[0_10px_25px_rgba(58,33,23,0.16)]
+                  transition-transform active:scale-[0.99]
+                "
+                >
+                  Edit Profile
                 </button>
-                <button onClick={onLogout}
-                  className="w-full py-2 text-xs font-medium text-red-500 border border-red-200 rounded-lg">
-                  Sign out
+
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="
+                  mt-3 flex min-h-[46px] w-full items-center
+                  justify-center gap-2 rounded-full
+                  border border-red-200 bg-[#FFFEFC]
+                  text-sm font-semibold text-red-600
+                "
+                >
+                  <LogOut size={15} strokeWidth={1.7} />
+                  Sign Out
                 </button>
               </>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-2.5">
-                {[
-                  { label: 'First name', name: 'firstName', type: 'text' },
-                  { label: 'Last name', name: 'lastName', type: 'text' },
-                  { label: 'Mobile', name: 'mobile', type: 'tel' },
-                  { label: 'Email', name: 'email', type: 'email' },
-                  { label: 'Address line 1', name: 'addressLine1', type: 'text' },
-                  { label: 'Address line 2', name: 'addressLine2', type: 'text' },
-                  { label: 'City', name: 'city', type: 'text' },
-                  { label: 'State', name: 'state', type: 'text' },
-                  { label: 'Postal code', name: 'postalCode', type: 'text' },
-                ].map(({ label, name, type }) => (
-                  <div key={name}>
-                    <label className="block text-[10px] font-medium text-stone-500 mb-1">{label}</label>
-                    <input type={type} name={name} value={formData[name]} onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-400 bg-white text-stone-900" />
-                  </div>
-                ))}
-                <div className="flex gap-2 pt-1">
-                  <button type="submit" disabled={loading}
-                    className="flex-1 bg-[#5A2D0C] text-white text-xs font-medium py-2 rounded-lg flex items-center justify-center gap-1.5 disabled:opacity-50">
-                    {loading && <Loader size={12} className="animate-spin" />}
-                    {loading ? 'Saving…' : 'Save changes'}
-                  </button>
-                  <button type="button" onClick={() => setEditing(false)}
-                    className="flex-1 bg-stone-100 text-stone-600 text-xs font-medium py-2 rounded-lg">
+              <form
+                onSubmit={handleSubmit}
+                className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] p-4 shadow-[0_8px_28px_rgba(58,33,23,0.04)]"
+              >
+                <div className="space-y-4">
+                  {[
+                    {
+                      label: 'First name',
+                      name: 'firstName',
+                      type: 'text',
+                    },
+                    {
+                      label: 'Last name',
+                      name: 'lastName',
+                      type: 'text',
+                    },
+                    {
+                      label: 'Mobile',
+                      name: 'mobile',
+                      type: 'tel',
+                    },
+                    {
+                      label: 'Email',
+                      name: 'email',
+                      type: 'email',
+                    },
+                    {
+                      label: 'Address line 1',
+                      name: 'addressLine1',
+                      type: 'text',
+                    },
+                    {
+                      label: 'Address line 2',
+                      name: 'addressLine2',
+                      type: 'text',
+                    },
+                    {
+                      label: 'City',
+                      name: 'city',
+                      type: 'text',
+                    },
+                    {
+                      label: 'State',
+                      name: 'state',
+                      type: 'text',
+                    },
+                    {
+                      label: 'Postal code',
+                      name: 'postalCode',
+                      type: 'text',
+                    },
+                  ].map(({ label, name, type }) => (
+                    <div key={name}>
+                      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.1em] text-[#7A6559]">
+                        {label}
+                      </label>
+
+                      <input
+                        type={type}
+                        name={name}
+                        value={formData[name]}
+                        onChange={handleChange}
+                        className="
+                        h-12 w-full rounded-xl
+                        border border-[#3A2117]/15
+                        bg-[#F7F4EF] px-4
+                        text-sm text-[#281912] outline-none
+                        transition
+                        focus:border-[#6B4228]
+                        focus:ring-4 focus:ring-[#6B4228]/[0.06]
+                      "
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    className="
+                    min-h-[46px] flex-1 rounded-full
+                    border border-[#3A2117]/15
+                    bg-[#FFFEFC] text-sm font-semibold
+                    text-[#3A2117]
+                  "
+                  >
                     Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="
+                    inline-flex min-h-[46px] flex-1
+                    items-center justify-center gap-2
+                    rounded-full bg-[#3A2117]
+                    text-sm font-semibold text-white
+                    disabled:cursor-not-allowed disabled:opacity-50
+                  "
+                  >
+                    {loading && (
+                      <Loader size={14} className="animate-spin" />
+                    )}
+
+                    {loading ? 'Saving…' : 'Save Changes'}
                   </button>
                 </div>
               </form>
             )}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-100 flex z-10">
-        {[
-          { label: 'Home', icon: Home, action: () => navigate('/') },
-          { label: 'Orders', icon: ShoppingBag, action: () => setMobileTab('orders') },
-          { label: 'Wishlist', icon: Heart, action: () => setMobileTab('wishlist') },
-          { label: 'Profile', icon: User, action: () => setMobileTab('details') },
-        ].map(({ label, icon: Icon, action }) => (
-          <button key={label} onClick={action}
-            className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[#BA7517]">
-            <Icon size={18} />
-            <span className="text-[9px]">{label}</span>
-          </button>
-        ))}
-      </div>
+      {/* ═══════════════ MOBILE BOTTOM NAV ═══════════════ */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#3A2117]/10 bg-[#FFFEFC]/95 px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-lg">
+          {[
+            {
+              label: 'Home',
+              icon: Home,
+              active: false,
+              action: () => navigate('/'),
+            },
+            {
+              label: 'Orders',
+              icon: ShoppingBag,
+              active: mobileTab === 'orders',
+              action: () => {
+                setEditing(false)
+                setMobileTab('orders')
+              },
+            },
+            {
+              label: 'Wishlist',
+              icon: Heart,
+              active: mobileTab === 'wishlist',
+              action: () => {
+                setEditing(false)
+                setMobileTab('wishlist')
+              },
+            },
+            {
+              label: 'Profile',
+              icon: User,
+              active: mobileTab === 'details',
+              action: () => setMobileTab('details'),
+            },
+          ].map(({ label, icon: Icon, active, action }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={action}
+              className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-xl transition-colors ${active ? 'text-[#3A2117]' : 'text-[#A29187]'
+                }`}
+            >
+              <div
+                className={`grid h-7 w-10 place-items-center rounded-full transition-colors ${active ? 'bg-[#EEE5DC]' : ''
+                  }`}
+              >
+                <Icon
+                  size={17}
+                  strokeWidth={active ? 2 : 1.6}
+                />
+              </div>
+
+              <span
+                className={`text-[9px] ${active ? 'font-semibold' : 'font-medium'
+                  }`}
+              >
+                {label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 
   // ─── DESKTOP VIEW ──────────────────────────────────
   const DesktopView = () => (
-    <div className="w-full border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white grid grid-cols-[240px_1fr]">
+    <div className="mx-auto w-full max-w-[1320px] overflow-hidden rounded-[30px] border border-[#3A2117]/10 bg-[#FFFEFC] shadow-[0_24px_70px_rgba(58,33,23,0.08)]">
+      <div className="grid min-h-[650px] grid-cols-[285px_minmax(0,1fr)]">
 
-      <aside className="bg-[#412402]">
-        <div className="px-5 pt-5 pb-4">
-          <div className="flex items-center gap-2 text-[#FAC775] text-xs font-medium tracking-widest mb-5">
-            {fullName}
-          </div>
-          <div className="relative w-12 h-12 mx-auto mb-2">
-            <div className="w-12 h-12 rounded-full bg-[#EF9F27] flex items-center justify-center overflow-hidden text-base font-semibold text-[#412402]">
-              {profile?.photoURL || profileImage ? (
-                <img src={profile?.photoURL || profileImage} alt={fullName} className="w-full h-full object-cover" />
-              ) : (
-                <span>{initials}</span>
+        {/* ═══════════════ SIDEBAR ═══════════════ */}
+        <aside className="relative overflow-hidden bg-[#3A2117] text-white">
+          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/[0.035]" />
+          <div className="absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-white/[0.025]" />
+
+          <div className="relative px-6 pb-6 pt-7">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#D7B99E]">
+              Lamp & Glow Account
+            </p>
+
+            {/* Profile */}
+            <div className="mt-7 text-center">
+              <div className="relative mx-auto h-24 w-24">
+                <div className="h-24 w-24 overflow-hidden rounded-full border-[4px] border-white/10 bg-[#F3E4D7] shadow-[0_12px_35px_rgba(0,0,0,0.18)]">
+                  {profile?.photoURL || profileImage ? (
+                    <img
+                      src={profile?.photoURL || profileImage}
+                      alt={fullName || 'Profile'}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center text-2xl font-semibold text-[#3A2117]">
+                      {initials}
+                    </div>
+                  )}
+                </div>
+
+                <label
+                  className="
+                  absolute bottom-0 right-0 grid h-9 w-9 cursor-pointer
+                  place-items-center rounded-full border-[3px]
+                  border-[#3A2117] bg-[#FFFEFC] text-[#3A2117]
+                  shadow-lg transition-transform hover:scale-105
+                "
+                  title="Change profile photo"
+                >
+                  {uploadingImage ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    <Camera size={14} strokeWidth={1.8} />
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingImage}
+                    onChange={handleImageUpload}
+                  />
+                </label>
+              </div>
+
+              <h2 className="mt-4 text-lg font-semibold tracking-[-0.02em] text-white">
+                {fullName || 'Lamp & Glow Customer'}
+              </h2>
+
+              <p className="mt-1 truncate text-xs text-[#CBB8AC]">
+                {profile?.email || 'Your account'}
+              </p>
+
+              {(profile?.city || profile?.state) && (
+                <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-[#BCA89C]">
+                  <MapPin size={11} strokeWidth={1.7} />
+                  {[profile?.city, profile?.state].filter(Boolean).join(', ')}
+                </div>
               )}
             </div>
-            <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#5A2D0C] text-white flex items-center justify-center cursor-pointer">
-              <Camera size={12} />
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-            </label>
-          </div>
-          <p className="text-sm font-medium text-[#FAC775] text-center">{fullName}</p>
-          <p className="text-xs text-[#854F0B] text-center mt-1">Member since 2024</p>
-          <div className="h-px bg-[#633806] mt-4" />
-        </div>
-        <nav className="flex flex-col gap-1 px-4 pb-4">
-          {desktopNavItems.map(({ id, icon: Icon, label }) => (
-            <button key={id} onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm w-full text-left transition-colors
-                ${activeTab === id ? 'bg-[rgba(239,159,39,0.18)] text-[#FAC775] font-medium' : 'text-[#C87020] hover:bg-[rgba(255,180,60,0.1)]'}`}>
-              <Icon size={15} />{label}
-            </button>
-          ))}
-          <div className="h-px bg-[#633806] my-1" />
-          <button onClick={onLogout}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#A32D2D] hover:bg-[rgba(255,180,60,0.1)] transition-colors w-full">
-            <LogOut size={15} /> Sign out
-          </button>
-        </nav>
-      </aside>
 
-      <main className="p-5 overflow-y-auto min-h-[500px]">
+            {/* Quick stats */}
+            <div className="mt-7 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-3 text-center">
+                <span className="block text-lg font-semibold text-white">
+                  {orders?.length || 0}
+                </span>
+                <span className="mt-0.5 block text-[9px] uppercase tracking-[0.14em] text-[#BCA89C]">
+                  Orders
+                </span>
+              </div>
 
-        {activeTab === 'orders' && (
-          <>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-stone-900">My orders</h2>
-              <Link to="/orders" className="text-xs px-3 py-1.5 rounded-lg border border-stone-300 text-stone-600 hover:border-stone-400 flex items-center gap-1.5 transition-colors">
-                <SlidersHorizontal size={12} /> Filter
-              </Link>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {[{ label: 'Total orders', value: orders?.length || 0 }, { label: 'Wishlist', value: 0 }, { label: 'Reviews', value: 0 }].map(({ label, value }) => (
-                <div key={label} className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-center">
-                  <span className="text-xl font-semibold text-[#BA7517] block">{value}</span>
-                  <span className="text-xs text-stone-500">{label}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">Recent orders</p>
-            <OrdersList limit={5} />
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-[#FAEEDA] mt-4">
-              <ShoppingBag size={18} className="text-[#854F0B] flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-[#633806]">COD available nationwide</p>
-                <p className="text-xs text-[#854F0B]">Cash on delivery on all orders · Free delivery over Rs. 3,000</p>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-3 text-center">
+                <span className="block text-lg font-semibold text-white">
+                  {wishlist?.length || 0}
+                </span>
+                <span className="mt-0.5 block text-[9px] uppercase tracking-[0.14em] text-[#BCA89C]">
+                  Wishlist
+                </span>
               </div>
             </div>
-          </>
-        )}
-
-        {activeTab === 'wishlist' && (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-stone-200 bg-white p-6">
-              <h3 className="text-base font-semibold text-stone-900 mb-4">My Wishlist</h3>
-              {(!wishlist || wishlist.length === 0) ? (
-                <div className="flex flex-col items-center py-12 gap-3">
-                  <Heart size={36} className="text-stone-300" />
-                  <p className="text-sm text-stone-400">Your wishlist is empty</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {wishlist.map((product) => (
-                    <div key={product.id} className="rounded-xl border border-stone-200 bg-stone-50 overflow-hidden">
-                      <div className="aspect-square bg-stone-100">
-                        {product.image ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" /> : null}
-                      </div>
-                      <div className="p-3">
-                        <p className="text-sm font-semibold text-stone-900">{product.name}</p>
-                        <p className="text-sm font-bold text-[#5A2D0C]">Rs {Number(product.price).toLocaleString()}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
-        )}
 
+          {/* Navigation */}
+          <nav className="relative border-t border-white/10 px-4 py-5">
+            <p className="mb-3 px-3 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#977F72]">
+              My Account
+            </p>
 
+            <div className="space-y-1.5">
+              {desktopNavItems.map(({ id, icon: Icon, label }) => {
+                const active = activeTab === id
 
-        {activeTab === 'reviews' && (
-          <div className="flex flex-col items-center justify-center py-16 gap-2">
-            <Star size={36} className="text-stone-300" /><p className="text-sm text-stone-400">No reviews yet</p>
-          </div>
-        )}
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setActiveTab(id)}
+                    className={`flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm transition-all ${active
+                      ? 'bg-[#FFFEFC] font-semibold text-[#3A2117] shadow-[0_8px_25px_rgba(0,0,0,0.12)]'
+                      : 'text-[#D9C9BF] hover:bg-white/[0.06] hover:text-white'
+                      }`}
+                  >
+                    <Icon
+                      size={16}
+                      strokeWidth={active ? 2 : 1.7}
+                      className="shrink-0"
+                    />
 
-        {activeTab === 'notifications' && (
-          <div className="flex flex-col items-center justify-center py-16 gap-2">
-            <Bell size={36} className="text-stone-300" /><p className="text-sm text-stone-400">No notifications</p>
-          </div>
-        )}
-
-        {activeTab === 'settings' && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-stone-900">Profile information</h2>
-              {!editing && (
-                <button onClick={() => setEditing(true)}
-                  className="px-3 py-1.5 bg-[#5A2D0C] hover:bg-[#7A4A20] text-white rounded-lg text-sm font-medium transition-colors">
-                  Edit profile
-                </button>
-              )}
-            </div>
-            {editing ? (
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    { label: 'First name', name: 'firstName', type: 'text' },
-                    { label: 'Last name', name: 'lastName', type: 'text' },
-                    { label: 'Mobile', name: 'mobile', type: 'tel' },
-                    { label: 'Email', name: 'email', type: 'email' },
-                  ].map(({ label, name, type }) => (
-                    <div key={name}>
-                      <label className="block text-xs font-medium text-stone-600 mb-1">{label}</label>
-                      <input type={type} name={name} value={formData[name]} onChange={handleChange}
-                        className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white text-stone-900" />
-                    </div>
-                  ))}
-                  {[
-                    { label: 'Address line 1', name: 'addressLine1', span: true },
-                    { label: 'Address line 2', name: 'addressLine2', span: true },
-                  ].map(({ label, name, span }) => (
-                    <div key={name} className={span ? 'sm:col-span-2' : ''}>
-                      <label className="block text-xs font-medium text-stone-600 mb-1">{label}</label>
-                      <input type="text" name={name} value={formData[name]} onChange={handleChange}
-                        className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white text-stone-900" />
-                    </div>
-                  ))}
-                  {[
-                    { label: 'City', name: 'city' }, { label: 'State', name: 'state' }, { label: 'Postal code', name: 'postalCode' },
-                  ].map(({ label, name }) => (
-                    <div key={name}>
-                      <label className="block text-xs font-medium text-stone-600 mb-1">{label}</label>
-                      <input type="text" name={name} value={formData[name]} onChange={handleChange}
-                        className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white text-stone-900" />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button type="submit" disabled={loading}
-                    className="flex-1 bg-[#5A2D0C] hover:bg-[#7A4A20] text-white font-medium py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-                    {loading && <Loader size={15} className="animate-spin" />}
-                    {loading ? 'Saving…' : 'Save changes'}
+                    <span>{label}</span>
                   </button>
-                  <button type="button" onClick={() => setEditing(false)}
-                    className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium py-2 rounded-lg text-sm transition-colors">
-                    Cancel
-                  </button>
+                )
+              })}
+            </div>
+
+            <div className="my-4 border-t border-white/10" />
+
+            <button
+              type="button"
+              onClick={onLogout}
+              className="
+              flex min-h-[44px] w-full items-center gap-3 rounded-xl
+              px-3.5 text-left text-sm text-[#E8B4AA]
+              transition-colors hover:bg-red-400/10 hover:text-[#FFD5CD]
+            "
+            >
+              <LogOut size={16} strokeWidth={1.7} />
+              Sign out
+            </button>
+          </nav>
+        </aside>
+
+        {/* ═══════════════ MAIN CONTENT ═══════════════ */}
+        <main className="min-w-0 bg-[#F7F4EF] p-7 lg:p-9">
+
+          {/* ORDERS */}
+          {activeTab === 'orders' && (
+            <>
+              <div className="mb-7 flex items-end justify-between gap-5">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
+                    Order History
+                  </p>
+
+                  <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                    My Orders
+                  </h2>
+
+                  <p className="mt-2 text-sm text-[#7A6A60]">
+                    Keep track of your Lamp & Glow purchases and order status.
+                  </p>
                 </div>
-              </form>
-            ) : (
-              <div className="flex flex-col gap-4">
-                <InfoRow icon={<Mail size={16} className="text-stone-400" />} label="Email" value={profile?.email} />
-                {profile?.mobile && <InfoRow icon={<Phone size={16} className="text-stone-400" />} label="Phone" value={profile.mobile} />}
-                {(profile?.addressLine1 || profile?.city) && (
-                  <InfoRow icon={<MapPin size={16} className="text-stone-400 mt-0.5" />} label="Address"
-                    value={[profile?.addressLine1, profile?.addressLine2, profile?.city, profile?.state, profile?.postalCode].filter(Boolean).join(', ')} />
+
+                <Link
+                  to="/orders"
+                  className="
+                  inline-flex min-h-[42px] items-center gap-2 rounded-full
+                  border border-[#3A2117]/15 bg-[#FFFEFC]
+                  px-5 text-xs font-semibold text-[#3A2117]
+                  transition-colors hover:bg-[#F2ECE5]
+                "
+                >
+                  <ShoppingBag size={14} />
+                  View all orders
+                </Link>
+              </div>
+
+              {/* Stats */}
+              <div className="mb-7 grid grid-cols-3 gap-4">
+                {[
+                  {
+                    label: 'Total Orders',
+                    value: orders?.length || 0,
+                    icon: ShoppingBag,
+                  },
+                  {
+                    label: 'Wishlist',
+                    value: wishlist?.length || 0,
+                    icon: Heart,
+                  },
+                  {
+                    label: 'Reviews',
+                    value: 0,
+                    icon: Star,
+                  },
+                ].map(({ label, value, icon: Icon }) => (
+                  <div
+                    key={label}
+                    className="
+                    rounded-[20px] border border-[#3A2117]/10
+                    bg-[#FFFEFC] p-5
+                    shadow-[0_8px_25px_rgba(58,33,23,0.04)]
+                  "
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                          {value}
+                        </span>
+
+                        <p className="mt-1 text-[11px] font-medium text-[#8A7569]">
+                          {label}
+                        </p>
+                      </div>
+
+                      <div className="grid h-9 w-9 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+                        <Icon size={15} strokeWidth={1.7} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Recent Orders */}
+              <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] p-5 shadow-[0_10px_30px_rgba(58,33,23,0.04)]">
+                <div className="mb-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A654D]">
+                    Recent Activity
+                  </p>
+
+                  <h3 className="mt-1 text-base font-semibold text-[#281912]">
+                    Recent Orders
+                  </h3>
+                </div>
+
+                <OrdersList limit={5} />
+              </div>
+
+              <div className="mt-5 flex items-start gap-3 rounded-[20px] border border-[#6B4228]/10 bg-[#EEE5DC] p-4">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#3A2117] text-white">
+                  <ShoppingBag size={15} strokeWidth={1.7} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-[#3A2117]">
+                    Cash on Delivery available
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-[#7A6559]">
+                    Shop with confidence and track your orders from your account.
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* WISHLIST */}
+          {activeTab === 'wishlist' && (
+            <>
+              <div className="mb-7">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
+                  Saved Collection
+                </p>
+
+                <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                  My Wishlist
+                </h2>
+
+                <p className="mt-2 text-sm text-[#7A6A60]">
+                  All the pieces you've saved for later.
+                </p>
+              </div>
+
+              <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] p-5 sm:p-6">
+                {!wishlist || wishlist.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="grid h-16 w-16 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+                      <Heart size={25} strokeWidth={1.5} />
+                    </div>
+
+                    <h3 className="mt-5 text-lg font-semibold text-[#281912]">
+                      No favourites yet
+                    </h3>
+
+                    <p className="mt-2 max-w-sm text-sm leading-6 text-[#8A7569]">
+                      Save the pieces that catch your eye and they'll appear here.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => navigate('/products')}
+                      className="
+                      mt-5 inline-flex min-h-[44px] items-center justify-center
+                      rounded-full bg-[#3A2117] px-6 text-sm font-semibold
+                      text-white transition-all hover:-translate-y-0.5
+                      hover:bg-[#4A2B1F]
+                    "
+                    >
+                      Explore Products
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+                    {wishlist.map((product) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            `/products/${product.name
+                              ?.toLowerCase()
+                              .trim()
+                              .replace(/[^a-z0-9]+/g, '-')
+                              .replace(/^-+|-+$/g, '')}`
+                          )
+                        }
+                        className="
+                        group overflow-hidden rounded-[20px]
+                        border border-[#3A2117]/10 bg-[#F7F4EF]
+                        text-left transition-all duration-300
+                        hover:-translate-y-1
+                        hover:border-[#6B4228]/20
+                        hover:shadow-[0_14px_35px_rgba(58,33,23,0.08)]
+                      "
+                      >
+                        <div className="aspect-square overflow-hidden bg-[#ECE5DF]">
+                          {product.image && (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                            />
+                          )}
+                        </div>
+
+                        <div className="p-4">
+                          <p className="line-clamp-2 text-sm font-semibold leading-5 text-[#281912]">
+                            {product.name}
+                          </p>
+
+                          <p className="mt-2 text-sm font-semibold text-[#6B4228]">
+                            Rs. {Number(product.price || 0).toLocaleString('en-PK')}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-        )}
-      </main>
+            </>
+          )}
+
+          {/* REVIEWS */}
+          {activeTab === 'reviews' && (
+            <div>
+              <div className="mb-7">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
+                  Your Feedback
+                </p>
+
+                <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                  Reviews
+                </h2>
+
+                <p className="mt-2 text-sm text-[#7A6A60]">
+                  Your product reviews will appear here.
+                </p>
+              </div>
+
+              <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] py-16 text-center">
+                <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+                  <Star size={25} strokeWidth={1.5} />
+                </div>
+
+                <p className="mt-5 text-sm font-semibold text-[#281912]">
+                  No reviews yet
+                </p>
+
+                <p className="mt-1 text-xs text-[#8A7569]">
+                  Reviews you submit will be available here.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* NOTIFICATIONS */}
+          {activeTab === 'notifications' && (
+            <div>
+              <div className="mb-7">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
+                  Account Updates
+                </p>
+
+                <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                  Notifications
+                </h2>
+
+                <p className="mt-2 text-sm text-[#7A6A60]">
+                  Order and account notifications will appear here.
+                </p>
+              </div>
+
+              <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] py-16 text-center">
+                <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+                  <Bell size={25} strokeWidth={1.5} />
+                </div>
+
+                <p className="mt-5 text-sm font-semibold text-[#281912]">
+                  You're all caught up
+                </p>
+
+                <p className="mt-1 text-xs text-[#8A7569]">
+                  There are no notifications right now.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* SETTINGS */}
+          {activeTab === 'settings' && (
+            <>
+              <div className="mb-7 flex items-end justify-between gap-5">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
+                    Personal Details
+                  </p>
+
+                  <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                    Profile Information
+                  </h2>
+
+                  <p className="mt-2 text-sm text-[#7A6A60]">
+                    Keep your contact and delivery information up to date.
+                  </p>
+                </div>
+
+                {!editing && (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="
+                    inline-flex min-h-[42px] items-center justify-center
+                    rounded-full bg-[#3A2117] px-5
+                    text-xs font-semibold text-white
+                    transition-all hover:-translate-y-0.5
+                    hover:bg-[#4A2B1F]
+                  "
+                  >
+                    Edit Profile
+                  </button>
+                )}
+              </div>
+
+              <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] p-6">
+                {editing ? (
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      {[
+                        { label: 'First name', name: 'firstName', type: 'text' },
+                        { label: 'Last name', name: 'lastName', type: 'text' },
+                        { label: 'Mobile', name: 'mobile', type: 'tel' },
+                        { label: 'Email', name: 'email', type: 'email' },
+                      ].map(({ label, name, type }) => (
+                        <div key={name}>
+                          <label className="mb-1.5 block text-[11px] font-semibold text-[#5F4C42]">
+                            {label}
+                          </label>
+
+                          <input
+                            type={type}
+                            name={name}
+                            value={formData[name]}
+                            onChange={handleChange}
+                            className="
+                            h-11 w-full rounded-xl border border-[#3A2117]/15
+                            bg-[#F7F4EF] px-4 text-sm text-[#281912]
+                            outline-none transition
+                            focus:border-[#6B4228]
+                            focus:ring-4 focus:ring-[#6B4228]/[0.06]
+                          "
+                          />
+                        </div>
+                      ))}
+
+                      {[
+                        { label: 'Address line 1', name: 'addressLine1' },
+                        { label: 'Address line 2', name: 'addressLine2' },
+                      ].map(({ label, name }) => (
+                        <div key={name} className="sm:col-span-2">
+                          <label className="mb-1.5 block text-[11px] font-semibold text-[#5F4C42]">
+                            {label}
+                          </label>
+
+                          <input
+                            type="text"
+                            name={name}
+                            value={formData[name]}
+                            onChange={handleChange}
+                            className="
+                            h-11 w-full rounded-xl border border-[#3A2117]/15
+                            bg-[#F7F4EF] px-4 text-sm text-[#281912]
+                            outline-none transition
+                            focus:border-[#6B4228]
+                            focus:ring-4 focus:ring-[#6B4228]/[0.06]
+                          "
+                          />
+                        </div>
+                      ))}
+
+                      {[
+                        { label: 'City', name: 'city' },
+                        { label: 'State', name: 'state' },
+                        { label: 'Postal code', name: 'postalCode' },
+                      ].map(({ label, name }) => (
+                        <div key={name}>
+                          <label className="mb-1.5 block text-[11px] font-semibold text-[#5F4C42]">
+                            {label}
+                          </label>
+
+                          <input
+                            type="text"
+                            name={name}
+                            value={formData[name]}
+                            onChange={handleChange}
+                            className="
+                            h-11 w-full rounded-xl border border-[#3A2117]/15
+                            bg-[#F7F4EF] px-4 text-sm text-[#281912]
+                            outline-none transition
+                            focus:border-[#6B4228]
+                            focus:ring-4 focus:ring-[#6B4228]/[0.06]
+                          "
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end gap-3 border-t border-[#3A2117]/10 pt-5">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(false)}
+                        className="
+                        min-h-[44px] rounded-full border border-[#3A2117]/15
+                        px-6 text-sm font-semibold text-[#3A2117]
+                        transition-colors hover:bg-[#F7F4EF]
+                      "
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="
+                        inline-flex min-h-[44px] min-w-[140px]
+                        items-center justify-center gap-2 rounded-full
+                        bg-[#3A2117] px-6 text-sm font-semibold text-white
+                        transition-all hover:bg-[#4A2B1F]
+                        disabled:cursor-not-allowed disabled:opacity-50
+                      "
+                      >
+                        {loading && <Loader size={15} className="animate-spin" />}
+                        {loading ? 'Saving…' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-[#F7F4EF] p-5">
+                      <InfoRow
+                        icon={<Mail size={16} className="text-[#6B4228]" />}
+                        label="Email"
+                        value={profile?.email}
+                      />
+                    </div>
+
+                    <div className="rounded-2xl bg-[#F7F4EF] p-5">
+                      <InfoRow
+                        icon={<Phone size={16} className="text-[#6B4228]" />}
+                        label="Phone"
+                        value={profile?.mobile}
+                      />
+                    </div>
+
+                    <div className="rounded-2xl bg-[#F7F4EF] p-5 sm:col-span-2">
+                      <InfoRow
+                        icon={
+                          <MapPin
+                            size={16}
+                            className="mt-0.5 text-[#6B4228]"
+                          />
+                        }
+                        label="Delivery Address"
+                        value={[
+                          profile?.addressLine1,
+                          profile?.addressLine2,
+                          profile?.city,
+                          profile?.state,
+                          profile?.postalCode,
+                        ]
+                          .filter(Boolean)
+                          .join(', ')}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </main>
+      </div>
     </div>
   );
 
@@ -515,10 +1398,22 @@ export default function ProfileSection({ profile, orders, wishlist = [], handleP
 function InfoRow({ icon, label, value, compact = false }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="mt-0.5 flex-shrink-0">{icon}</div>
-      <div>
-        <p className={`text-stone-400 ${compact ? 'text-[10px]' : 'text-xs'}`}>{label}</p>
-        <p className={`font-medium text-stone-900 ${compact ? 'text-xs' : 'text-sm'}`}>{value || '—'}</p>
+      <div className="mt-0.5 shrink-0">{icon}</div>
+
+      <div className="min-w-0">
+        <p
+          className={`font-medium text-[#8A7569] ${compact ? 'text-[10px]' : 'text-[11px]'
+            }`}
+        >
+          {label}
+        </p>
+
+        <p
+          className={`mt-1 break-words font-medium text-[#281912] ${compact ? 'text-xs' : 'text-sm'
+            }`}
+        >
+          {value || '—'}
+        </p>
       </div>
     </div>
   );

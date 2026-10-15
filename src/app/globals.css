@@ -22,6 +22,7 @@
   color: #ffffff;
   transition: background-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
+
 .btn-primary:hover:not(:disabled) {
   background-color: #FFD400;
   color: #222222;
@@ -34,6 +35,7 @@
   color: #5A2D0C;
   transition: background-color 0.2s, color 0.2s;
 }
+
 .btn-secondary:hover:not(:disabled) {
   background-color: #5A2D0C;
   color: #ffffff;
@@ -44,12 +46,15 @@
   background-color: #ffffff;
   transition: box-shadow 0.3s ease;
 }
+
 .product-card:hover {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
+
 .product-card-image {
   transition: transform 0.3s ease;
 }
+
 .product-card:hover .product-card-image {
   transform: scale(1.05);
 }
@@ -69,6 +74,7 @@
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(-50%);
   }
@@ -96,11 +102,11 @@
 
 html,
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 #__next {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .lg-marquee {

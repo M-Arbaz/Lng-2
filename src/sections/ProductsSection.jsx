@@ -348,8 +348,8 @@ export default function ProductsSection({
       <div className="flex gap-8 px-4 sm:px-6 lg:px-8">
 
         {/* ── Desktop Sidebar ── */}
-        <aside className="hidden w-56 shrink-0 self-start lg:block">
-          <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+        <aside className="hidden w-56 shrink-0 self-start lg:sticky lg:top-24 lg:block">
+          <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-widest text-stone-400">Filters</span>
               {activeFilterCount > 0 && (
