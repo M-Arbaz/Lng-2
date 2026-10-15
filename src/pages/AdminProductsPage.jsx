@@ -8,7 +8,26 @@ import productsService from '../utils/productsService.js'
 import categoriesService from '../utils/categoriesService.js'
 import { uploadToXcdn } from '../utils/xcdnUpload.js'
 import { calculateFinalPrice } from '../utils/discountHelpers.js'
-
+const htmlToPlainText = (value = '') => {
+  return String(value)
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(p|div|li|h[1-6])>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_, code) =>
+      String.fromCodePoint(Number(code))
+    )
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
+      String.fromCodePoint(parseInt(code, 16))
+    )
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 export default function AdminProductsPage() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -609,43 +628,111 @@ export default function AdminProductsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold text-gray-900">Product Management</h2>
-          <button
-            onClick={() => {
-              resetForm()
-              setShowForm(true)
-            }}
-            className="bg-gradient-to-r from-orange-500 to-[#F5F1EA]0 text-white font-semibold py-2 px-6 rounded-lg hover:shadow-lg transition flex items-center gap-2 transform hover:scale-105"
-          >
-            <Plus className="w-5 h-5" />
-            Add Product
-          </button>
-        </div>
+        {/* Page Header */}
+        <section className="relative overflow-hidden rounded-[26px] border border-[#E6DDD6] bg-[#FFFEFC] px-5 py-6 shadow-[0_10px_35px_rgba(58,33,23,0.05)] sm:px-7">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#DCC8BA]/25 blur-3xl"
+          />
+
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="mb-3 inline-flex items-center rounded-full border border-[#E5D8CF] bg-[#F7F4EF] px-3 py-1">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#795D4D]">
+                  Catalogue Management
+                </span>
+              </div>
+
+              <h2 className="text-2xl font-semibold tracking-[-0.025em] text-[#281912] sm:text-3xl">
+                Products
+              </h2>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#806C61]">
+                Manage your Lamp & Glow catalogue, inventory,
+                pricing, variants and storefront product status.
+              </p>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-[#E3D8D0] bg-white px-3 py-1 text-xs font-medium text-[#6D584C]">
+                  {products.length} Total Products
+                </span>
+
+                <span className="rounded-full border border-[#CFE0D1] bg-[#F1F8F2] px-3 py-1 text-xs font-medium text-[#4D7155]">
+                  {
+                    products.filter(
+                      (product) => product.status === 'active'
+                    ).length
+                  } Active
+                </span>
+
+                <span className="rounded-full border border-[#E8DAB9] bg-[#FFF8E8] px-3 py-1 text-xs font-medium text-[#82651E]">
+                  {
+                    products.filter(
+                      (product) => product.status === 'draft'
+                    ).length
+                  } Draft
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                resetForm()
+                setShowForm(true)
+              }}
+              className="inline-flex min-h-[46px] flex-shrink-0 items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(58,33,23,0.20)] transition hover:bg-[#4C2D21] hover:shadow-[0_14px_30px_rgba(58,33,23,0.25)]"
+            >
+              <Plus className="h-4.5 w-4.5" />
+              Add Product
+            </button>
+          </div>
+        </section>
 
         {/* Message Alert */}
         {message.text && (
           <div
-            className={`p-4 rounded-lg flex items-center gap-3 ${message.type === 'success'
-              ? 'bg-green-50 border border-green-200'
-              : 'bg-red-50 border border-red-200'
+            className={`flex items-start gap-3 rounded-2xl border p-4 shadow-sm ${message.type === 'success'
+              ? 'border-[#C8DEC9] bg-[#F2F9F2]'
+              : 'border-[#E5C3BB] bg-[#FFF3F0]'
               }`}
           >
-            {message.type === 'success' ? (
-              <CheckCircle className="w-5 h-5 text-[#22C55E] flex-shrink-0" />
-            ) : (
-              <AlertCircle className="w-5 h-5 text-[#E53935] flex-shrink-0" />
-            )}
-            <p
-              className={`font-medium ${message.type === 'success' ? 'text-green-800' : 'text-red-800'
+            <div
+              className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${message.type === 'success'
+                ? 'bg-[#DCEEDD]'
+                : 'bg-[#F7DDD8]'
                 }`}
             >
-              {message.text}
-            </p>
+              {message.type === 'success' ? (
+                <CheckCircle className="h-4.5 w-4.5 text-[#4B7453]" />
+              ) : (
+                <AlertCircle className="h-4.5 w-4.5 text-[#A24F43]" />
+              )}
+            </div>
+
+            <div>
+              <p
+                className={`text-sm font-semibold ${message.type === 'success'
+                  ? 'text-[#3F6747]'
+                  : 'text-[#874239]'
+                  }`}
+              >
+                {message.type === 'success'
+                  ? 'Success'
+                  : 'Something needs attention'}
+              </p>
+
+              <p
+                className={`mt-0.5 text-xs leading-5 ${message.type === 'success'
+                  ? 'text-[#628069]'
+                  : 'text-[#9B6259]'
+                  }`}
+              >
+                {message.text}
+              </p>
+            </div>
           </div>
         )}
-
         {/* Add/Edit Product Form Modal */}
         {showForm && (
           <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#281912]/55 p-3 backdrop-blur-[2px] sm:p-5">
@@ -1895,209 +1982,481 @@ export default function AdminProductsPage() {
           </div>
         )}
 
-        {/* Search & Filter Bar */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search products by name, category, SKU, or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
+        {/* Search & Filters */}
+        <section className="rounded-[22px] border border-[#E7DED7] bg-[#FFFEFC] p-4 shadow-[0_8px_28px_rgba(58,33,23,0.04)] sm:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            {/* Search */}
+            <div className="relative w-full xl:max-w-xl">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#9A877B]" />
+
+              <input
+                type="text"
+                placeholder="Search by product name, category, SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-12 w-full rounded-xl border border-[#DDD2CA] bg-[#FCFAF8] pl-11 pr-10 text-sm text-[#34241C] outline-none transition placeholder:text-[#AE9B90] focus:border-[#8B6855] focus:bg-white focus:ring-4 focus:ring-[#6B4228]/10"
+              />
+
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-[#9A877B] transition hover:bg-[#EEE6E0] hover:text-[#3A2117]"
+                  aria-label="Clear product search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('all')}
+                className={`inline-flex min-h-[40px] items-center justify-center rounded-xl border px-4 text-xs font-semibold transition ${statusFilter === 'all'
+                  ? 'border-[#3A2117] bg-[#3A2117] text-white shadow-sm'
+                  : 'border-[#DDD2CA] bg-white text-[#685449] hover:border-[#BFA99C] hover:bg-[#F8F4F1]'
+                  }`}
+              >
+                All Products
+                <span
+                  className={`ml-2 rounded-full px-2 py-0.5 text-[10px] ${statusFilter === 'all'
+                    ? 'bg-white/15 text-white'
+                    : 'bg-[#F1EBE6] text-[#725D51]'
+                    }`}
+                >
+                  {products.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter('newArrivals')}
+                className={`inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border px-4 text-xs font-semibold transition ${statusFilter === 'newArrivals'
+                  ? 'border-[#8B6B31] bg-[#8B6B31] text-white shadow-sm'
+                  : 'border-[#DDD2CA] bg-white text-[#685449] hover:border-[#C8B37E] hover:bg-[#FFF9ED]'
+                  }`}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+
+                New Arrivals
+
+                <span
+                  className={`ml-1 rounded-full px-2 py-0.5 text-[10px] ${statusFilter === 'newArrivals'
+                    ? 'bg-white/15 text-white'
+                    : 'bg-[#F5ECD7] text-[#806429]'
+                    }`}
+                >
+                  {
+                    products.filter(
+                      (product) => product.isNewArrival === true
+                    ).length
+                  }
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter('discounted')}
+                className={`inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border px-4 text-xs font-semibold transition ${statusFilter === 'discounted'
+                  ? 'border-[#934E43] bg-[#934E43] text-white shadow-sm'
+                  : 'border-[#DDD2CA] bg-white text-[#685449] hover:border-[#D6A59D] hover:bg-[#FFF4F1]'
+                  }`}
+              >
+                <Percent className="h-3.5 w-3.5" />
+
+                On Sale
+
+                <span
+                  className={`ml-1 rounded-full px-2 py-0.5 text-[10px] ${statusFilter === 'discounted'
+                    ? 'bg-white/15 text-white'
+                    : 'bg-[#F9E8E4] text-[#8D4C42]'
+                    }`}
+                >
+                  {
+                    products.filter(
+                      (product) => product.isDiscounted === true
+                    ).length
+                  }
+                </span>
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setStatusFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${statusFilter === 'all' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setStatusFilter('newArrivals')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 ${statusFilter === 'newArrivals' ? 'bg-[#F5F1EA]0 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
-            >
-              <Sparkles size={14} />
-              New Arrivals
-            </button>
-            <button
-              onClick={() => setStatusFilter('discounted')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 ${statusFilter === 'discounted' ? 'bg-red-500 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
-            >
-              <Percent size={14} />
-              Discounted
-            </button>
-          </div>
-        </div>
+        </section>
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
-            <p className="mt-2 text-gray-500">Loading products...</p>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((item) => (
+              <div
+                key={item}
+                className="overflow-hidden rounded-[22px] border border-[#E7DED7] bg-[#FFFEFC]"
+              >
+                <div className="aspect-[4/3] animate-pulse bg-[#EEE7E1]" />
+
+                <div className="space-y-3 p-5">
+                  <div className="h-4 w-20 animate-pulse rounded bg-[#EEE7E1]" />
+
+                  <div className="h-6 w-3/4 animate-pulse rounded bg-[#EEE7E1]" />
+
+                  <div className="h-4 w-1/2 animate-pulse rounded bg-[#F2ECE7]" />
+
+                  <div className="mt-4 h-10 animate-pulse rounded-xl bg-[#EEE7E1]" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
         {/* Products Grid */}
         {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredProducts.length === 0 ? (
-              <div className="col-span-full text-center py-12 bg-white rounded-xl">
-                <p className="text-gray-500 text-lg">No products found</p>
-                <p className="text-gray-400 text-sm mt-1">
-                  {searchQuery ? 'Try adjusting your search' : 'Add your first product to get started'}
+              <div className="col-span-full flex min-h-[340px] flex-col items-center justify-center rounded-[24px] border border-dashed border-[#D7C9C0] bg-[#FFFEFC] px-6 py-12 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#F2EBE6]">
+                  <Search className="h-6 w-6 text-[#80685A]" />
+                </div>
+
+                <h3 className="mt-5 text-lg font-semibold text-[#34241C]">
+                  No products found
+                </h3>
+
+                <p className="mt-2 max-w-sm text-sm leading-6 text-[#958176]">
+                  {searchQuery
+                    ? 'No products match your current search. Try another keyword or clear the filters.'
+                    : statusFilter !== 'all'
+                      ? 'There are no products in this filter right now.'
+                      : 'Your catalogue is currently empty. Add your first Lamp & Glow product to get started.'}
                 </p>
+
+                {(searchQuery || statusFilter !== 'all') ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('')
+                      setStatusFilter('all')
+                    }}
+                    className="mt-5 inline-flex min-h-[42px] items-center justify-center rounded-xl border border-[#D6C9C0] bg-white px-5 text-sm font-semibold text-[#523C31] transition hover:border-[#BFA99C] hover:bg-[#F7F4EF]"
+                  >
+                    Clear Filters
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetForm()
+                      setShowForm(true)
+                    }}
+                    className="mt-5 inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-5 text-sm font-semibold text-white transition hover:bg-[#4C2D21]"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Product
+                  </button>
+                )}
               </div>
             ) : (
-              filteredProducts.map((product) => (
-                <div key={product.id} className="bg-white rounded-xl shadow-md hover:shadow-xl transition overflow-hidden">
-                  {/* Image */}
-                  {getProductImage(product) && (
-                    <div className="h-48 overflow-hidden bg-gray-100">
-                      <img
-                        src={getProductImage(product)}
-                        alt={product.name}
-                        className="w-full h-full object-cover hover:scale-110 transition duration-300"
-                      />
-                    </div>
-                  )}
+              filteredProducts.map((product) => {
+                const productImage = getProductImage(product)
 
-                  {/* Content */}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-bold text-gray-900 flex-1">{product.name}</h3>
-                      <span className="bg-orange-100 text-orange-800 text-xs font-semibold px-2 py-1 rounded">
-                        {product.category}
-                      </span>
-                    </div>
+                const productPrice = Number(product.price || 0)
 
-                    {/* Status Badges */}
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {product.isNewArrival && (
-                        <span className="inline-flex items-center gap-1 bg-amber-100 text-[#5A2D0C] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                          <Sparkles size={10} /> New Arrival
-                        </span>
-                      )}
-                      {product.isDiscounted && (
-                        <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                          <Percent size={10} /> Sale
-                        </span>
-                      )}
-                    </div>
+                const originalPrice = Number(
+                  product.originalPrice || 0
+                )
 
-                    {product.sku && (
-                      <p className="text-xs text-gray-500 mb-2 font-mono">SKU: {product.sku}</p>
-                    )}
+                const stock = Number(product.stock || 0)
 
-                    {product.description && (
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-                    )}
-
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        {product.originalPrice && product.originalPrice > product.price ? (
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm text-gray-400 line-through">Rs.{product.originalPrice.toLocaleString()}</p>
-                            <p className="text-2xl font-bold text-orange-500">Rs.{product.price.toLocaleString()}</p>
+                return (
+                  <article
+                    key={product.id}
+                    className="group overflow-hidden rounded-[22px] border border-[#E7DED7] bg-[#FFFEFC] shadow-[0_8px_28px_rgba(58,33,23,0.045)] transition duration-200 hover:-translate-y-0.5 hover:border-[#D3C1B5] hover:shadow-[0_16px_42px_rgba(58,33,23,0.09)]"
+                  >
+                    {/* Product Image */}
+                    <div className="relative aspect-[4/3] overflow-hidden bg-[#F2ECE7]">
+                      {productImage ? (
+                        <img
+                          src={productImage}
+                          alt={product.name}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center text-center">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
+                            <ImagePlus className="h-5 w-5 text-[#927C6F]" />
                           </div>
-                        ) : (
-                          <p className="text-2xl font-bold text-orange-500">Rs.{product.price.toLocaleString()}</p>
+
+                          <p className="mt-3 text-xs font-medium text-[#9A867B]">
+                            No product image
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
+                        {/* Product Status */}
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] shadow-sm backdrop-blur-md ${product.status === 'active'
+                            ? 'border-[#C7DDC9] bg-[#F2F9F2]/95 text-[#47704F]'
+                            : product.status === 'draft'
+                              ? 'border-[#E7D7AD] bg-[#FFF8E8]/95 text-[#80631E]'
+                              : 'border-[#E4C5BE] bg-[#FFF2EF]/95 text-[#924F44]'
+                            }`}
+                        >
+                          {product.status === 'active'
+                            ? 'Active'
+                            : product.status === 'draft'
+                              ? 'Draft'
+                              : 'Inactive'}
+                        </span>
+
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          {product.isNewArrival && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[#E4D4A8] bg-[#FFF8E7]/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.07em] text-[#7E611C] shadow-sm backdrop-blur-md">
+                              <Sparkles className="h-3 w-3" />
+                              New
+                            </span>
+                          )}
+
+                          {product.isDiscounted && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[#E3BEB7] bg-[#FFF0ED]/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.07em] text-[#934E43] shadow-sm backdrop-blur-md">
+                              <Percent className="h-3 w-3" />
+                              Sale
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Product Content */}
+                    <div className="p-5">
+                      {/* Category */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#917C70]">
+                            {product.category || 'Uncategorized'}
+                          </p>
+
+                          <h3 className="mt-1 line-clamp-2 text-lg font-semibold leading-6 text-[#2F2019]">
+                            {product.name}
+                          </h3>
+                        </div>
+                      </div>
+
+                      {/* SKU */}
+                      {product.sku && (
+                        <p className="mt-2 truncate font-mono text-[11px] text-[#9D8A7F]">
+                          SKU: {product.sku}
+                        </p>
+                      )}
+
+                      {/* Description */}
+                      {product.description && (
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          {htmlToPlainText(product.description)}
+                        </p>
+                      )}
+
+                      {/* Price */}
+                      <div className="mt-4 flex flex-wrap items-end gap-x-2 gap-y-1 border-t border-[#EFE7E1] pt-4">
+                        <p className="text-xl font-semibold tracking-[-0.02em] text-[#3A2117]">
+                          Rs. {productPrice.toLocaleString('en-PK')}
+                        </p>
+
+                        {originalPrice > productPrice && (
+                          <p className="pb-0.5 text-xs text-[#A7978D] line-through">
+                            Rs. {originalPrice.toLocaleString('en-PK')}
+                          </p>
                         )}
                       </div>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded ${product.status === 'active'
-                        ? 'bg-green-100 text-green-800'
-                        : product.status === 'draft'
-                          ? 'bg-amber-100 text-[#5A2D0C]'
-                          : 'bg-red-100 text-red-800'
-                        }`}>
-                        {product.status === 'active' ? 'Active' : product.status === 'draft' ? 'Draft' : 'Inactive'}
-                      </span>
-                    </div>
 
-                    <div className="flex items-center justify-between mb-4 text-sm">
-                      <div>
-                        <p className="text-gray-600">Stock: <span className="font-semibold text-gray-900">{product.stock || 0}</span></p>
-                        {product.stock === 0 && <p className="text-[#E53935] font-semibold text-xs">Out of Stock</p>}
+                      {/* Stock */}
+                      <div className="mt-4 flex items-center justify-between gap-4 rounded-xl bg-[#F8F5F2] px-3.5 py-3">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#9A877C]">
+                            Inventory
+                          </p>
+
+                          <p
+                            className={`mt-1 text-sm font-semibold ${stock > 0
+                              ? 'text-[#3E6045]'
+                              : 'text-[#984C42]'
+                              }`}
+                          >
+                            {stock > 0
+                              ? `${stock.toLocaleString('en-PK')} in stock`
+                              : 'Out of stock'}
+                          </p>
+                        </div>
+
+                        <div
+                          className={`h-2.5 w-2.5 rounded-full ${stock > 0
+                            ? 'bg-[#6F9276]'
+                            : 'bg-[#B96558]'
+                            }`}
+                        />
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {product.createdAt ? new Date(product.createdAt).toLocaleDateString() : ''}
-                      </p>
-                    </div>
 
-                    {/* Quick Toggles */}
-                    <div className="flex gap-2 mb-3">
-                      <button
-                        onClick={() => handleToggleNewArrival(product)}
-                        title={product.isNewArrival ? 'Remove from New Arrivals' : 'Add to New Arrivals'}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 ${product.isNewArrival
-                          ? 'bg-amber-100 text-[#5A2D0C] hover:bg-amber-200'
-                          : 'bg-gray-100 text-gray-600 hover:bg-[#F5F1EA] hover:text-[#5A2D0C]'
-                          }`}
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        {product.isNewArrival ? 'New Arrival' : 'Mark New'}
-                      </button>
-                      <button
-                        onClick={() => handleToggleDiscounted(product)}
-                        title={product.isDiscounted ? 'Remove from Discounted' : 'Add to Discounted'}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 ${product.isDiscounted
-                          ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                          : 'bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-700'
-                          }`}
-                      >
-                        <Percent className="w-3.5 h-3.5" />
-                        {product.isDiscounted ? 'On Sale' : 'Mark Sale'}
-                      </button>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                      {product.status === 'draft' && (
+                      {/* Quick Toggles */}
+                      <div className="mt-4 grid grid-cols-2 gap-2">
                         <button
-                          onClick={() => handlePublish(product)}
-                          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold py-2 rounded-lg hover:shadow-lg transition flex items-center justify-center gap-2"
+                          type="button"
+                          onClick={() =>
+                            handleToggleNewArrival(product)
+                          }
+                          title={
+                            product.isNewArrival
+                              ? 'Remove from New Arrivals'
+                              : 'Add to New Arrivals'
+                          }
+                          className={`inline-flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl border px-3 text-[11px] font-semibold transition ${product.isNewArrival
+                            ? 'border-[#E2C989] bg-[#FFF7E3] text-[#765817] hover:bg-[#F9EDCF]'
+                            : 'border-[#E2D9D3] bg-white text-[#79665A] hover:border-[#CDBEAE] hover:bg-[#F8F4F1]'
+                            }`}
                         >
-                          <CheckCircle className="w-4 h-4" />
-                          Publish
+                          <Sparkles className="h-3.5 w-3.5" />
+
+                          {product.isNewArrival
+                            ? 'New Arrival'
+                            : 'Mark New'}
                         </button>
-                      )}
-                      <button
-                        onClick={() => handleEdit(product)}
-                        className="flex-1 bg-blue-500 text-white font-semibold py-2 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2"
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleToggleDiscounted(product)
+                          }
+                          title={
+                            product.isDiscounted
+                              ? 'Remove from Discounted'
+                              : 'Add to Discounted'
+                          }
+                          className={`inline-flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl border px-3 text-[11px] font-semibold transition ${product.isDiscounted
+                            ? 'border-[#DEBBB4] bg-[#FFF0ED] text-[#8C493F] hover:bg-[#FAE2DD]'
+                            : 'border-[#E2D9D3] bg-white text-[#79665A] hover:border-[#D5B3AC] hover:bg-[#FFF4F1]'
+                            }`}
+                        >
+                          <Percent className="h-3.5 w-3.5" />
+
+                          {product.isDiscounted
+                            ? 'On Sale'
+                            : 'Mark Sale'}
+                        </button>
+                      </div>
+
+                      {/* Actions */}
+                      <div
+                        className={`mt-3 grid gap-2 ${product.status === 'draft'
+                          ? 'grid-cols-3'
+                          : 'grid-cols-2'
+                          }`}
                       >
-                        <Edit className="w-4 h-4" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(product.id)}
-                        className="flex-1 bg-red-500 text-white font-semibold py-2 rounded-lg hover:bg-[#E53935] transition flex items-center justify-center gap-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
+                        {product.status === 'draft' && (
+                          <button
+                            type="button"
+                            onClick={() => handlePublish(product)}
+                            className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl bg-[#55755C] px-3 text-xs font-semibold text-white transition hover:bg-[#47664E]"
+                          >
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            Publish
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(product)}
+                          className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl bg-[#3A2117] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#4C2D21]"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(product.id)}
+                          className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-[#DEC0B9] bg-[#FFF7F5] px-3 text-xs font-semibold text-[#924C41] transition hover:border-[#CFA69D] hover:bg-[#FDECE8]"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))
+                  </article>
+                )
+              })
             )}
           </div>
         )}
 
-        {/* Stats Footer */}
+        {/* Product Summary */}
         {!loading && filteredProducts.length > 0 && (
-          <div className="bg-white rounded-xl shadow-md p-6 flex items-center justify-between">
-            <p className="text-gray-600">
-              Showing <span className="font-bold text-gray-900">{filteredProducts.length}</span> of{' '}
-              <span className="font-bold text-gray-900">{products.length}</span> products
-            </p>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Total Inventory Value</p>
-              <p className="text-2xl font-bold text-orange-500">
-                Rs.{filteredProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}
-              </p>
+          <section className="rounded-[22px] border border-[#E7DED7] bg-[#FFFEFC] p-5 shadow-[0_8px_28px_rgba(58,33,23,0.04)]">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#927E72]">
+                  Current View
+                </p>
+
+                <p className="mt-1 text-sm text-[#675347]">
+                  Showing{' '}
+                  <span className="font-semibold text-[#281912]">
+                    {filteredProducts.length}
+                  </span>{' '}
+                  of{' '}
+                  <span className="font-semibold text-[#281912]">
+                    {products.length}
+                  </span>{' '}
+                  products
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-8 gap-y-3 sm:flex sm:items-center sm:gap-8">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#968276]">
+                    In Stock
+                  </p>
+
+                  <p className="mt-1 text-lg font-semibold text-[#3F6548]">
+                    {
+                      filteredProducts.filter(
+                        (product) => Number(product.stock || 0) > 0
+                      ).length
+                    }
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#968276]">
+                    Out of Stock
+                  </p>
+
+                  <p className="mt-1 text-lg font-semibold text-[#934E43]">
+                    {
+                      filteredProducts.filter(
+                        (product) => Number(product.stock || 0) <= 0
+                      ).length
+                    }
+                  </p>
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#968276]">
+                    Product Price Total
+                  </p>
+
+                  <p className="mt-1 text-lg font-semibold text-[#3A2117]">
+                    Rs.{' '}
+                    {filteredProducts
+                      .reduce(
+                        (sum, product) =>
+                          sum + Number(product.price || 0),
+                        0
+                      )
+                      .toLocaleString('en-PK')}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
         )}
       </div>
     </AdminLayout>
