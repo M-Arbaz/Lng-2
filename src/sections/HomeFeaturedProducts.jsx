@@ -26,7 +26,10 @@ export default function HomeFeaturedProducts({
   onAddToCart,
   onToggleWishlist,
   isInWishlist,
+  theme = 'light',
+
 }) {
+  const isDark = theme === 'dark'
   const sliderRef = useRef(null)
 
   const randomProducts = useMemo(() => {
@@ -81,16 +84,30 @@ export default function HomeFeaturedProducts({
   if (!randomProducts.length) return null
 
   return (
-    <section className="w-full bg-[#FAF9F7] py-10 sm:py-12">
-      {/* Heading */}
+    <section
+      className={`w-full py-10 transition-colors duration-300 sm:py-12 ${isDark
+        ? 'bg-[#171310]'
+        : 'bg-[#FAF9F7]'
+        }`}
+    >      {/* Heading */}
       <div className="mb-7 px-4 sm:px-6 lg:px-8">
         <div className="relative flex items-center justify-center">
           <div className="text-center">
-            <h2 className="text-xl font-semibold tracking-tight text-stone-900 sm:text-2xl">
+            <h2
+              className={`text-xl font-semibold tracking-tight sm:text-2xl ${isDark
+                ? 'text-[#FFF8F1]'
+                : 'text-stone-900'
+                }`}
+            >
               Light Up Your Space
             </h2>
 
-            <p className="mt-1.5 text-xs text-stone-500 sm:text-sm">
+            <p
+              className={`mt-1.5 text-xs sm:text-sm ${isDark
+                ? 'text-stone-400'
+                : 'text-stone-500'
+                }`}
+            >
               Unique wooden lamps curated to elevate your home.
             </p>
           </div>
@@ -98,8 +115,10 @@ export default function HomeFeaturedProducts({
           <button
             type="button"
             onClick={onViewAll}
-            className="absolute right-0 hidden text-xs font-semibold text-[#A55B14] transition-colors hover:text-[#5A2D0C] sm:block"
-          >
+            className={`absolute right-0 hidden text-xs font-semibold transition-colors sm:block ${isDark
+              ? 'text-[#D8AD87] hover:text-[#FFF8F1]'
+              : 'text-[#A55B14] hover:text-[#5A2D0C]'
+              }`}          >
             View all products
           </button>
         </div>
@@ -112,7 +131,10 @@ export default function HomeFeaturedProducts({
           type="button"
           onClick={() => sliderRef.current?.slickPrev()}
           aria-label="Previous products"
-          className="absolute left-3 top-[40%] z-30 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-md transition hover:scale-105 hover:text-[#5A2D0C] hover:shadow-lg sm:flex"
+          className={`absolute left-3 top-[40%] z-30 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full shadow-md transition hover:scale-105 hover:shadow-lg sm:flex ${isDark
+            ? 'border border-white/10 bg-[#2A211C] text-[#EADFD6] hover:border-white/20 hover:bg-[#EEE5DC] hover:text-[#3A2117]'
+            : 'border border-stone-200 bg-white text-stone-700 hover:text-[#5A2D0C]'
+            }`}
         >
           <ChevronLeft size={20} />
         </button>
@@ -122,7 +144,10 @@ export default function HomeFeaturedProducts({
           type="button"
           onClick={() => sliderRef.current?.slickNext()}
           aria-label="Next products"
-          className="absolute right-3 top-[40%] z-30 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-md transition hover:scale-105 hover:text-[#5A2D0C] hover:shadow-lg sm:flex"
+          className={`absolute right-3 top-[40%] z-30 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full shadow-md transition hover:scale-105 hover:shadow-lg sm:flex ${isDark
+            ? 'border border-white/10 bg-[#2A211C] text-[#EADFD6] hover:border-white/20 hover:bg-[#EEE5DC] hover:text-[#3A2117]'
+            : 'border border-stone-200 bg-white text-stone-700 hover:text-[#5A2D0C]'
+            }`}
         >
           <ChevronRight size={20} />
         </button>
@@ -171,8 +196,10 @@ export default function HomeFeaturedProducts({
         <button
           type="button"
           onClick={onViewAll}
-          className="text-sm font-semibold text-[#7A3E0D]"
-        >
+          className={`text-sm font-semibold transition-colors ${isDark
+              ? 'text-[#D8AD87] hover:text-white'
+              : 'text-[#7A3E0D]'
+            }`}        >
           View all products
         </button>
       </div>

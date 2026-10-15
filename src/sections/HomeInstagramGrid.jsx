@@ -12,6 +12,7 @@ function InstagramTile({
   item,
   index,
   duplicate = false,
+  isDark = false,
 }) {
   const content = (
     <>
@@ -43,8 +44,10 @@ function InstagramTile({
     </>
   )
 
-  const classes =
-    'group relative block aspect-square w-[145px] shrink-0 select-none overflow-hidden rounded-[18px] bg-[#EEE7E0] outline-none ring-[#6B4228] transition-shadow duration-300 hover:shadow-[0_14px_35px_rgba(58,33,23,0.14)] focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-[180px] lg:w-[215px] xl:w-[235px]'
+  const classes = `group relative block aspect-square w-[145px] shrink-0 select-none overflow-hidden rounded-[18px] outline-none transition-shadow duration-300 hover:shadow-[0_14px_35px_rgba(0,0,0,0.22)] focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-[180px] lg:w-[215px] xl:w-[235px] ${isDark
+    ? 'bg-[#2A211C] ring-[#D8AD87]'
+    : 'bg-[#EEE7E0] ring-[#6B4228]'
+    }`
 
   if (!item.url) {
     return (
@@ -73,7 +76,9 @@ function InstagramTile({
 
 export default function HomeInstagramGrid({
   images,
+  theme = 'light',
 }) {
+  const isDark = theme === 'dark'
   const trackRef = useRef(null)
   const firstGroupRef = useRef(null)
 
@@ -383,22 +388,35 @@ export default function HomeInstagramGrid({
   }
 
   return (
-    <section className="w-full overflow-hidden bg-[#FAF8F5] py-10 sm:py-14 lg:py-16">
-
+    <section
+      className={`w-full overflow-hidden py-10 transition-colors duration-300 sm:py-14 lg:py-16 ${isDark
+        ? 'bg-[#171310]'
+        : 'bg-[#FAF8F5]'
+        }`}
+    >
       {/* HEADING */}
       <div className="mx-auto mb-7 px-4 text-center sm:mb-9 sm:px-6">
-        <div className="mx-auto grid h-10 w-10 place-items-center rounded-full border border-[#E4D5C8] bg-[#FFFEFC] text-[#6B4228] shadow-[0_4px_14px_rgba(79,48,27,0.06)]">
+        <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.10)] ${isDark
+          ? 'border border-white/10 bg-[#2A211C] text-[#D8AD87]'
+          : 'border border-[#E4D5C8] bg-[#FFFEFC] text-[#6B4228]'
+          }`}>
           <Instagram
             size={18}
             strokeWidth={1.8}
           />
         </div>
 
-        <p className="mt-4 text-[9px] font-semibold uppercase tracking-[0.25em] text-[#8A654D]">
+        <p className={`mt-4 text-[9px] font-semibold uppercase tracking-[0.25em] ${isDark
+          ? 'text-[#D8AD87]'
+          : 'text-[#8A654D]'
+          }`}>
           Follow us <a href="https://www.instagram.com/lampandglow/" target="_blank" rel="noopener noreferrer" className="underline"> @lampandglow </a>
         </p>
 
-        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#30241D] sm:text-3xl">
+        <h2 className={`mt-2 text-2xl font-semibold tracking-[-0.03em] sm:text-3xl ${isDark
+            ? 'text-[#FFF8F1]'
+            : 'text-[#30241D]'
+          }`}>
           Instagram
         </h2>
 

@@ -182,28 +182,25 @@ export default function HeroSlider({ slides, onPrimaryAction }) {
 
       <section
         className="
-          hero-slider
-          hero-gradient-bg
-          pb-3
-          sm:pb-5
-          lg:pb-8
+    hero-slider
+    hero-gradient-bg
 
-          [&_.slick-dots]:!bottom-4
-          [&_.slick-dots]:!z-20
+    [&_.slick-dots]:!bottom-4
+    [&_.slick-dots]:!z-20
 
-          [&_.slick-dots_li]:!m-0
-          [&_.slick-dots_li]:!h-1.5
-          [&_.slick-dots_li]:!w-auto
+    [&_.slick-dots_li]:!m-0
+    [&_.slick-dots_li]:!h-1.5
+    [&_.slick-dots_li]:!w-auto
 
-          [&_.slick-dots_button]:!h-1.5
-          [&_.slick-dots_button]:!w-auto
-          [&_.slick-dots_button]:!p-0
-          [&_.slick-dots_button:before]:!hidden
-
-          [&_.slick-dots_li.slick-active_span]:!w-7
-          [&_.slick-dots_li.slick-active_span]:!bg-white
-        "
+    [&_.slick-dots_button]:!h-1.5
+    [&_.slick-dots_button]:!w-auto
+    [&_.slick-dots_button]:!p-0
+    [&_.slick-dots_button:before]:!hidden
+    [&_.slick-dots_li.slick-active_span]:!w-7
+    [&_.slick-dots_li.slick-active_span]:!bg-white
+  "
       >
+
         <div className="relative overflow-hidden">
           <Slider
             key={isMobile ? 'mobile' : 'desktop'}

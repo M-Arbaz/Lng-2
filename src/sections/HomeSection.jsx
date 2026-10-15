@@ -26,12 +26,17 @@ export default function HomeSection({
 }) {
   return (
     <section
-      className="hero-gradient-bg min-w-0 overflow-x-hidden"
+      className={
+        theme === 'dark'
+          ? 'min-w-0 overflow-x-hidden bg-[#171310] text-stone-100'
+          : 'hero-gradient-bg min-w-0 overflow-x-hidden'
+      }
       style={{ marginTop: headerHeight ? `-${headerHeight}px` : 0 }}
     >
       <HeroSlider slides={heroSlides} onPrimaryAction={onHeroAction} />
 
-      <HomeHandpickCollection slides={collectionSlides} onAction={onCollectionAction} />
+      <HomeHandpickCollection slides={collectionSlides} onAction={onCollectionAction} theme={theme}
+      />
 
       <HomeFeaturedProducts
         products={products}
@@ -42,13 +47,13 @@ export default function HomeSection({
         theme={theme}
       />
 
-      <HomeBlogs />
+      <HomeBlogs theme={theme} />
 
-      <HomeInstagramGrid images={instagramImages} />
+      <HomeInstagramGrid images={instagramImages} theme={theme} />
 
-      <HomeStats />
+      <HomeStats theme={theme} />
 
-      <HomeTestimonials products={products} reviews={reviews} />
+      <HomeTestimonials products={products} reviews={reviews} theme={theme} />
     </section>
   )
 }

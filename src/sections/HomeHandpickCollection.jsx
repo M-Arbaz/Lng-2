@@ -1,10 +1,15 @@
 'use client'
 
-export default function HomeHandpickCollection({ slides, onAction }) {
+export default function HomeHandpickCollection({
+  slides,
+  onAction,
+  theme = 'light',
+}) {
+  const isDark = theme === 'dark'
   if (!slides || slides.length === 0) return null
 
   return (
-    <section className="overflow-hidden bg-[#FFFCF9]">
+    <section className={`overflow-hidden  ${isDark ? 'bg-[#171310]' : 'bg-[#FFFCF9]'}`}>
       {slides.map((slide, index) => {
         const imageOnRight = slide.imageSide === 'right'
 

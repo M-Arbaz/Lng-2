@@ -9,27 +9,27 @@ import {
   Star,
 } from 'lucide-react'
 
-function ReviewCard({ review, productImage }) {
+function ReviewCard({
+  review,
+  productImage,
+  isDark = false,
+}) {
   const rating = Number(review.rating) || 0
 
   return (
     <article
-      className="
-        group
-        flex h-full flex-col
-        overflow-hidden
-        rounded-2xl
-        border border-[#E8DDD3]
-        bg-[#FFFCF9]
-        shadow-[0_4px_18px_rgba(74,45,25,0.05)]
-        transition-all duration-300
-        hover:-translate-y-1
-        hover:border-[#D8C2AE]
-        hover:shadow-[0_14px_34px_rgba(74,45,25,0.10)]
-      "
+      className={`group flex h-full flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 ${isDark
+        ? 'border border-white/10 bg-[#241C18] shadow-[0_4px_18px_rgba(0,0,0,0.18)] hover:border-[#D8AD87]/30 hover:shadow-[0_14px_34px_rgba(0,0,0,0.28)]'
+        : 'border border-[#E8DDD3] bg-[#FFFCF9] shadow-[0_4px_18px_rgba(74,45,25,0.05)] hover:border-[#D8C2AE] hover:shadow-[0_14px_34px_rgba(74,45,25,0.10)]'
+        }`}
     >
       {/* PRODUCT / REVIEW IMAGE */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#F2ECE6]">
+      <div
+        className={`relative aspect-[4/3] overflow-hidden ${isDark
+          ? 'bg-[#2A211C]'
+          : 'bg-[#F2ECE6]'
+          }`}
+      >
         {productImage ? (
           <img
             src={productImage}
@@ -42,7 +42,12 @@ function ReviewCard({ review, productImage }) {
             "
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-[#A79587]">
+          <div
+            className={`flex h-full w-full items-center justify-center text-xs ${isDark
+              ? 'text-stone-500'
+              : 'text-[#A79587]'
+              }`}
+          >
             Lamp & Glow
           </div>
         )}
@@ -85,7 +90,9 @@ function ReviewCard({ review, productImage }) {
               className={
                 index < rating
                   ? 'fill-[#B77A3F] text-[#B77A3F]'
-                  : 'fill-[#E8DED5] text-[#E8DED5]'
+                  : isDark
+                    ? 'fill-[#493A31] text-[#493A31]'
+                    : 'fill-[#E8DED5] text-[#E8DED5]'
               }
             />
           ))}
@@ -93,12 +100,22 @@ function ReviewCard({ review, productImage }) {
 
         {/* CUSTOMER */}
         <div className="mt-3">
-          <p className="truncate text-[13px] font-semibold text-[#342820]">
+          <p
+            className={`truncate text-[13px] font-semibold ${isDark
+              ? 'text-[#FFF8F1]'
+              : 'text-[#342820]'
+              }`}
+          >
             {review.name || 'Anonymous'}
           </p>
 
           {review.handle && (
-            <p className="mt-0.5 truncate text-[10px] text-[#A18D7D]">
+            <p
+              className={`mt-0.5 truncate text-[10px] ${isDark
+                ? 'text-stone-500'
+                : 'text-[#A18D7D]'
+                }`}
+            >
               {review.handle}
             </p>
           )}
@@ -107,13 +124,10 @@ function ReviewCard({ review, productImage }) {
         {/* REVIEW */}
         <div className="relative mt-3 flex flex-1 flex-col">
           <p
-            className="
-              line-clamp-5
-              text-[12px]
-              leading-[1.65]
-              text-[#746257]
-              sm:text-[12.5px]
-            "
+            className={`line-clamp-5 text-[12px] leading-[1.65] sm:text-[12.5px] ${isDark
+              ? 'text-stone-300'
+              : 'text-[#746257]'
+              }`}
           >
             {review.comment}
           </p>
@@ -121,7 +135,10 @@ function ReviewCard({ review, productImage }) {
           <Quote
             size={18}
             strokeWidth={1.5}
-            className="mt-auto self-end text-[#D7C5B6]"
+            className={`mt-auto self-end ${isDark
+              ? 'text-[#6B5141]'
+              : 'text-[#D7C5B6]'
+              }`}
           />
         </div>
       </div>
@@ -132,8 +149,10 @@ function ReviewCard({ review, productImage }) {
 export default function HomeTestimonials({
   products,
   reviews,
+  theme = 'light',
 }) {
   const sliderRef = useRef(null)
+  const isDark = theme === 'dark'
 
   const visibleReviews = useMemo(
     () =>
@@ -220,7 +239,12 @@ export default function HomeTestimonials({
 
   if (visibleReviews.length === 0) {
     return (
-      <section className="w-full bg-[#FAF7F3] py-10 sm:py-14 lg:py-16">
+      <section
+        className={`w-full overflow-hidden py-10 transition-colors duration-300 sm:py-14 lg:py-16 ${isDark
+          ? 'bg-[#1B1613]'
+          : 'bg-[#FAF7F3]'
+          }`}
+      >
         <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="text-center">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#A06E45]">
@@ -252,30 +276,29 @@ export default function HomeTestimonials({
   }
 
   return (
-    <section className="w-full overflow-hidden bg-[#FAF7F3] py-10 sm:py-14 lg:py-16">
+    <section
+      className={`w-full overflow-hidden py-10 transition-colors duration-300 sm:py-14 lg:py-16 ${isDark
+        ? 'bg-[#1B1613]'
+        : 'bg-[#FAF7F3]'
+        }`}
+    >
       <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10">
         {/* HEADING */}
         <div className="mx-auto mb-8 max-w-2xl text-center sm:mb-10">
           <p
-            className="
-              text-[10px]
-              font-semibold uppercase
-              tracking-[0.22em]
-              text-[#A06E45]
-            "
+            className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${isDark
+              ? 'text-[#D8AD87]'
+              : 'text-[#A06E45]'
+              }`}
           >
             Customer Stories
           </p>
 
           <h2
-            className="
-              mt-2
-              text-2xl
-              font-semibold
-              tracking-[-0.02em]
-              text-[#30241D]
-              sm:text-3xl
-            "
+            className={`mt-2 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl ${isDark
+                ? 'text-[#FFF8F1]'
+                : 'text-[#30241D]'
+              }`}
           >
             Loved by Our Customers
           </h2>
