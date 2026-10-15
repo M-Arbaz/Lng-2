@@ -135,6 +135,121 @@ export default function ProfileSection({
       year: 'numeric',
     })
   }
+  const readNotificationIds = Array.isArray(profile?.readNotificationIds)
+    ? profile.readNotificationIds
+    : []
+
+  const getNotificationMessage = (status) => {
+    const messages = {
+      pending: 'Your order has been successfully placed.',
+      confirmed: 'Your order has been confirmed.',
+      approved: 'Your order has been approved.',
+      processing: 'Your order is now being processed.',
+      in_production: 'Your order is currently in production.',
+      production: 'Your order is currently in production.',
+      ready: 'Your order is ready for the next step.',
+      dispatched: 'Your order has been dispatched.',
+      shipped: 'Your order has been shipped.',
+      out_for_delivery: 'Your order is out for delivery.',
+      delivered: 'Your order has been delivered.',
+      cancelled: 'Your order has been cancelled.',
+      canceled: 'Your order has been cancelled.',
+      returned: 'Your order has been returned.',
+    }
+
+    return (
+      messages[status] ||
+      'There is a new update regarding your order.'
+    )
+  }
+
+  const orderNotifications = (orders || [])
+    .flatMap((order) => {
+      const orderId = order.id || order._id
+      const history = Array.isArray(order.statusHistory)
+        ? order.statusHistory
+        : []
+
+      return history.map((event, index) => {
+        const status = String(event?.status || '')
+          .trim()
+          .toLowerCase()
+
+        const at = event?.at || ''
+
+        return {
+          id: `${orderId || 'order'}-${status || 'update'}-${at || index}`,
+          orderId,
+          status,
+          title: event?.label || 'Order Update',
+          message: getNotificationMessage(status),
+          at,
+        }
+      })
+    })
+    .sort((a, b) => {
+      const aTime = new Date(a.at || 0).getTime()
+      const bTime = new Date(b.at || 0).getTime()
+
+      return bTime - aTime
+    })
+
+  const unreadNotificationCount = orderNotifications.filter(
+    (notification) =>
+      !readNotificationIds.includes(notification.id)
+  ).length
+
+  const formatNotificationDate = (value) => {
+    if (!value) return ''
+
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) return ''
+
+    return date.toLocaleString('en-PK', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+  }
+
+  const markNotificationRead = async (notificationId) => {
+    if (
+      !notificationId ||
+      readNotificationIds.includes(notificationId)
+    ) {
+      return
+    }
+
+    try {
+      await handleProfileChange('readNotificationIds', [
+        ...readNotificationIds,
+        notificationId,
+      ])
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error)
+    }
+  }
+
+  const markAllNotificationsRead = async () => {
+    const allIds = orderNotifications.map(
+      (notification) => notification.id
+    )
+
+    if (allIds.length === 0) return
+
+    const nextIds = Array.from(
+      new Set([...readNotificationIds, ...allIds])
+    )
+
+    try {
+      await handleProfileChange('readNotificationIds', nextIds)
+    } catch (error) {
+      console.error('Failed to mark notifications as read:', error)
+    }
+  }
   const desktopNavItems = [
     { id: 'orders', icon: ShoppingBag, label: 'My orders' },
     { id: 'wishlist', icon: Heart, label: 'Wishlist' },
@@ -286,6 +401,123 @@ export default function ProfileSection({
       </div>
     )
   }
+
+  const NotificationsList = ({ compact = false }) => {
+    if (orderNotifications.length === 0) {
+      return (
+        <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] px-5 py-12 text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+            <Bell size={23} strokeWidth={1.5} />
+          </div>
+
+          <p className="mt-4 text-sm font-semibold text-[#281912]">
+            You're all caught up
+          </p>
+
+          <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-[#8A7569]">
+            Order status updates will appear here automatically.
+          </p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-3">
+        {orderNotifications.map((notification) => {
+          const isUnread =
+            !readNotificationIds.includes(notification.id)
+
+          return (
+            <div
+              key={notification.id}
+              className={`relative overflow-hidden rounded-[22px] border transition-colors ${isUnread
+                ? 'border-[#6B4228]/25 bg-[#FFF9F4]'
+                : 'border-[#3A2117]/10 bg-[#FFFEFC]'
+                }`}
+            >
+              {isUnread && (
+                <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#6B4228]" />
+              )}
+
+              <div className={compact ? 'p-4' : 'p-5 sm:p-6'}>
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${isUnread
+                      ? 'bg-[#3A2117] text-white'
+                      : 'bg-[#F2ECE5] text-[#6B4228]'
+                      }`}
+                  >
+                    <Bell size={16} strokeWidth={1.7} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-[#281912]">
+                            {notification.title}
+                          </p>
+
+                          {isUnread && (
+                            <span className="rounded-full bg-[#3A2117] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.1em] text-white">
+                              New
+                            </span>
+                          )}
+                        </div>
+
+                        {notification.orderId && (
+                          <p className="mt-1 text-[10px] font-medium text-[#8A654D]">
+                            Order #
+                            {String(notification.orderId).slice(0, 8)}
+                          </p>
+                        )}
+                      </div>
+
+                      {notification.at && (
+                        <p className="shrink-0 text-[9px] text-[#9A8171]">
+                          {formatNotificationDate(notification.at)}
+                        </p>
+                      )}
+                    </div>
+
+                    <p className="mt-2 text-xs leading-5 text-[#6B5A50]">
+                      {notification.message}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await markNotificationRead(notification.id)
+                          navigate('/orders')
+                        }}
+                        className="text-[10px] font-semibold text-[#3A2117] transition-colors hover:text-[#6B4228]"
+                      >
+                        View Order →
+                      </button>
+
+                      {isUnread && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            markNotificationRead(notification.id)
+                          }
+                          className="text-[10px] font-medium text-[#8A7569] transition-colors hover:text-[#3A2117]"
+                        >
+                          Mark as read
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   // Shared order list — used in both mobile + desktop
   const OrdersList = ({ limit = 5, compact = false }) => (
     !orders || orders.length === 0 ? (
@@ -435,6 +667,7 @@ export default function ProfileSection({
             { id: 'orders', label: 'Orders' },
             { id: 'wishlist', label: 'Wishlist' },
             { id: 'reviews', label: 'Reviews' },
+            { id: 'notifications', label: 'Alerts' },
             { id: 'details', label: 'Profile' },
           ].map(({ id, label }) => {
             const active = mobileTab === id
@@ -452,7 +685,23 @@ export default function ProfileSection({
                   : 'text-[#7A6559]'
                   }`}
               >
-                {label}
+                <span className="inline-flex items-center justify-center gap-1">
+                  {label}
+
+                  {id === 'notifications' &&
+                    unreadNotificationCount > 0 && (
+                      <span
+                        className={`grid h-4 min-w-4 place-items-center rounded-full px-1 text-[8px] font-bold ${active
+                          ? 'bg-white text-[#3A2117]'
+                          : 'bg-[#3A2117] text-white'
+                          }`}
+                      >
+                        {unreadNotificationCount > 9
+                          ? '9+'
+                          : unreadNotificationCount}
+                      </span>
+                    )}
+                </span>
               </button>
             )
           })}
@@ -662,6 +911,36 @@ export default function ProfileSection({
             <ReviewsList compact />
           </div>
         )}
+
+        {/* ───────── NOTIFICATIONS ───────── */}
+        {mobileTab === 'notifications' && (
+          <div>
+            <div className="mb-4 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8A654D]">
+                  Account Updates
+                </p>
+
+                <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#281912]">
+                  Notifications
+                </h2>
+              </div>
+
+              {unreadNotificationCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllNotificationsRead}
+                  className="text-[10px] font-semibold text-[#6B4228]"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+
+            <NotificationsList compact />
+          </div>
+        )}
+
         {/* ───────── PROFILE DETAILS ───────── */}
         {mobileTab === 'details' && (
           <div>
@@ -908,6 +1187,17 @@ export default function ProfileSection({
                 setEditing(false)
                 setMobileTab('wishlist')
               },
+
+            },
+            {
+              label: 'Alerts',
+              icon: Bell,
+              active: mobileTab === 'notifications',
+              badge: unreadNotificationCount,
+              action: () => {
+                setEditing(false)
+                setMobileTab('notifications')
+              },
             },
             {
               label: 'Profile',
@@ -915,7 +1205,7 @@ export default function ProfileSection({
               active: mobileTab === 'details',
               action: () => setMobileTab('details'),
             },
-          ].map(({ label, icon: Icon, active, action }) => (
+          ].map(({ label, icon: Icon, active, action, badge }) => (
             <button
               key={label}
               type="button"
@@ -924,13 +1214,19 @@ export default function ProfileSection({
                 }`}
             >
               <div
-                className={`grid h-7 w-10 place-items-center rounded-full transition-colors ${active ? 'bg-[#EEE5DC]' : ''
+                className={`relative grid h-7 w-10 place-items-center rounded-full transition-colors ${active ? 'bg-[#EEE5DC]' : ''
                   }`}
               >
                 <Icon
                   size={17}
                   strokeWidth={active ? 2 : 1.6}
                 />
+
+                {badge > 0 && (
+                  <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#3A2117] px-1 text-[8px] font-bold text-white">
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
               </div>
 
               <span
@@ -1068,6 +1364,20 @@ export default function ProfileSection({
                     />
 
                     <span>{label}</span>
+
+                    {id === 'notifications' &&
+                      unreadNotificationCount > 0 && (
+                        <span
+                          className={`ml-auto grid min-h-5 min-w-5 place-items-center rounded-full px-1.5 text-[9px] font-bold ${active
+                            ? 'bg-[#3A2117] text-white'
+                            : 'bg-[#FFFEFC] text-[#3A2117]'
+                            }`}
+                        >
+                          {unreadNotificationCount > 99
+                            ? '99+'
+                            : unreadNotificationCount}
+                        </span>
+                      )}
                   </button>
                 )
               })}
@@ -1324,33 +1634,44 @@ export default function ProfileSection({
           {/* NOTIFICATIONS */}
           {activeTab === 'notifications' && (
             <div>
-              <div className="mb-7">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
-                  Account Updates
-                </p>
+              <div className="mb-7 flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]">
+                    Account Updates
+                  </p>
 
-                <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
-                  Notifications
-                </h2>
+                  <h2 className="mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-[#281912]">
+                    Notifications
+                  </h2>
 
-                <p className="mt-2 text-sm text-[#7A6A60]">
-                  Order and account notifications will appear here.
-                </p>
-              </div>
-
-              <div className="rounded-[24px] border border-[#3A2117]/10 bg-[#FFFEFC] py-16 text-center">
-                <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
-                  <Bell size={25} strokeWidth={1.5} />
+                  <p className="mt-2 text-sm text-[#7A6A60]">
+                    Keep track of order updates from Lamp & Glow.
+                  </p>
                 </div>
 
-                <p className="mt-5 text-sm font-semibold text-[#281912]">
-                  You're all caught up
-                </p>
-
-                <p className="mt-1 text-xs text-[#8A7569]">
-                  There are no notifications right now.
-                </p>
+                {unreadNotificationCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={markAllNotificationsRead}
+                    className="shrink-0 rounded-full border border-[#3A2117]/15 bg-[#FFFEFC] px-4 py-2 text-[10px] font-semibold text-[#3A2117] transition-colors hover:bg-[#F2ECE5]"
+                  >
+                    Mark all as read
+                  </button>
+                )}
               </div>
+
+              {unreadNotificationCount > 0 && (
+                <div className="mb-4 rounded-2xl border border-[#6B4228]/10 bg-[#EEE5DC] px-4 py-3">
+                  <p className="text-xs font-medium text-[#6B4228]">
+                    You have {unreadNotificationCount} unread{' '}
+                    {unreadNotificationCount === 1
+                      ? 'notification'
+                      : 'notifications'}.
+                  </p>
+                </div>
+              )}
+
+              <NotificationsList />
             </div>
           )}
 
