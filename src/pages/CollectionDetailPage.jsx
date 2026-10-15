@@ -1,161 +1,492 @@
 'use client'
 
-import { useParams, Link, useNavigate } from '@/lib/navigation'
-import { ArrowLeft, ShoppingCart } from 'lucide-react'
-import { FaHeart, FaRegHeart } from 'react-icons/fa'
+import { useParams, useNavigate } from '@/lib/navigation'
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Layers3,
+  Loader2,
+  PackageSearch,
+} from 'lucide-react'
+
 import useCategories from '../hooks/useCategories.js'
 import useProducts from '../hooks/useProducts.js'
-import { findCategoryBySlug, slugify } from '../utils/slugify.js'
-import { getDiscountInfo } from '../utils/discountHelpers.js'
+import {
+  findCategoryBySlug,
+} from '../utils/slugify.js'
 
-const formatPricePKR = (value) => {
-  if (typeof value !== 'number' || Number.isNaN(value)) return ''
-  return new Intl.NumberFormat('en-PK', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)
+import ProductCard from '../components/ProductCard.jsx'
+
+function stripHtml(html) {
+  if (!html) return ''
+
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
-export default function CollectionDetailPage({ handleToggleWishlist, isInWishlist }) {
+export default function CollectionDetailPage({
+  theme = 'light',
+  onAddToCart,
+  handleToggleWishlist,
+  isInWishlist,
+}) {
   const { slug } = useParams()
   const navigate = useNavigate()
-  const { categories, loading: catsLoading } = useCategories()
-  const { products, loading: prodsLoading } = useProducts()
 
-  const category = findCategoryBySlug(categories, slug)
+  const {
+    categories,
+    loading: catsLoading,
+  } = useCategories()
+
+  const {
+    products,
+    loading: prodsLoading,
+  } = useProducts()
+
+  const category = findCategoryBySlug(
+    categories,
+    slug
+  )
+
   const filteredProducts = category
-    ? products.filter((p) => p.category === category.id)
+    ? products.filter(
+      (product) =>
+        product.category === category.id
+    )
     : []
 
-  const loading = catsLoading || prodsLoading
+  const loading =
+    catsLoading || prodsLoading
+
+  const isDark = theme === 'dark'
+
+  const description = stripHtml(
+    category?.description
+  )
 
   return (
-    <section className="w-full min-h-screen bg-[#fafafa]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <button
-          type="button"
-          onClick={() => navigate('/collections')}
-          className="inline-flex items-center gap-1 text-xs font-medium text-stone-500 hover:text-stone-800 transition"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          All Collections
-        </button>
+    <main
+      className={
+        isDark
+          ? 'min-h-screen w-full bg-[#1F1916] text-white'
+          : 'min-h-screen w-full bg-[#F7F4EF] text-[#281912]'
+      }
+    >
+      {/* ───────── LOADING ───────── */}
+      {loading ? (
+        <div className="flex min-h-[70vh] items-center justify-center px-4">
+          <div className="text-center">
+            <Loader2
+              size={30}
+              className={
+                isDark
+                  ? 'mx-auto animate-spin text-[#D7A987]'
+                  : 'mx-auto animate-spin text-[#6B4228]'
+              }
+            />
 
-        {loading ? (
-          <div className="mt-12 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : !category ? (
-          <div className="mt-12 text-center">
-            <h2 className="text-xl font-bold text-stone-800">Collection not found</h2>
-            <p className="mt-2 text-sm text-stone-500">
-              The collection you are looking for does not exist.
-            </p>
-            <button
-              onClick={() => navigate('/collections')}
-              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-400 text-stone-900 text-sm font-bold rounded-lg hover:bg-[#FFD400] transition"
+            <p
+              className={
+                isDark
+                  ? 'mt-3 text-xs text-stone-500'
+                  : 'mt-3 text-xs text-[#8A7569]'
+              }
             >
+              Loading collection...
+            </p>
+          </div>
+        </div>
+      ) : !category ? (
+        /* ───────── NOT FOUND ───────── */
+        <section className="mx-auto flex min-h-[70vh] w-full max-w-[1400px] items-center justify-center px-4 sm:px-6 lg:px-10">
+          <div
+            className={
+              isDark
+                ? 'w-full max-w-xl rounded-[28px] border border-white/10 bg-white/[0.03] px-6 py-14 text-center'
+                : 'w-full max-w-xl rounded-[28px] border border-[#3A2117]/10 bg-[#FFFEFC] px-6 py-14 text-center shadow-[0_14px_40px_rgba(58,33,23,0.05)]'
+            }
+          >
+            <div
+              className={
+                isDark
+                  ? 'mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/[0.05] text-[#D7A987]'
+                  : 'mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]'
+              }
+            >
+              <Layers3
+                size={22}
+                strokeWidth={1.5}
+              />
+            </div>
+
+            <h1
+              className={
+                isDark
+                  ? 'mt-5 text-xl font-semibold text-white'
+                  : 'mt-5 text-xl font-semibold text-[#281912]'
+              }
+            >
+              Collection not found
+            </h1>
+
+            <p
+              className={
+                isDark
+                  ? 'mx-auto mt-2 max-w-sm text-xs leading-5 text-stone-500'
+                  : 'mx-auto mt-2 max-w-sm text-xs leading-5 text-[#8A7569]'
+              }
+            >
+              The collection you are looking for may no longer
+              be available.
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate('/collections')
+              }
+              className="mt-6 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full bg-[#3A2117] px-6 text-xs font-semibold text-white transition-colors hover:bg-[#4A2B1F]"
+            >
+              <ArrowLeft
+                size={14}
+                strokeWidth={1.8}
+              />
+
               Browse Collections
             </button>
           </div>
-        ) : (
-          <>
-            <div className="mt-8">
-              <h1 className="text-2xl sm:text-3xl font-bold text-stone-900">{category.title}</h1>
-              {category.description && (
-                <div
-                  className="page-content mt-2 text-sm text-stone-500 max-w-2xl"
-                  dangerouslySetInnerHTML={{ __html: category.description }}
+        </section>
+      ) : (
+        <>
+          {/* ───────── COLLECTION HERO ───────── */}
+          <section
+            className={
+              isDark
+                ? 'border-b border-white/10 bg-[#241B17]'
+                : 'border-b border-[#3A2117]/10 bg-[#EEE5DC]'
+            }
+          >
+            <div className="mx-auto w-full max-w-[1400px] px-4 pb-10 pt-7 sm:px-6 sm:pb-12 sm:pt-9 lg:px-10 lg:pb-14">
+              <button
+                type="button"
+                onClick={() =>
+                  navigate('/collections')
+                }
+                className={
+                  isDark
+                    ? 'inline-flex min-h-[40px] items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[11px] font-semibold text-stone-300 transition-colors hover:bg-white/[0.08] hover:text-white'
+                    : 'inline-flex min-h-[40px] items-center gap-2 rounded-full border border-[#3A2117]/12 bg-[#FFFEFC] px-4 text-[11px] font-semibold text-[#3A2117] transition-colors hover:border-[#6B4228]/30 hover:bg-[#F7F4EF]'
+                }
+              >
+                <ArrowLeft
+                  size={14}
+                  strokeWidth={1.8}
                 />
-              )}
-              <p className="mt-1 text-sm text-stone-400">
-                {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
-              </p>
-            </div>
 
-            {filteredProducts.length === 0 ? (
-              <div className="mt-12 text-center py-16 bg-white rounded-2xl border border-stone-200">
-                <p className="text-stone-500 text-sm">No products found in this collection.</p>
-              </div>
-            ) : (
-              <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
-                {filteredProducts.map((product) => {
-                  const { hasDiscount, originalPrice, discountedPrice, discountPercent } =
-                    getDiscountInfo(product)
+                All Collections
+              </button>
 
-                  return (
-                    <article
-                      key={product.id}
-                      className="group flex flex-col overflow-hidden rounded-3xl bg-white ring-1 ring-stone-200 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:ring-[#FFD400]/30/70"
+              <div className="mt-7 grid overflow-hidden rounded-[30px] lg:grid-cols-[1.05fr_0.95fr]">
+                {/* HERO CONTENT */}
+                <div
+                  className={
+                    isDark
+                      ? 'flex min-h-[360px] flex-col justify-center bg-[#2A201B] p-7 sm:p-10 lg:min-h-[440px] lg:p-12'
+                      : 'flex min-h-[360px] flex-col justify-center bg-[#FFFEFC] p-7 sm:p-10 lg:min-h-[440px] lg:p-12'
+                  }
+                >
+                  <div
+                    className={
+                      isDark
+                        ? 'grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-[#D7A987]'
+                        : 'grid h-11 w-11 place-items-center rounded-full border border-[#6B4228]/10 bg-[#F2ECE5] text-[#6B4228]'
+                    }
+                  >
+                    <Layers3
+                      size={18}
+                      strokeWidth={1.6}
+                    />
+                  </div>
+
+                  <p
+                    className={
+                      isDark
+                        ? 'mt-6 text-[9px] font-semibold uppercase tracking-[0.28em] text-[#D7A987]'
+                        : 'mt-6 text-[9px] font-semibold uppercase tracking-[0.28em] text-[#8A654D]'
+                    }
+                  >
+                    Lamp &amp; Glow Collection
+                  </p>
+
+                  <h1
+                    className={
+                      isDark
+                        ? 'mt-3 max-w-xl text-[clamp(2.2rem,5vw,4.3rem)] font-semibold leading-[1.02] tracking-[-0.045em] text-white'
+                        : 'mt-3 max-w-xl text-[clamp(2.2rem,5vw,4.3rem)] font-semibold leading-[1.02] tracking-[-0.045em] text-[#281912]'
+                    }
+                  >
+                    {category.title}
+                  </h1>
+
+                  {description && (
+                    <p
+                      className={
+                        isDark
+                          ? 'mt-5 max-w-xl text-sm leading-6 text-stone-400 sm:text-[15px]'
+                          : 'mt-5 max-w-xl text-sm leading-6 text-[#746359] sm:text-[15px]'
+                      }
                     >
-                      <Link to={`/products/${slugify(product.name)}`} className="group block">
-                        <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">
-                          {product.isNewArrival && (
-                            <span className="absolute left-0 top-0 z-10 bg-[#F5F1EA]0 px-2 py-1 text-xs font-semibold text-white">
-                              New Arrival
-                            </span>
-                          )}
-                          {hasDiscount ? (
-                            <span
-                              className={`absolute ${product.isNewArrival ? 'left-0 top-7' : 'left-0 top-0'} z-10 bg-[#E53935] px-2 py-1 text-xs font-semibold text-white`}
-                            >
-                              -{discountPercent}%
-                            </span>
-                          ) : null}
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                        </div>
+                      {description}
+                    </p>
+                  )}
 
-                        <div className="px-4 pt-4 pb-3">
-                          <h2 className="text-sm font-semibold text-stone-900 leading-snug">
-                            {product.name}
-                          </h2>
+                  <div className="mt-7 flex flex-wrap items-center gap-3">
+                    <span
+                      className={
+                        isDark
+                          ? 'rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-[10px] font-semibold text-stone-300'
+                          : 'rounded-full border border-[#3A2117]/10 bg-[#F7F4EF] px-4 py-2 text-[10px] font-semibold text-[#6B5A50]'
+                      }
+                    >
+                      {filteredProducts.length}{' '}
+                      {filteredProducts.length === 1
+                        ? 'Product'
+                        : 'Products'}
+                    </span>
 
-                          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                            {hasDiscount ? (
-                              <span className="text-stone-700 line-through">
-                                Rs.{formatPricePKR(originalPrice)}
-                              </span>
-                            ) : null}
-                            <span className="font-semibold text-[#E53935]">
-                              Rs.{formatPricePKR(discountedPrice)}
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
+                    {filteredProducts.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          document
+                            .getElementById(
+                              'collection-products'
+                            )
+                            ?.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'start',
+                            })
+                        }}
+                        className="inline-flex min-h-[38px] items-center gap-2 rounded-full bg-[#3A2117] px-4 text-[10px] font-semibold text-white transition-colors hover:bg-[#4A2B1F]"
+                      >
+                        Shop Collection
 
-                      <div className="mt-auto px-4 pb-4 flex items-center gap-2">
-                        <Link
-                          to={`/products/${slugify(product.name)}`}
-                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#5A2D0C] px-3 py-2 text-xs font-semibold text-white transition-all duration-200 hover:bg-[#FFD400] hover:shadow-sm active:scale-[0.98]"
-                        >
-                          <ShoppingCart className="w-3.5 h-3.5" />
-                          View Product
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleWishlist?.(product)}
-                          className="inline-flex items-center justify-center rounded-full border border-stone-300 bg-white p-2 transition-all duration-200 hover:bg-stone-50 hover:shadow-sm active:scale-[0.98]"
-                          aria-label={isInWishlist?.(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
-                        >
-                          {isInWishlist?.(product.id) ? (
-                            <FaHeart className="text-rose-600 text-xs" />
-                          ) : (
-                            <FaRegHeart className="text-stone-600 text-xs" />
-                          )}
-                        </button>
-                      </div>
-                    </article>
-                  )
-                })}
+                        <ArrowUpRight
+                          size={13}
+                          strokeWidth={1.8}
+                        />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* HERO IMAGE */}
+                <div className="relative min-h-[320px] overflow-hidden bg-[#E9E0D8] sm:min-h-[400px] lg:min-h-[440px]">
+                  {category.image ? (
+                    <img
+                      src={category.image}
+                      alt={category.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className={
+                        isDark
+                          ? 'absolute inset-0 grid place-items-center bg-[#30251F] text-[#D7A987]'
+                          : 'absolute inset-0 grid place-items-center bg-[#E7DDD4] text-[#8A654D]'
+                      }
+                    >
+                      <Layers3
+                        size={42}
+                        strokeWidth={1.2}
+                      />
+                    </div>
+                  )}
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#281912]/30 via-transparent to-transparent" />
+
+                  <div className="absolute bottom-5 left-5 rounded-full border border-white/20 bg-black/20 px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-md">
+                    Curated Collection
+                  </div>
+                </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
-    </section>
+            </div>
+          </section>
+
+          {/* ───────── PRODUCTS ───────── */}
+          <section
+            id="collection-products"
+            className="scroll-mt-28"
+          >
+            <div className="mx-auto w-full max-w-[1400px] px-4 py-10 sm:px-6 sm:py-12 lg:px-10 lg:py-14">
+              <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p
+                    className={
+                      isDark
+                        ? 'text-[9px] font-semibold uppercase tracking-[0.22em] text-[#D7A987]'
+                        : 'text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8A654D]'
+                    }
+                  >
+                    Explore the collection
+                  </p>
+
+                  <h2
+                    className={
+                      isDark
+                        ? 'mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-white'
+                        : 'mt-1.5 text-2xl font-semibold tracking-[-0.03em] text-[#281912]'
+                    }
+                  >
+                    {category.title} Products
+                  </h2>
+                </div>
+
+                {filteredProducts.length > 0 && (
+                  <p
+                    className={
+                      isDark
+                        ? 'text-xs text-stone-500'
+                        : 'text-xs text-[#8A7569]'
+                    }
+                  >
+                    {filteredProducts.length}{' '}
+                    {filteredProducts.length === 1
+                      ? 'piece'
+                      : 'pieces'}{' '}
+                    available
+                  </p>
+                )}
+              </div>
+
+              {filteredProducts.length === 0 ? (
+                <div
+                  className={
+                    isDark
+                      ? 'rounded-[26px] border border-white/10 bg-white/[0.03] px-6 py-16 text-center'
+                      : 'rounded-[26px] border border-[#3A2117]/10 bg-[#FFFEFC] px-6 py-16 text-center shadow-[0_10px_30px_rgba(58,33,23,0.04)]'
+                  }
+                >
+                  <div
+                    className={
+                      isDark
+                        ? 'mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/[0.05] text-[#D7A987]'
+                        : 'mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]'
+                    }
+                  >
+                    <PackageSearch
+                      size={22}
+                      strokeWidth={1.5}
+                    />
+                  </div>
+
+                  <h3
+                    className={
+                      isDark
+                        ? 'mt-4 text-base font-semibold text-white'
+                        : 'mt-4 text-base font-semibold text-[#281912]'
+                    }
+                  >
+                    No products in this collection yet
+                  </h3>
+
+                  <p
+                    className={
+                      isDark
+                        ? 'mx-auto mt-2 max-w-md text-xs leading-5 text-stone-500'
+                        : 'mx-auto mt-2 max-w-md text-xs leading-5 text-[#8A7569]'
+                    }
+                  >
+                    New pieces will appear here as soon as
+                    they are added to this collection.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate('/products')
+                    }
+                    className="mt-6 min-h-[42px] rounded-full bg-[#3A2117] px-6 text-xs font-semibold text-white transition-colors hover:bg-[#4A2B1F]"
+                  >
+                    Browse All Products
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+                  {filteredProducts.map(
+                    (product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onAddToCart={onAddToCart}
+                        onToggleWishlist={
+                          handleToggleWishlist
+                        }
+                        isInWishlist={isInWishlist}
+                      />
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* ───────── BACK TO COLLECTIONS ───────── */}
+          <section
+            className={
+              isDark
+                ? 'border-t border-white/10 bg-[#241B17]'
+                : 'border-t border-[#3A2117]/10 bg-[#EEE5DC]'
+            }
+          >
+            <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center justify-between gap-5 px-4 py-8 text-center sm:flex-row sm:px-6 sm:text-left lg:px-10">
+              <div>
+                <p
+                  className={
+                    isDark
+                      ? 'text-[9px] font-semibold uppercase tracking-[0.2em] text-[#D7A987]'
+                      : 'text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8A654D]'
+                  }
+                >
+                  Keep exploring
+                </p>
+
+                <p
+                  className={
+                    isDark
+                      ? 'mt-1 text-sm font-semibold text-white'
+                      : 'mt-1 text-sm font-semibold text-[#281912]'
+                  }
+                >
+                  Discover more Lamp &amp; Glow
+                  collections
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  navigate('/collections')
+                }
+                className={
+                  isDark
+                    ? 'inline-flex min-h-[42px] items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-5 text-xs font-semibold text-white transition hover:bg-white/[0.1]'
+                    : 'inline-flex min-h-[42px] items-center gap-2 rounded-full border border-[#3A2117]/15 bg-[#FFFEFC] px-5 text-xs font-semibold text-[#3A2117] transition hover:bg-[#F7F4EF]'
+                }
+              >
+                <ArrowLeft
+                  size={14}
+                  strokeWidth={1.8}
+                />
+
+                All Collections
+              </button>
+            </div>
+          </section>
+        </>
+      )}
+    </main>
   )
 }
