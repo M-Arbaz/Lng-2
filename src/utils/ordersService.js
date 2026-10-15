@@ -10,16 +10,29 @@ import {
   updateDoc,
   serverTimestamp,
   onSnapshot,
+  arrayUnion,
 } from 'firebase/firestore';
 
 export const ordersService = {
   // Create a new order
   createOrder: async (userId, orderData) => {
     try {
+      const createdAtIso = new Date().toISOString();
+
       const orderRef = await addDoc(collection(db, 'orders'), {
         userId,
         ...orderData,
         status: 'pending',
+
+        statusHistory: [
+          {
+            status: 'pending',
+            label: 'Order Placed',
+            at: createdAtIso,
+            source: 'system',
+          },
+        ],
+
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -123,11 +136,53 @@ export const ordersService = {
   updateOrderStatus: async (orderId, status) => {
     try {
       const docRef = doc(db, 'orders', orderId);
+
+      const statusLabels = {
+        pending: 'Order Placed',
+        confirmed: 'Order Confirmed',
+        approved: 'Order Approved',
+        processing: 'Order Processing',
+        in_production: 'Order in Production',
+        production: 'Order in Production',
+        ready: 'Order Ready',
+        dispatched: 'Order Dispatched',
+        shipped: 'Order Shipped',
+        out_for_delivery: 'Out for Delivery',
+        delivered: 'Order Delivered',
+        cancelled: 'Order Cancelled',
+        canceled: 'Order Cancelled',
+        returned: 'Order Returned',
+      };
+
+      const normalizedStatus = String(status || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_');
+
+      const label =
+        statusLabels[normalizedStatus] ||
+        normalizedStatus
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (char) => char.toUpperCase());
+
+      const statusEvent = {
+        status: normalizedStatus,
+        label,
+        at: new Date().toISOString(),
+        source: 'admin',
+      };
+
       await updateDoc(docRef, {
-        status,
+        status: normalizedStatus,
+        statusHistory: arrayUnion(statusEvent),
         updatedAt: serverTimestamp(),
       });
-      return { id: orderId, status };
+
+      return {
+        id: orderId,
+        status: normalizedStatus,
+        statusEvent,
+      };
     } catch (error) {
       console.error('Error updating order status:', error);
       throw error;
@@ -156,11 +211,25 @@ export const ordersService = {
   cancelOrder: async (orderId) => {
     try {
       const docRef = doc(db, 'orders', orderId);
+
+      const statusEvent = {
+        status: 'cancelled',
+        label: 'Order Cancelled',
+        at: new Date().toISOString(),
+        source: 'system',
+      };
+
       await updateDoc(docRef, {
         status: 'cancelled',
+        statusHistory: arrayUnion(statusEvent),
         updatedAt: serverTimestamp(),
       });
-      return { id: orderId, status: 'cancelled' };
+
+      return {
+        id: orderId,
+        status: 'cancelled',
+        statusEvent,
+      };
     } catch (error) {
       console.error('Error cancelling order:', error);
       throw error;
