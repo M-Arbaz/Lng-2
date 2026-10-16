@@ -2518,60 +2518,62 @@ export default function AdminOrdersPage() {
                         </span>
                       </div>
 
+                      {Number(
+                        selectedOrder.discountAmount || 0
+                      ) > 0 && (
+                          <>
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="flex items-center gap-2 text-[#725F54]">
+                                Discount
+
+                                {selectedOrder.coupon?.code && (
+                                  <span className="rounded-full border border-[#BFD8C3] bg-[#EFF8F0] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#47704D]">
+                                    {selectedOrder.coupon.code}
+                                  </span>
+                                )}
+                              </span>
+
+                              <span className="font-semibold text-[#47704D]">
+                                -{' '}
+                                {formatPKR(
+                                  Number(
+                                    selectedOrder.discountAmount || 0
+                                  )
+                                )}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-[#725F54]">
+                                After Discount
+                              </span>
+
+                              <span className="font-semibold text-[#34241C]">
+                                {formatPKR(
+                                  selectedOrder.discountedSubtotal ??
+                                  Math.max(
+                                    0,
+                                    Number(
+                                      selectedOrder.subtotal || 0
+                                    ) -
+                                    Number(
+                                      selectedOrder.discountAmount || 0
+                                    )
+                                  )
+                                )}
+                              </span>
+                            </div>
+                          </>
+                        )}
+
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-[#725F54]">
                           Shipping
                         </span>
-                        {Number(
-                          selectedOrder.discountAmount || 0
-                        ) > 0 && (
-                            <>
-                              <div className="flex items-center justify-between gap-4">
-                                <span className="flex items-center gap-2 text-[#725F54]">
-                                  Discount
 
-                                  {selectedOrder.coupon?.code && (
-                                    <span className="rounded-full border border-[#BFD8C3] bg-[#EFF8F0] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#47704D]">
-                                      {selectedOrder.coupon.code}
-                                    </span>
-                                  )}
-                                </span>
-
-                                <span className="font-semibold text-[#47704D]">
-                                  - {formatPKR(
-                                    Number(
-                                      selectedOrder.discountAmount || 0
-                                    )
-                                  )}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center justify-between gap-4">
-                                <span className="text-[#725F54]">
-                                  After Discount
-                                </span>
-
-                                <span className="font-semibold text-[#34241C]">
-                                  {formatPKR(
-                                    selectedOrder.discountedSubtotal ??
-                                    Math.max(
-                                      0,
-                                      Number(
-                                        selectedOrder.subtotal || 0
-                                      ) -
-                                      Number(
-                                        selectedOrder.discountAmount || 0
-                                      )
-                                    )
-                                  )}
-                                </span>
-                              </div>
-                            </>
-                          )}
                         <span className="font-semibold text-[#34241C]">
                           {Number(
-                            selectedOrder.shipping ||
-                            0
+                            selectedOrder.shipping || 0
                           ) === 0
                             ? 'Free'
                             : formatPKR(
