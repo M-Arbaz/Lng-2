@@ -91,3 +91,4 @@ export const bankDetailsService = {
 }
 
 export default bankDetailsService
+
