@@ -14,6 +14,7 @@ import {
   Grid2X2,
   Heart,
   Home,
+  Info,
   LogIn,
   Menu,
   Moon,
@@ -233,6 +234,10 @@ const Header = forwardRef(function Header(
     {
       key: 'reels',
       label: 'REELS',
+    },
+    {
+      key: 'about',
+      label: 'ABOUT',
     },
   ]
 

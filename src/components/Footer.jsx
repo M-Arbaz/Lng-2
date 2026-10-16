@@ -1028,9 +1028,9 @@ export default function Footer({
               {newsletterMsg && (
                 <p
                   className={`mt-3 text-xs ${newsletterStatus ===
-                      'success'
-                      ? 'text-emerald-300'
-                      : 'text-red-300'
+                    'success'
+                    ? 'text-emerald-300'
+                    : 'text-red-300'
                     }`}
                 >
                   {
@@ -1288,12 +1288,12 @@ export default function Footer({
         >
           <div className="relative inline-block whitespace-nowrap text-[clamp(3.6rem,10vw,12rem)] font-medium leading-[0.8] tracking-[-0.065em]">
             <span className="absolute inset-0 animate-[pulse_3.2s_ease-in-out_infinite] text-[#D8A15F]/40 blur-[14px] [text-shadow:0_0_18px_rgba(216,161,95,0.5),0_0_42px_rgba(216,161,95,0.35),0_0_78px_rgba(216,161,95,0.2)]">
-              LAMP &amp; GLOW
+              LAMP AND GLOW
               PK
             </span>
 
             <span className="relative text-[#F8EFE4] drop-shadow-[0_0_12px_rgba(216,161,95,0.26)] [-webkit-text-stroke:1px_rgba(255,244,232,0.12)]">
-              LAMP &amp; GLOW
+              LAMP AND GLOW
               PK
             </span>
           </div>
@@ -1323,8 +1323,8 @@ export default function Footer({
           {/* Chat Box */}
           <div
             className={`absolute bottom-[calc(100%+14px)] right-0 w-[min(350px,calc(100vw-32px))] origin-bottom-right transition-all duration-200 ${waChatOpen
-                ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
-                : 'pointer-events-none translate-y-2 scale-[0.98] opacity-0'
+              ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
+              : 'pointer-events-none translate-y-2 scale-[0.98] opacity-0'
               }`}
           >
             <div className="overflow-hidden rounded-[22px] border border-white/10 bg-[#18100B] shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
