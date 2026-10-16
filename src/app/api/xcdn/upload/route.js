@@ -22,6 +22,7 @@ const ALLOWED_PRODUCT_FOLDERS = new Set([
     'customOrders',
     'custom-orders',
     'richtext',
+    'about',
 ])
 
 function getAllowedOrigins() {
