@@ -1,70 +1,147 @@
-import { db } from './firebase';
+import { db } from './firebase'
 import {
-  collection,
-  getDocs,
   doc,
   getDoc,
   setDoc,
-  updateDoc,
-} from 'firebase/firestore';
+} from 'firebase/firestore'
 
-const COLLECTION_NAME = 'bankDetails';
-const DEFAULT_DOC_ID = 'default';
+const COLLECTION_NAME = 'bankDetails'
+const DEFAULT_DOC_ID = 'default'
 
-const defaultBankDetails = {
-  bankName: 'Bank Alfalah',
-  accountTitle: 'Lamp & Glow',
-  accountNumber: '0051-1006789012',
-  iban: 'PK95ALFH000511006789012',
+const DEFAULT_BANK_DETAILS = {
+  bankName: '',
+  accountTitle: '',
+  accountNumber: '',
+  iban: '',
   branchCode: '',
+
+  bankInstructions: '',
+  codInstructions: '',
+
   codAdvancePercent: 50,
-  isActive: true,
-};
+
+  isActive: false,
+
+  updatedAt: null,
+}
+
+function cleanText(value) {
+  return String(value ?? '').trim()
+}
+
+function normalizePercent(value) {
+  const number = Number(value)
+
+  if (!Number.isFinite(number)) {
+    return 0
+  }
+
+  return Math.min(
+    100,
+    Math.max(0, number)
+  )
+}
+
+export function normalizeBankDetails(
+  data = {}
+) {
+  return {
+    bankName:
+      cleanText(data.bankName),
+
+    accountTitle:
+      cleanText(data.accountTitle),
+
+    accountNumber:
+      cleanText(data.accountNumber),
+
+    iban:
+      cleanText(data.iban)
+        .toUpperCase(),
+
+    branchCode:
+      cleanText(data.branchCode),
+
+    bankInstructions:
+      cleanText(
+        data.bankInstructions
+      ),
+
+    codInstructions:
+      cleanText(
+        data.codInstructions
+      ),
+
+    codAdvancePercent:
+      normalizePercent(
+        data.codAdvancePercent ??
+        DEFAULT_BANK_DETAILS
+          .codAdvancePercent
+      ),
+
+    isActive:
+      data.isActive === true,
+
+    updatedAt:
+      data.updatedAt || null,
+  }
+}
 
 export const bankDetailsService = {
-  // Get bank details (single document - singleton pattern)
-  getBankDetails: async () => {
-    try {
-      const docRef = doc(db, COLLECTION_NAME, DEFAULT_DOC_ID);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return {
-          id: docSnap.id,
-          ...docSnap.data(),
-        };
+  async getBankDetails() {
+    const docRef = doc(
+      db,
+      COLLECTION_NAME,
+      DEFAULT_DOC_ID
+    )
+
+    const snapshot =
+      await getDoc(docRef)
+
+    if (!snapshot.exists()) {
+      return {
+        id: DEFAULT_DOC_ID,
+        ...DEFAULT_BANK_DETAILS,
       }
-      // Return defaults if not yet created
-      return {
-        id: DEFAULT_DOC_ID,
-        ...defaultBankDetails,
-      };
-    } catch (error) {
-      console.error('Error getting bank details:', error);
-      // Return defaults on error so checkout still works
-      return {
-        id: DEFAULT_DOC_ID,
-        ...defaultBankDetails,
-      };
+    }
+
+    return {
+      id: snapshot.id,
+      ...normalizeBankDetails(
+        snapshot.data()
+      ),
     }
   },
 
-  // Save/Update bank details
-  saveBankDetails: async (data) => {
-    try {
-      const docRef = doc(db, COLLECTION_NAME, DEFAULT_DOC_ID);
-      await setDoc(docRef, {
-        ...data,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
-      return {
-        id: DEFAULT_DOC_ID,
-        ...data,
-      };
-    } catch (error) {
-      console.error('Error saving bank details:', error);
-      throw error;
+  async saveBankDetails(data) {
+    const normalized =
+      normalizeBankDetails(data)
+
+    const payload = {
+      ...normalized,
+      updatedAt:
+        new Date().toISOString(),
+    }
+
+    const docRef = doc(
+      db,
+      COLLECTION_NAME,
+      DEFAULT_DOC_ID
+    )
+
+    await setDoc(
+      docRef,
+      payload,
+      {
+        merge: true,
+      }
+    )
+
+    return {
+      id: DEFAULT_DOC_ID,
+      ...payload,
     }
   },
-};
+}
 
-export default bankDetailsService;
+export default bankDetailsService

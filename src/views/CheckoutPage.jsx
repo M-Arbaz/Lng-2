@@ -221,9 +221,45 @@ export default function CheckoutPage({
   )
   const grandTotal = discountedSubtotal + (shipping ?? 0)
 
-  const advancePercent = safeNumber(bankDetails?.codAdvancePercent, 50)
-  const advanceAmount = Math.round(grandTotal * (advancePercent / 100))
-  const codAmount = Math.max(0, grandTotal - advanceAmount)
+  const bankAccountActive = Boolean(
+    bankDetails?.isActive &&
+    String(bankDetails?.bankName || '').trim() &&
+    String(bankDetails?.accountTitle || '').trim() &&
+    String(bankDetails?.accountNumber || '').trim() &&
+    String(bankDetails?.iban || '').trim()
+  )
+
+  const advancePercent =
+    bankAccountActive
+      ? Math.min(
+        100,
+        Math.max(
+          0,
+          safeNumber(
+            bankDetails?.codAdvancePercent,
+            0
+          )
+        )
+      )
+      : 0
+
+  const requiresCodAdvance =
+    bankAccountActive &&
+    advancePercent > 0
+
+  const advanceAmount =
+    requiresCodAdvance
+      ? Math.round(
+        grandTotal *
+        (advancePercent / 100)
+      )
+      : 0
+
+  const codAmount =
+    Math.max(
+      0,
+      grandTotal - advanceAmount
+    )
 
   const goToStep = (step) => {
     setError('')
@@ -316,6 +352,16 @@ export default function CheckoutPage({
       return false
     }
 
+    if (
+      paymentMethod === 'bank' &&
+      !bankAccountActive
+    ) {
+      setError(
+        'Bank Deposit is currently unavailable. Please select Cash on Delivery.'
+      )
+      return false
+    }
+
     return true
   }
 
@@ -393,7 +439,25 @@ export default function CheckoutPage({
       0,
       numericTotal - checkoutDiscountAmount
     )
-    const checkoutGrandTotal = checkoutDiscountedSubtotal + (shipping ?? 0)
+    const checkoutGrandTotal =
+      checkoutDiscountedSubtotal +
+      (shipping ?? 0)
+
+    const checkoutAdvanceAmount =
+      paymentMethod === 'cod' &&
+        requiresCodAdvance
+        ? Math.round(
+          checkoutGrandTotal *
+          (advancePercent / 100)
+        )
+        : 0
+
+    const checkoutCodRemaining =
+      Math.max(
+        0,
+        checkoutGrandTotal -
+        checkoutAdvanceAmount
+      )
 
     const order = {
       fullName: fullName.trim(),
@@ -406,6 +470,52 @@ export default function CheckoutPage({
       postalCode: postalCode.trim(),
       note: note.trim(),
       paymentMethod,
+
+      paymentDetails: {
+        bankName:
+          paymentMethod === 'bank' ||
+            checkoutAdvanceAmount > 0
+            ? bankDetails?.bankName || ''
+            : '',
+
+        accountTitle:
+          paymentMethod === 'bank' ||
+            checkoutAdvanceAmount > 0
+            ? bankDetails?.accountTitle || ''
+            : '',
+
+        accountNumber:
+          paymentMethod === 'bank' ||
+            checkoutAdvanceAmount > 0
+            ? bankDetails?.accountNumber || ''
+            : '',
+
+        iban:
+          paymentMethod === 'bank' ||
+            checkoutAdvanceAmount > 0
+            ? bankDetails?.iban || ''
+            : '',
+
+        branchCode:
+          paymentMethod === 'bank' ||
+            checkoutAdvanceAmount > 0
+            ? bankDetails?.branchCode || ''
+            : '',
+
+        codAdvancePercent:
+          paymentMethod === 'cod'
+            ? advancePercent
+            : 0,
+
+        codAdvanceAmount:
+          checkoutAdvanceAmount,
+
+        codRemainingAmount:
+          paymentMethod === 'cod'
+            ? checkoutCodRemaining
+            : 0,
+      },
+
       shippingMethod: {
         id: selectedShippingMethod.id,
         name: selectedShippingMethod.name,
@@ -767,27 +877,237 @@ export default function CheckoutPage({
             {currentStep === 4 && (
               <StepCard step="04" title="Payment Method" description="Choose your preferred payment option.">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {[
-                    ['cod', 'Cash on Delivery', 'Pay the remaining balance when your order arrives.'],
-                    ['bank', 'Bank Deposit', 'Transfer payment directly to our bank account.'],
-                  ].map(([value, title, description]) => (
-                    <label key={value} className={classNames('cursor-pointer rounded-2xl border p-4 transition', paymentMethod === value ? 'border-[#3A2117] bg-[#F2ECE5]' : 'border-[#3A2117]/10 bg-[#FFFEFC] hover:border-[#6B4228]/35')}>
-                      <input type="radio" name="paymentMethod" value={value} checked={paymentMethod === value} onChange={(e) => setPaymentMethod(e.target.value)} className="sr-only" />
-                      <div className="flex gap-3"><div className={classNames('mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border', paymentMethod === value ? 'border-[#3A2117] bg-[#3A2117]' : 'border-[#3A2117]/25')}>{paymentMethod === value && <span className="h-1.5 w-1.5 rounded-full bg-white" />}</div><div><p className="text-sm font-semibold text-[#281912]">{title}</p><p className="mt-1 text-xs leading-5 text-[#7A6A60]">{description}</p></div></div>
+                  <label
+                    className={classNames(
+                      'cursor-pointer rounded-2xl border p-4 transition',
+                      paymentMethod === 'cod'
+                        ? 'border-[#3A2117] bg-[#F2ECE5]'
+                        : 'border-[#3A2117]/10 bg-[#FFFEFC] hover:border-[#6B4228]/35'
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="cod"
+                      checked={
+                        paymentMethod === 'cod'
+                      }
+                      onChange={(event) =>
+                        setPaymentMethod(
+                          event.target.value
+                        )
+                      }
+                      className="sr-only"
+                    />
+
+                    <div className="flex gap-3">
+                      <div
+                        className={classNames(
+                          'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border',
+                          paymentMethod === 'cod'
+                            ? 'border-[#3A2117] bg-[#3A2117]'
+                            : 'border-[#3A2117]/25'
+                        )}
+                      >
+                        {paymentMethod === 'cod' && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                        )}
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold text-[#281912]">
+                          Cash on Delivery
+                        </p>
+
+                        <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
+                          {requiresCodAdvance
+                            ? `${advancePercent}% advance is required. Remaining balance is payable on delivery.`
+                            : 'Pay when your order arrives.'}
+                        </p>
+                      </div>
+                    </div>
+                  </label>
+
+                  {bankAccountActive && (
+                    <label
+                      className={classNames(
+                        'cursor-pointer rounded-2xl border p-4 transition',
+                        paymentMethod === 'bank'
+                          ? 'border-[#3A2117] bg-[#F2ECE5]'
+                          : 'border-[#3A2117]/10 bg-[#FFFEFC] hover:border-[#6B4228]/35'
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="bank"
+                        checked={
+                          paymentMethod === 'bank'
+                        }
+                        onChange={(event) =>
+                          setPaymentMethod(
+                            event.target.value
+                          )
+                        }
+                        className="sr-only"
+                      />
+
+                      <div className="flex gap-3">
+                        <div
+                          className={classNames(
+                            'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border',
+                            paymentMethod === 'bank'
+                              ? 'border-[#3A2117] bg-[#3A2117]'
+                              : 'border-[#3A2117]/25'
+                          )}
+                        >
+                          {paymentMethod ===
+                            'bank' && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                            )}
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-semibold text-[#281912]">
+                            Bank Deposit
+                          </p>
+
+                          <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
+                            Transfer payment directly to our
+                            bank account.
+                          </p>
+                        </div>
+                      </div>
                     </label>
-                  ))}
+                  )}
                 </div>
 
-                {(paymentMethod === 'bank' || paymentMethod === 'cod') && bankDetails && (
-                  <div className="mt-5 overflow-hidden rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF]">
-                    <div className="border-b border-[#3A2117]/10 px-5 py-4"><p className="text-sm font-semibold text-[#281912]">Bank Account Details</p></div>
-                    <div className="grid gap-4 p-5 text-xs sm:grid-cols-2">
-                      <Info label="Bank" value={bankDetails.bankName} />
-                      <Info label="Account Title" value={bankDetails.accountTitle} />
-                      <Info label="Account Number" value={bankDetails.accountNumber} />
-                      <Info label="IBAN" value={bankDetails.iban} />
+                {paymentMethod === 'bank' &&
+                  bankAccountActive && (
+                    <div className="mt-5 overflow-hidden rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF]">
+                      <div className="border-b border-[#3A2117]/10 px-5 py-4">
+                        <p className="text-sm font-semibold text-[#281912]">
+                          Bank Account Details
+                        </p>
+                      </div>
+
+                      <div className="grid gap-4 p-5 text-xs sm:grid-cols-2">
+                        <Info
+                          label="Bank"
+                          value={
+                            bankDetails.bankName
+                          }
+                        />
+
+                        <Info
+                          label="Account Title"
+                          value={
+                            bankDetails.accountTitle
+                          }
+                        />
+
+                        <Info
+                          label="Account Number"
+                          value={
+                            bankDetails.accountNumber
+                          }
+                        />
+
+                        <Info
+                          label="IBAN"
+                          value={
+                            bankDetails.iban
+                          }
+                        />
+
+                        <Info
+                          label="Branch Code"
+                          value={
+                            bankDetails.branchCode
+                          }
+                        />
+                      </div>
+
+                      {bankDetails.bankInstructions && (
+                        <div className="border-t border-[#3A2117]/10 px-5 py-4 text-xs leading-5 text-[#6B5A50]">
+                          {bankDetails.bankInstructions}
+                        </div>
+                      )}
                     </div>
-                    {paymentMethod === 'cod' && <div className="border-t border-[#3A2117]/10 px-5 py-4 text-xs leading-5 text-[#6B5A50]">COD requires {advancePercent}% advance: <strong className="text-[#281912]">Rs.{formatPKR(advanceAmount)}</strong>. Remaining on delivery: <strong className="text-[#281912]">Rs.{formatPKR(codAmount)}</strong>.</div>}
+                  )}
+
+                {paymentMethod === 'cod' && (
+                  <div className="mt-5 overflow-hidden rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF]">
+                    <div className="border-b border-[#3A2117]/10 px-5 py-4">
+                      <p className="text-sm font-semibold text-[#281912]">
+                        Cash on Delivery
+                      </p>
+                    </div>
+
+                    {requiresCodAdvance ? (
+                      <>
+                        <div className="px-5 py-4 text-xs leading-5 text-[#6B5A50]">
+                          COD requires{' '}
+                          <strong className="text-[#281912]">
+                            {advancePercent}%
+                          </strong>{' '}
+                          advance payment:{' '}
+                          <strong className="text-[#281912]">
+                            Rs.{formatPKR(advanceAmount)}
+                          </strong>
+                          .
+
+                          <br />
+
+                          Remaining on delivery:{' '}
+                          <strong className="text-[#281912]">
+                            Rs.{formatPKR(codAmount)}
+                          </strong>
+                          .
+                        </div>
+
+                        <div className="grid gap-4 border-t border-[#3A2117]/10 p-5 text-xs sm:grid-cols-2">
+                          <Info
+                            label="Bank"
+                            value={
+                              bankDetails.bankName
+                            }
+                          />
+
+                          <Info
+                            label="Account Title"
+                            value={
+                              bankDetails.accountTitle
+                            }
+                          />
+
+                          <Info
+                            label="Account Number"
+                            value={
+                              bankDetails.accountNumber
+                            }
+                          />
+
+                          <Info
+                            label="IBAN"
+                            value={
+                              bankDetails.iban
+                            }
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="px-5 py-4 text-xs leading-5 text-[#6B5A50]">
+                        No advance payment is required. Pay
+                        the order amount on delivery.
+                      </div>
+                    )}
+
+                    {bankDetails?.codInstructions && (
+                      <div className="border-t border-[#3A2117]/10 px-5 py-4 text-xs leading-5 text-[#6B5A50]">
+                        {bankDetails.codInstructions}
+                      </div>
+                    )}
                   </div>
                 )}
 

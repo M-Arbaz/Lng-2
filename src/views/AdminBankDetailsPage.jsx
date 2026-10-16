@@ -1,81 +1,366 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { CheckCircle, AlertCircle, Loader2, Building2 } from 'lucide-react'
+import {
+  useEffect,
+  useState,
+} from 'react'
+
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  FileText,
+  Loader2,
+  Percent,
+  Save,
+  ShieldCheck,
+} from 'lucide-react'
+
 import AdminLayout from '../components/AdminLayout'
 import bankDetailsService from '../utils/bankDetailsService'
 
+const inputClass =
+  'w-full rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] px-4 py-3 text-sm text-[#281912] outline-none transition placeholder:text-[#A49388] focus:border-[#6B4228] focus:ring-4 focus:ring-[#6B4228]/[0.06]'
+
+const labelClass =
+  'mb-2 block text-[11px] font-semibold text-[#4C3A31]'
+
+const INITIAL_FORM = {
+  bankName: '',
+  accountTitle: '',
+  accountNumber: '',
+  iban: '',
+  branchCode: '',
+
+  bankInstructions: '',
+  codInstructions: '',
+
+  codAdvancePercent: '50',
+
+  isActive: false,
+}
+
+function clean(value) {
+  return String(value ?? '').trim()
+}
+
 export default function AdminBankDetailsPage() {
-  const [formData, setFormData] = useState({
-    bankName: '',
-    accountTitle: '',
-    accountNumber: '',
-    iban: '',
-    branchCode: '',
-    codAdvancePercent: 50,
-    isActive: true,
+  const [
+    formData,
+    setFormData,
+  ] = useState(INITIAL_FORM)
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true)
+
+  const [
+    saving,
+    setSaving,
+  ] = useState(false)
+
+  const [
+    dirty,
+    setDirty,
+  ] = useState(false)
+
+  const [
+    message,
+    setMessage,
+  ] = useState({
+    type: '',
+    text: '',
   })
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState({ type: '', text: '' })
 
   useEffect(() => {
-    const loadBankDetails = async () => {
-      try {
-        setLoading(true)
-        const data = await bankDetailsService.getBankDetails()
-        setFormData({
-          bankName: data.bankName || '',
-          accountTitle: data.accountTitle || '',
-          accountNumber: data.accountNumber || '',
-          iban: data.iban || '',
-          branchCode: data.branchCode || '',
-          codAdvancePercent: data.codAdvancePercent ?? 50,
-          isActive: data.isActive !== false,
-        })
-      } catch (error) {
-        console.error('Error loading bank details:', error)
-        setMessage({ type: 'error', text: 'Failed to load bank details.' })
-      } finally {
-        setLoading(false)
+    let active = true
+
+    const loadBankDetails =
+      async () => {
+        try {
+          setLoading(true)
+
+          const data =
+            await bankDetailsService.getBankDetails()
+
+          if (!active) {
+            return
+          }
+
+          setFormData({
+            bankName:
+              data.bankName || '',
+
+            accountTitle:
+              data.accountTitle || '',
+
+            accountNumber:
+              data.accountNumber || '',
+
+            iban:
+              data.iban || '',
+
+            branchCode:
+              data.branchCode || '',
+
+            bankInstructions:
+              data.bankInstructions ||
+              '',
+
+            codInstructions:
+              data.codInstructions ||
+              '',
+
+            codAdvancePercent:
+              String(
+                data.codAdvancePercent ??
+                50
+              ),
+
+            isActive:
+              data.isActive === true,
+          })
+
+          setDirty(false)
+        } catch (error) {
+          console.error(
+            'Error loading bank details:',
+            error
+          )
+
+          if (active) {
+            setMessage({
+              type: 'error',
+              text:
+                'Failed to load bank details.',
+            })
+          }
+        } finally {
+          if (active) {
+            setLoading(false)
+          }
+        }
       }
-    }
+
     loadBankDetails()
+
+    return () => {
+      active = false
+    }
   }, [])
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : name === 'codAdvancePercent' ? Number(value) : value,
-    }))
+  const updateField = (
+    name,
+    value
+  ) => {
+    setFormData(
+      (previous) => ({
+        ...previous,
+        [name]:
+          name === 'iban'
+            ? value.toUpperCase()
+            : value,
+      })
+    )
+
+    setDirty(true)
+
+    if (message.text) {
+      setMessage({
+        type: '',
+        text: '',
+      })
+    }
   }
 
-  const handleSave = async (e) => {
-    e.preventDefault()
-    if (!formData.bankName.trim() || !formData.accountTitle.trim() || !formData.accountNumber.trim() || !formData.iban.trim()) {
-      setMessage({ type: 'error', text: 'Please fill in all required fields.' })
-      return
+  const toggleActive = () => {
+    setFormData(
+      (previous) => ({
+        ...previous,
+        isActive:
+          !previous.isActive,
+      })
+    )
+
+    setDirty(true)
+  }
+
+  const validate = () => {
+    const advancePercent =
+      Number(
+        formData.codAdvancePercent
+      )
+
+    if (
+      !Number.isFinite(
+        advancePercent
+      ) ||
+      advancePercent < 0 ||
+      advancePercent > 100
+    ) {
+      setMessage({
+        type: 'error',
+        text:
+          'COD advance percentage must be between 0 and 100.',
+      })
+
+      return false
     }
 
-    try {
+    if (formData.isActive) {
+      if (
+        !clean(
+          formData.bankName
+        ) ||
+        !clean(
+          formData.accountTitle
+        ) ||
+        !clean(
+          formData.accountNumber
+        ) ||
+        !clean(
+          formData.iban
+        )
+      ) {
+        setMessage({
+          type: 'error',
+          text:
+            'Bank Name, Account Title, Account Number and IBAN are required before activating bank payments.',
+        })
+
+        return false
+      }
+    }
+
+    return true
+  }
+
+  const handleSave =
+    async (event) => {
+      event.preventDefault()
+
+      if (!validate()) {
+        return
+      }
+
       setSaving(true)
-      setMessage({ type: '', text: '' })
-      await bankDetailsService.saveBankDetails(formData)
-      setMessage({ type: 'success', text: 'Bank details updated successfully!' })
-    } catch (error) {
-      console.error('Error saving bank details:', error)
-      setMessage({ type: 'error', text: 'Failed to save bank details.' })
-    } finally {
-      setSaving(false)
+
+      try {
+        const saved =
+          await bankDetailsService.saveBankDetails({
+            bankName:
+              clean(
+                formData.bankName
+              ),
+
+            accountTitle:
+              clean(
+                formData.accountTitle
+              ),
+
+            accountNumber:
+              clean(
+                formData.accountNumber
+              ),
+
+            iban:
+              clean(
+                formData.iban
+              ).toUpperCase(),
+
+            branchCode:
+              clean(
+                formData.branchCode
+              ),
+
+            bankInstructions:
+              clean(
+                formData.bankInstructions
+              ),
+
+            codInstructions:
+              clean(
+                formData.codInstructions
+              ),
+
+            codAdvancePercent:
+              Number(
+                formData.codAdvancePercent
+              ),
+
+            isActive:
+              formData.isActive,
+          })
+
+        setFormData({
+          bankName:
+            saved.bankName || '',
+
+          accountTitle:
+            saved.accountTitle || '',
+
+          accountNumber:
+            saved.accountNumber || '',
+
+          iban:
+            saved.iban || '',
+
+          branchCode:
+            saved.branchCode || '',
+
+          bankInstructions:
+            saved.bankInstructions ||
+            '',
+
+          codInstructions:
+            saved.codInstructions ||
+            '',
+
+          codAdvancePercent:
+            String(
+              saved.codAdvancePercent ??
+              0
+            ),
+
+          isActive:
+            saved.isActive === true,
+        })
+
+        setDirty(false)
+
+        setMessage({
+          type: 'success',
+          text:
+            'Bank details saved successfully.',
+        })
+      } catch (error) {
+        console.error(
+          'Error saving bank details:',
+          error
+        )
+
+        setMessage({
+          type: 'error',
+          text:
+            'Failed to save bank details. Please try again.',
+        })
+      } finally {
+        setSaving(false)
+      }
     }
-  }
 
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+        <div className="flex min-h-[420px] items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#6B4228]" />
+
+            <p className="mt-3 text-sm text-[#806C60]">
+              Loading bank details...
+            </p>
+          </div>
         </div>
       </AdminLayout>
     )
@@ -83,153 +368,452 @@ export default function AdminBankDetailsPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6 max-w-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <Building2 className="w-8 h-8 text-orange-500" />
-              Bank Details
-            </h2>
-            <p className="text-gray-600 text-sm mt-1">
-              Manage bank account information shown at checkout for bank deposits.
-            </p>
-          </div>
-        </div>
+      <form
+        id="bank-details-form"
+        onSubmit={handleSave}
+        className="space-y-6"
+      >
+        <section className="overflow-hidden rounded-3xl border border-[#4C3429] bg-[#3A2117] shadow-[0_20px_60px_rgba(58,33,23,0.14)]">
+          <div className="relative px-5 py-7 sm:px-7">
+            <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-white/[0.04]" />
 
-        {/* Message */}
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.08]">
+                  <Building2 className="h-6 w-6 text-[#F7F4EF]" />
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#D6BBA9]">
+                    Store Settings
+                  </p>
+
+                  <h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
+                    Bank Details
+                  </h1>
+
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
+                    Manage the bank account and COD
+                    advance information displayed during
+                    checkout.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={
+                  saving ||
+                  !dirty
+                }
+                className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl bg-[#FFFEFC] px-5 text-sm font-semibold text-[#3A2117] transition hover:bg-[#F7F4EF] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+
+                {saving
+                  ? 'Saving...'
+                  : dirty
+                    ? 'Save Changes'
+                    : 'Saved'}
+              </button>
+            </div>
+          </div>
+        </section>
+
         {message.text && (
-          <div className={`p-4 rounded-lg flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-            {message.type === 'success' ? <CheckCircle className="w-5 h-5 text-[#22C55E] flex-shrink-0" /> : <AlertCircle className="w-5 h-5 text-[#E53935] flex-shrink-0" />}
-            <p className={`font-medium ${message.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>{message.text}</p>
+          <div
+            className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm ${message.type ===
+                'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-rose-200 bg-rose-50 text-rose-800'
+              }`}
+          >
+            {message.type ===
+              'success' ? (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+            ) : (
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            )}
+
+            <span>
+              {message.text}
+            </span>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSave} className="bg-white rounded-xl shadow-md p-8 space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {/* Bank Name */}
+        <section className="grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-[#E5DAD2] bg-[#FFFEFC] p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9A8171]">
+              Checkout Status
+            </p>
+
+            <p className="mt-2 text-lg font-semibold text-[#281912]">
+              {formData.isActive
+                ? 'Active'
+                : 'Inactive'}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#E5DAD2] bg-[#FFFEFC] p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9A8171]">
+              Bank
+            </p>
+
+            <p className="mt-2 truncate text-lg font-semibold text-[#281912]">
+              {formData.bankName ||
+                'Not configured'}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#E5DAD2] bg-[#FFFEFC] p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9A8171]">
+              COD Advance
+            </p>
+
+            <p className="mt-2 text-lg font-semibold text-[#281912]">
+              {Number(
+                formData.codAdvancePercent
+              ) || 0}
+              %
+            </p>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
+          <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F2EAE4] text-[#6B4228]">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+
+              <div>
+                <h2 className="text-base font-semibold text-[#281912]">
+                  Checkout Availability
+                </h2>
+
+                <p className="mt-1 text-xs leading-5 text-[#806C60]">
+                  Disabling the bank account hides Bank
+                  Deposit and prevents bank details from
+                  appearing at checkout.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 sm:p-6">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={
+                formData.isActive
+              }
+              onClick={toggleActive}
+              className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left transition ${formData.isActive
+                  ? 'border-[#6B4228]/25 bg-[#F4ECE6]'
+                  : 'border-[#DDD1C8] bg-[#F7F4EF]'
+                }`}
+            >
+              <div>
+                <p className="text-sm font-semibold text-[#281912]">
+                  Bank account{' '}
+                  {formData.isActive
+                    ? 'active'
+                    : 'inactive'}
+                </p>
+
+                <p className="mt-1 text-[11px] leading-5 text-[#806C60]">
+                  {formData.isActive
+                    ? 'Customers can use this account for applicable advance and bank payments.'
+                    : 'Bank information will remain saved but hidden from checkout.'}
+                </p>
+              </div>
+
+              <span
+                className={`relative h-6 w-11 shrink-0 rounded-full ${formData.isActive
+                    ? 'bg-[#3A2117]'
+                    : 'bg-[#C9BDB5]'
+                  }`}
+              >
+                <span
+                  className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all ${formData.isActive
+                      ? 'left-6'
+                      : 'left-1'
+                    }`}
+                />
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
+          <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F2EAE4] text-[#6B4228]">
+                <Building2 className="h-5 w-5" />
+              </div>
+
+              <div>
+                <h2 className="text-base font-semibold text-[#281912]">
+                  Bank Account
+                </h2>
+
+                <p className="mt-1 text-xs text-[#806C60]">
+                  Information customers need to make a
+                  bank transfer.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Bank Name <span className="text-red-500">*</span>
+              <label className={labelClass}>
+                Bank Name *
               </label>
+
               <input
-                type="text"
-                name="bankName"
-                value={formData.bankName}
-                onChange={handleChange}
+                value={
+                  formData.bankName
+                }
+                onChange={(event) =>
+                  updateField(
+                    'bankName',
+                    event.target.value
+                  )
+                }
                 placeholder="e.g. Bank Alfalah"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className={inputClass}
               />
             </div>
 
-            {/* Account Title */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Account Title <span className="text-red-500">*</span>
+              <label className={labelClass}>
+                Account Title *
               </label>
+
               <input
-                type="text"
-                name="accountTitle"
-                value={formData.accountTitle}
-                onChange={handleChange}
+                value={
+                  formData.accountTitle
+                }
+                onChange={(event) =>
+                  updateField(
+                    'accountTitle',
+                    event.target.value
+                  )
+                }
                 placeholder="e.g. Lamp & Glow"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className={inputClass}
               />
             </div>
 
-            {/* Account Number */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Account Number <span className="text-red-500">*</span>
+              <label className={labelClass}>
+                Account Number *
               </label>
+
               <input
-                type="text"
-                name="accountNumber"
-                value={formData.accountNumber}
-                onChange={handleChange}
-                placeholder="e.g. 0051-1006789012"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                value={
+                  formData.accountNumber
+                }
+                onChange={(event) =>
+                  updateField(
+                    'accountNumber',
+                    event.target.value
+                  )
+                }
+                placeholder="Account number"
+                className={inputClass}
               />
             </div>
 
-            {/* IBAN */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                IBAN <span className="text-red-500">*</span>
+              <label className={labelClass}>
+                IBAN *
               </label>
+
               <input
-                type="text"
-                name="iban"
-                value={formData.iban}
-                onChange={handleChange}
-                placeholder="e.g. PK95ALFH000511006789012"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                value={
+                  formData.iban
+                }
+                onChange={(event) =>
+                  updateField(
+                    'iban',
+                    event.target.value
+                  )
+                }
+                placeholder="PK00..."
+                className={`${inputClass} uppercase`}
               />
             </div>
 
-            {/* Branch Code */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label className={labelClass}>
                 Branch Code
               </label>
+
               <input
-                type="text"
-                name="branchCode"
-                value={formData.branchCode}
-                onChange={handleChange}
+                value={
+                  formData.branchCode
+                }
+                onChange={(event) =>
+                  updateField(
+                    'branchCode',
+                    event.target.value
+                  )
+                }
                 placeholder="Optional"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className={inputClass}
               />
             </div>
+          </div>
+        </section>
 
-            {/* COD Advance Percent */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                COD Advance Payment (%)
+        <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
+          <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F2EAE4] text-[#6B4228]">
+                <Percent className="h-5 w-5" />
+              </div>
+
+              <div>
+                <h2 className="text-base font-semibold text-[#281912]">
+                  COD Advance
+                </h2>
+
+                <p className="mt-1 text-xs leading-5 text-[#806C60]">
+                  Set the percentage customers should pay
+                  in advance for Cash on Delivery.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 sm:p-6">
+            <div className="max-w-sm">
+              <label className={labelClass}>
+                Advance Percentage
               </label>
-              <input
-                type="number"
-                name="codAdvancePercent"
-                value={formData.codAdvancePercent}
-                onChange={handleChange}
-                min={0}
-                max={100}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Percentage of total required as advance for COD orders.
+
+              <div className="flex overflow-hidden rounded-xl border border-[#DCCFC6]">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={
+                    formData.codAdvancePercent
+                  }
+                  onChange={(event) =>
+                    updateField(
+                      'codAdvancePercent',
+                      event.target.value
+                    )
+                  }
+                  className="w-full bg-[#FFFEFC] px-4 py-3 text-sm text-[#281912] outline-none"
+                />
+
+                <span className="grid min-w-[52px] place-items-center border-l border-[#E5DAD2] bg-[#F7F4EF] text-sm font-semibold text-[#6B4228]">
+                  %
+                </span>
+              </div>
+
+              <p className="mt-2 text-[11px] leading-5 text-[#8A7569]">
+                Set 0% if COD should require no advance.
               </p>
             </div>
           </div>
+        </section>
 
-          {/* Active Toggle */}
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setFormData((prev) => ({ ...prev, isActive: !prev.isActive }))}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.isActive ? 'bg-green-500' : 'bg-gray-300'}`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.isActive ? 'translate-x-6' : 'translate-x-1'}`} />
-            </button>
-            <span className="text-sm font-medium text-gray-700">
-              {formData.isActive ? 'Active' : 'Inactive'} — Show bank details at checkout
-            </span>
+        <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
+          <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F2EAE4] text-[#6B4228]">
+                <FileText className="h-5 w-5" />
+              </div>
+
+              <div>
+                <h2 className="text-base font-semibold text-[#281912]">
+                  Checkout Instructions
+                </h2>
+
+                <p className="mt-1 text-xs leading-5 text-[#806C60]">
+                  These messages appear with the relevant
+                  payment option.
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Submit */}
-          <div className="pt-4 border-t border-gray-100">
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-orange-500 to-[#F5F1EA]0 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-60"
-            >
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {saving ? 'Saving...' : 'Save Bank Details'}
-            </button>
+          <div className="grid gap-5 p-5 lg:grid-cols-2 sm:p-6">
+            <div>
+              <label className={labelClass}>
+                Bank Transfer Instructions
+              </label>
+
+              <textarea
+                rows={5}
+                value={
+                  formData.bankInstructions
+                }
+                onChange={(event) =>
+                  updateField(
+                    'bankInstructions',
+                    event.target.value
+                  )
+                }
+                placeholder="e.g. Transfer the amount to the account above and keep your transaction reference."
+                className={`${inputClass} resize-y`}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                COD Advance Instructions
+              </label>
+
+              <textarea
+                rows={5}
+                value={
+                  formData.codInstructions
+                }
+                onChange={(event) =>
+                  updateField(
+                    'codInstructions',
+                    event.target.value
+                  )
+                }
+                placeholder="e.g. Pay the required advance before order processing. Remaining balance is payable on delivery."
+                className={`${inputClass} resize-y`}
+              />
+            </div>
           </div>
-        </form>
-      </div>
+        </section>
+
+        <div className="sticky bottom-4 z-20 flex justify-end rounded-2xl border border-[#E0D4CB] bg-[#FFFEFC]/95 p-3 shadow-[0_16px_45px_rgba(58,33,23,0.14)] backdrop-blur-xl">
+          <button
+            type="submit"
+            disabled={
+              saving ||
+              !dirty
+            }
+            className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-6 text-sm font-semibold text-white transition hover:bg-[#281912] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+
+            {saving
+              ? 'Saving...'
+              : 'Save Bank Details'}
+          </button>
+        </div>
+      </form>
     </AdminLayout>
   )
 }
