@@ -17,42 +17,54 @@ import {
   TicketPercent,
   Users,
 } from 'lucide-react'
+
 import AdminLayout from '../components/AdminLayout'
 import couponsService from '../utils/couponsService.js'
 import productsService from '../utils/productsService.js'
 import categoriesService from '../utils/categoriesService.js'
 
+const EMPTY_FORM = {
+  code: '',
+  description: '',
+  discountType: 'percentage',
+  discountValue: '',
+  applicableTo: 'all',
+  productIds: [],
+  categoryIds: [],
+  minOrderValue: '',
+  maxUsageLimit: '',
+  expiryDate: '',
+  isActive: true,
+}
+
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState([])
+  const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
+
   const [loading, setLoading] = useState(true)
+  const [targetsLoading, setTargetsLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
   const [searchQuery, setSearchQuery] = useState('')
+  const [productSearch, setProductSearch] = useState('')
+  const [categorySearch, setCategorySearch] = useState('')
+
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
+
+  const [copiedCode, setCopiedCode] = useState(null)
+
   const [message, setMessage] = useState({
     type: '',
     text: '',
   })
-  const [saving, setSaving] = useState(false)
-  const [copiedCode, setCopiedCode] = useState(null)
-  const [products, setProducts] = useState([])
-  const [categories, setCategories] = useState([])
 
-  const [productSearch, setProductSearch] = useState('')
-  const [categorySearch, setCategorySearch] = useState('')
   const [formData, setFormData] = useState({
-    code: '',
-    description: '',
-    discountType: 'percentage',
-    discountValue: '',
-    applicableTo: 'all',
-    productIds: [],
-    categoryIds: [],
-    minOrderValue: '',
-    maxUsageLimit: '',
-    expiryDate: '',
-    isActive: true,
+    ...EMPTY_FORM,
   })
 
+  // Load Coupons
   useEffect(() => {
     const loadCoupons = async () => {
       try {
@@ -61,7 +73,11 @@ export default function AdminCouponsPage() {
         const data =
           await couponsService.getAllCoupons()
 
-        setCoupons(data)
+        setCoupons(
+          Array.isArray(data)
+            ? data
+            : []
+        )
       } catch (error) {
         console.error(
           'Error loading coupons:',
@@ -79,9 +95,13 @@ export default function AdminCouponsPage() {
 
     loadCoupons()
   }, [])
+
+  // Load Products + Categories
   useEffect(() => {
     const loadCouponTargets = async () => {
       try {
+        setTargetsLoading(true)
+
         const [
           productData,
           categoryData,
@@ -111,11 +131,31 @@ export default function AdminCouponsPage() {
           type: 'error',
           text: 'Failed to load products or categories',
         })
+      } finally {
+        setTargetsLoading(false)
       }
     }
 
     loadCouponTargets()
   }, [])
+
+  const showTemporaryMessage = (
+    type,
+    text
+  ) => {
+    setMessage({
+      type,
+      text,
+    })
+
+    setTimeout(() => {
+      setMessage({
+        type: '',
+        text: '',
+      })
+    }, 3000)
+  }
+
   const handleInputChange = (e) => {
     const {
       name,
@@ -155,6 +195,7 @@ export default function AdminCouponsPage() {
           : value,
     }))
   }
+
   const toggleCouponTarget = (
     field,
     id
@@ -180,37 +221,30 @@ export default function AdminCouponsPage() {
       }
     })
   }
+
   const resetForm = () => {
     setFormData({
-      code: '',
-      description: '',
-      discountType: 'percentage',
-      discountValue: '',
-      applicableTo: 'all',
-      minOrderValue: '',
-      maxUsageLimit: '',
-      expiryDate: '',
-      isActive: true,
+      ...EMPTY_FORM,
+      productIds: [],
+      categoryIds: [],
     })
 
     setEditingId(null)
+    setProductSearch('')
+    setCategorySearch('')
     setShowForm(false)
   }
 
   const openCreateForm = () => {
     setFormData({
-      code: '',
-      description: '',
-      discountType: 'percentage',
-      discountValue: '',
-      applicableTo: 'all',
-      minOrderValue: '',
-      maxUsageLimit: '',
-      expiryDate: '',
-      isActive: true,
+      ...EMPTY_FORM,
+      productIds: [],
+      categoryIds: [],
     })
 
     setEditingId(null)
+    setProductSearch('')
+    setCategorySearch('')
     setShowForm(true)
   }
 
@@ -219,7 +253,9 @@ export default function AdminCouponsPage() {
 
     if (
       !formData.code.trim() ||
-      !formData.discountValue.trim()
+      !String(
+        formData.discountValue
+      ).trim()
     ) {
       setMessage({
         type: 'error',
@@ -229,147 +265,36 @@ export default function AdminCouponsPage() {
       return
     }
 
-    setSaving(true)
+    const discountValue =
+      Number(formData.discountValue)
 
-    try {
-      const payload = {
-        code: formData.code
-          .trim()
-          .toUpperCase(),
-        description:
-          formData.description.trim(),
-        discountType:
-          formData.discountType,
-        discountValue: parseFloat(
-          formData.discountValue
-        ),
-        applicableTo:
-          formData.applicableTo,
-        productIds:
-          formData.applicableTo ===
-            'products'
-            ? formData.productIds
-            : [],
-
-        categoryIds:
-          formData.applicableTo ===
-            'categories'
-            ? formData.categoryIds
-            : [],
-        minOrderValue:
-          formData.minOrderValue
-            ? parseFloat(
-              formData.minOrderValue
-            )
-            : 0,
-        maxUsageLimit:
-          formData.maxUsageLimit
-            ? parseInt(
-              formData.maxUsageLimit,
-              10
-            )
-            : null,
-        expiryDate:
-          formData.expiryDate || null,
-        isActive: formData.isActive,
-      }
-
-      if (editingId) {
-        await couponsService.updateCoupon(
-          editingId,
-          payload
-        )
-
-        setCoupons((prev) =>
-          prev.map((coupon) =>
-            coupon.id === editingId
-              ? {
-                ...coupon,
-                ...payload,
-                updatedAt:
-                  new Date().toISOString(),
-              }
-              : coupon
-          )
-        )
-
-        setMessage({
-          type: 'success',
-          text: 'Coupon updated successfully!',
-        })
-      } else {
-        const newCoupon =
-          await couponsService.createCoupon(
-            payload
-          )
-
-        setCoupons((prev) => [
-          newCoupon,
-          ...prev,
-        ])
-
-        setMessage({
-          type: 'success',
-          text: 'Coupon created successfully!',
-        })
-      }
-
-      resetForm()
-    } catch (error) {
-      console.error(
-        'Error saving coupon:',
-        error
-      )
-
+    if (
+      !Number.isFinite(
+        discountValue
+      ) ||
+      discountValue <= 0
+    ) {
       setMessage({
         type: 'error',
-        text: 'Failed to save coupon. Please try again.',
+        text: 'Please enter a valid discount value',
       })
-    } finally {
-      setSaving(false)
+
+      return
     }
 
-    setTimeout(() => {
+    if (
+      formData.discountType ===
+      'percentage' &&
+      discountValue > 100
+    ) {
       setMessage({
-        type: '',
-        text: '',
+        type: 'error',
+        text: 'Percentage discount cannot be greater than 100%',
       })
-    }, 3000)
-  }
 
-  const handleEdit = (coupon) => {
-    setFormData({
-      code: coupon.code || '',
-      description:
-        coupon.description || '',
-      discountType:
-        coupon.discountType ||
-        'percentage',
-      discountValue: String(
-        coupon.discountValue ?? ''
-      ),
-      applicableTo:
-        coupon.applicableTo || 'all',
-      productIds:
-        Array.isArray(coupon.productIds)
-          ? coupon.productIds
-          : [],
+      return
+    }
 
-      categoryIds:
-        Array.isArray(coupon.categoryIds)
-          ? coupon.categoryIds
-          : [],
-      minOrderValue: String(
-        coupon.minOrderValue ?? ''
-      ),
-      maxUsageLimit: String(
-        coupon.maxUsageLimit ?? ''
-      ),
-      expiryDate:
-        coupon.expiryDate || '',
-      isActive:
-        coupon.isActive !== false,
-    })
     if (
       formData.applicableTo ===
       'products' &&
@@ -395,21 +320,194 @@ export default function AdminCouponsPage() {
 
       return
     }
+
+    try {
+      setSaving(true)
+
+      const payload = {
+        code: formData.code
+          .trim()
+          .toUpperCase(),
+
+        description:
+          formData.description.trim(),
+
+        discountType:
+          formData.discountType,
+
+        discountValue,
+
+        applicableTo:
+          formData.applicableTo,
+
+        productIds:
+          formData.applicableTo ===
+            'products'
+            ? formData.productIds
+            : [],
+
+        categoryIds:
+          formData.applicableTo ===
+            'categories'
+            ? formData.categoryIds
+            : [],
+
+        minOrderValue:
+          formData.minOrderValue
+            ? Number(
+              formData.minOrderValue
+            )
+            : 0,
+
+        maxUsageLimit:
+          formData.maxUsageLimit
+            ? Number.parseInt(
+              formData.maxUsageLimit,
+              10
+            )
+            : null,
+
+        expiryDate:
+          formData.expiryDate ||
+          null,
+
+        isActive:
+          formData.isActive,
+      }
+
+      if (editingId) {
+        await couponsService.updateCoupon(
+          editingId,
+          payload
+        )
+
+        setCoupons((prev) =>
+          prev.map((coupon) =>
+            coupon.id === editingId
+              ? {
+                ...coupon,
+                ...payload,
+                updatedAt:
+                  new Date().toISOString(),
+              }
+              : coupon
+          )
+        )
+
+        showTemporaryMessage(
+          'success',
+          'Coupon updated successfully!'
+        )
+      } else {
+        const newCoupon =
+          await couponsService.createCoupon(
+            payload
+          )
+
+        setCoupons((prev) => [
+          newCoupon,
+          ...prev,
+        ])
+
+        showTemporaryMessage(
+          'success',
+          'Coupon created successfully!'
+        )
+      }
+
+      resetForm()
+    } catch (error) {
+      console.error(
+        'Error saving coupon:',
+        error
+      )
+
+      showTemporaryMessage(
+        'error',
+        'Failed to save coupon. Please try again.'
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleEdit = (coupon) => {
+    setFormData({
+      code:
+        coupon.code || '',
+
+      description:
+        coupon.description || '',
+
+      discountType:
+        coupon.discountType ||
+        'percentage',
+
+      discountValue: String(
+        coupon.discountValue ?? ''
+      ),
+
+      applicableTo:
+        coupon.applicableTo ||
+        'all',
+
+      productIds:
+        Array.isArray(
+          coupon.productIds
+        )
+          ? coupon.productIds
+          : [],
+
+      categoryIds:
+        Array.isArray(
+          coupon.categoryIds
+        )
+          ? coupon.categoryIds
+          : [],
+
+      minOrderValue:
+        coupon.minOrderValue != null
+          ? String(
+            coupon.minOrderValue
+          )
+          : '',
+
+      maxUsageLimit:
+        coupon.maxUsageLimit != null
+          ? String(
+            coupon.maxUsageLimit
+          )
+          : '',
+
+      expiryDate:
+        coupon.expiryDate || '',
+
+      isActive:
+        coupon.isActive !== false,
+    })
+
+    setProductSearch('')
+    setCategorySearch('')
     setEditingId(coupon.id)
     setShowForm(true)
   }
 
-  const handleDelete = async (id) => {
-    if (
-      !window.confirm(
+  const handleDelete = async (
+    id
+  ) => {
+    const confirmed =
+      window.confirm(
         'Are you sure you want to delete this coupon?'
       )
-    ) {
+
+    if (!confirmed) {
       return
     }
 
     try {
-      await couponsService.deleteCoupon(id)
+      await couponsService.deleteCoupon(
+        id
+      )
 
       setCoupons((prev) =>
         prev.filter(
@@ -418,39 +516,34 @@ export default function AdminCouponsPage() {
         )
       )
 
-      setMessage({
-        type: 'success',
-        text: 'Coupon deleted successfully!',
-      })
+      showTemporaryMessage(
+        'success',
+        'Coupon deleted successfully!'
+      )
     } catch (error) {
       console.error(
         'Error deleting coupon:',
         error
       )
 
-      setMessage({
-        type: 'error',
-        text: 'Failed to delete coupon. Please try again.',
-      })
+      showTemporaryMessage(
+        'error',
+        'Failed to delete coupon. Please try again.'
+      )
     }
-
-    setTimeout(() => {
-      setMessage({
-        type: '',
-        text: '',
-      })
-    }, 3000)
   }
 
   const handleToggleStatus = async (
     coupon
   ) => {
     try {
+      const nextStatus =
+        !coupon.isActive
+
       await couponsService.updateCoupon(
         coupon.id,
         {
-          isActive:
-            !coupon.isActive,
+          isActive: nextStatus,
         }
       )
 
@@ -460,140 +553,99 @@ export default function AdminCouponsPage() {
             ? {
               ...item,
               isActive:
-                !coupon.isActive,
+                nextStatus,
             }
             : item
         )
       )
 
-      setMessage({
-        type: 'success',
-        text: `Coupon ${!coupon.isActive
+      showTemporaryMessage(
+        'success',
+        `Coupon ${nextStatus
           ? 'activated'
           : 'deactivated'
-          }!`,
-      })
+        }!`
+      )
     } catch (error) {
       console.error(
         'Error toggling coupon status:',
         error
       )
 
-      setMessage({
-        type: 'error',
-        text: 'Failed to update coupon status',
-      })
+      showTemporaryMessage(
+        'error',
+        'Failed to update coupon status'
+      )
+    }
+  }
+
+  const copyToClipboard = async (
+    code
+  ) => {
+    try {
+      await navigator.clipboard.writeText(
+        code
+      )
+
+      setCopiedCode(code)
+
+      setTimeout(() => {
+        setCopiedCode(null)
+      }, 2000)
+    } catch (error) {
+      console.error(
+        'Failed to copy coupon code:',
+        error
+      )
+    }
+  }
+
+  const isExpired = (
+    expiryDate
+  ) => {
+    if (!expiryDate) {
+      return false
     }
 
-    setTimeout(() => {
-      setMessage({
-        type: '',
-        text: '',
-      })
-    }, 3000)
-  }
+    const expiry =
+      new Date(expiryDate)
 
-  const copyToClipboard = (code) => {
-    navigator.clipboard.writeText(code)
-
-    setCopiedCode(code)
-
-    setTimeout(() => {
-      setCopiedCode(null)
-    }, 2000)
-  }
-
-  const isExpired = (expiryDate) => {
-    if (!expiryDate) return false
+    if (
+      Number.isNaN(
+        expiry.getTime()
+      )
+    ) {
+      return false
+    }
 
     return (
-      new Date(expiryDate) <
-      new Date()
+      expiry.getTime() <
+      new Date().setHours(
+        0,
+        0,
+        0,
+        0
+      )
     )
   }
 
-  const filteredCoupons =
-    coupons.filter((coupon) => {
-      const query =
-        searchQuery
-          .trim()
-          .toLowerCase()
-
-      return (
-        (coupon.code || '')
-          .toLowerCase()
-          .includes(query) ||
-        (coupon.description || '')
-          .toLowerCase()
-          .includes(query)
-      )
-    })
-  const filteredProducts =
-    products.filter((product) => {
-      const query =
-        productSearch
-          .trim()
-          .toLowerCase()
-
-      if (!query) return true
-
-      return (
-        product.name
-          ?.toLowerCase()
-          .includes(query) ||
-        product.title
-          ?.toLowerCase()
-          .includes(query)
-      )
-    })
-
-  const filteredCategories =
-    categories.filter((category) => {
-      const query =
-        categorySearch
-          .trim()
-          .toLowerCase()
-
-      if (!query) return true
-
-      return category.name
-        ?.toLowerCase()
-        .includes(query)
-    })
-  const totalUsage =
-    coupons.reduce(
-      (sum, coupon) =>
-        sum +
-        (coupon.usageCount || 0),
-      0
-    )
-
-  const activeCoupons =
-    coupons.filter(
-      (coupon) =>
-        coupon.isActive &&
-        !isExpired(
-          coupon.expiryDate
-        )
-    ).length
-
-  const expiredCoupons =
-    coupons.filter((coupon) =>
-      isExpired(
-        coupon.expiryDate
-      )
-    ).length
-
-  const formatMoney = (value) => {
+  const formatMoney = (
+    value
+  ) => {
     return Number(
       value || 0
     ).toLocaleString('en-PK')
   }
 
-  const formatDate = (value) => {
-    if (!value) return 'No expiry'
+  const formatDate = (
+    value
+  ) => {
+    if (!value) {
+      return 'No expiry'
+    }
 
-    const date = new Date(value)
+    const date =
+      new Date(value)
 
     if (
       Number.isNaN(
@@ -628,6 +680,90 @@ export default function AdminCouponsPage() {
 
     return 'All Products'
   }
+
+  const filteredCoupons =
+    coupons.filter((coupon) => {
+      const query =
+        searchQuery
+          .trim()
+          .toLowerCase()
+
+      return (
+        (coupon.code || '')
+          .toLowerCase()
+          .includes(query) ||
+        (coupon.description || '')
+          .toLowerCase()
+          .includes(query)
+      )
+    })
+
+  const filteredProducts =
+    products.filter(
+      (product) => {
+        const query =
+          productSearch
+            .trim()
+            .toLowerCase()
+
+        if (!query) {
+          return true
+        }
+
+        return (
+          product.name
+            ?.toLowerCase()
+            .includes(query) ||
+          product.title
+            ?.toLowerCase()
+            .includes(query)
+        )
+      }
+    )
+
+  const filteredCategories =
+    categories.filter(
+      (category) => {
+        const query =
+          categorySearch
+            .trim()
+            .toLowerCase()
+
+        if (!query) {
+          return true
+        }
+
+        return category.name
+          ?.toLowerCase()
+          .includes(query)
+      }
+    )
+
+  const totalUsage =
+    coupons.reduce(
+      (sum, coupon) =>
+        sum +
+        Number(
+          coupon.usageCount || 0
+        ),
+      0
+    )
+
+  const activeCoupons =
+    coupons.filter(
+      (coupon) =>
+        coupon.isActive &&
+        !isExpired(
+          coupon.expiryDate
+        )
+    ).length
+
+  const expiredCoupons =
+    coupons.filter((coupon) =>
+      isExpired(
+        coupon.expiryDate
+      )
+    ).length
 
   return (
     <AdminLayout>
@@ -672,10 +808,9 @@ export default function AdminCouponsPage() {
         {/* Alert */}
         {message.text && (
           <div
-            className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-sm ${message.type ===
-              'success'
-              ? 'border-[#CFE1D1] bg-[#F3F9F3] text-[#426649]'
-              : 'border-[#E8C9C3] bg-[#FFF4F1] text-[#93483C]'
+            className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-sm ${message.type === 'success'
+                ? 'border-[#CFE1D1] bg-[#F3F9F3] text-[#426649]'
+                : 'border-[#E8C9C3] bg-[#FFF4F1] text-[#93483C]'
               }`}
           >
             {message.type ===
@@ -775,9 +910,7 @@ export default function AdminCouponsPage() {
               <input
                 type="text"
                 placeholder="Search by coupon code or description..."
-                value={
-                  searchQuery
-                }
+                value={searchQuery}
                 onChange={(e) =>
                   setSearchQuery(
                     e.target.value
@@ -799,7 +932,7 @@ export default function AdminCouponsPage() {
           </div>
         </section>
 
-        {/* Coupon Content */}
+        {/* Coupons */}
         {loading ? (
           <section className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-[#E8DDD5] bg-[#FFFEFC] p-8 shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
             <Loader2 className="h-7 w-7 animate-spin text-[#6B4228]" />
@@ -828,9 +961,7 @@ export default function AdminCouponsPage() {
             {!searchQuery && (
               <button
                 type="button"
-                onClick={
-                  openCreateForm
-                }
+                onClick={openCreateForm}
                 className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#3A2117] px-5 py-2.5 text-sm font-semibold text-[#FFFEFC] transition hover:bg-[#281912]"
               >
                 <Plus className="h-4 w-4" />
@@ -853,6 +984,19 @@ export default function AdminCouponsPage() {
                     : coupon.isActive
                       ? 'active'
                       : 'inactive'
+
+                const selectedTargetCount =
+                  coupon.applicableTo ===
+                    'products'
+                    ? coupon
+                      .productIds
+                      ?.length || 0
+                    : coupon.applicableTo ===
+                      'categories'
+                      ? coupon
+                        .categoryIds
+                        ?.length || 0
+                      : null
 
                 return (
                   <article
@@ -899,12 +1043,12 @@ export default function AdminCouponsPage() {
 
                           <span
                             className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${status ===
-                              'active'
-                              ? 'border-[#C8DDCB] bg-[#F2F8F3] text-[#4A7450]'
-                              : status ===
-                                'expired'
-                                ? 'border-[#E5D4B4] bg-[#FFF9EA] text-[#866A28]'
-                                : 'border-[#D8D0CB] bg-[#F7F4F2] text-[#796B63]'
+                                'active'
+                                ? 'border-[#C8DDCB] bg-[#F2F8F3] text-[#4A7450]'
+                                : status ===
+                                  'expired'
+                                  ? 'border-[#E5D4B4] bg-[#FFF9EA] text-[#866A28]'
+                                  : 'border-[#D8D0CB] bg-[#F7F4F2] text-[#796B63]'
                               }`}
                           >
                             {status ===
@@ -926,7 +1070,7 @@ export default function AdminCouponsPage() {
                         )}
                       </div>
 
-                      {/* Content */}
+                      {/* Card Content */}
                       <div className="flex flex-1 flex-col p-5">
                         <div className="rounded-xl border border-[#E7DAD0] bg-[#F7F4EF] p-4">
                           <p className="text-xs font-medium text-[#8A7467]">
@@ -956,14 +1100,35 @@ export default function AdminCouponsPage() {
                             </span>
                           </div>
 
+                          {selectedTargetCount !==
+                            null && (
+                              <div className="flex items-center justify-between gap-4 text-sm">
+                                <span className="text-[#8A7467]">
+                                  Selected
+                                </span>
+
+                                <span className="font-semibold text-[#4D3A31]">
+                                  {
+                                    selectedTargetCount
+                                  }{' '}
+                                  {coupon.applicableTo ===
+                                    'products'
+                                    ? 'products'
+                                    : 'categories'}
+                                </span>
+                              </div>
+                            )}
+
                           <div className="flex items-center justify-between gap-4 text-sm">
                             <span className="text-[#8A7467]">
                               Minimum Order
                             </span>
 
                             <span className="font-semibold text-[#4D3A31]">
-                              {coupon.minOrderValue >
+                              {Number(
+                                coupon.minOrderValue ||
                                 0
+                              ) > 0
                                 ? `Rs. ${formatMoney(
                                   coupon.minOrderValue
                                 )}`
@@ -979,6 +1144,7 @@ export default function AdminCouponsPage() {
                             <span className="font-semibold text-[#4D3A31]">
                               {coupon.usageCount ||
                                 0}
+
                               {coupon.maxUsageLimit
                                 ? ` / ${coupon.maxUsageLimit}`
                                 : ' / Unlimited'}
@@ -992,8 +1158,8 @@ export default function AdminCouponsPage() {
 
                             <span
                               className={`text-right font-semibold ${expired
-                                ? 'text-[#A05C46]'
-                                : 'text-[#4D3A31]'
+                                  ? 'text-[#A05C46]'
+                                  : 'text-[#4D3A31]'
                                 }`}
                             >
                               {formatDate(
@@ -1014,8 +1180,8 @@ export default function AdminCouponsPage() {
                                 )
                               }
                               className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-xs font-semibold transition ${coupon.isActive
-                                ? 'border-[#E1C8C2] bg-[#FFF6F3] text-[#965044] hover:bg-[#FCEAE6]'
-                                : 'border-[#C9DCCB] bg-[#F3F8F3] text-[#4D7553] hover:bg-[#EAF4EB]'
+                                  ? 'border-[#E1C8C2] bg-[#FFF6F3] text-[#965044] hover:bg-[#FCEAE6]'
+                                  : 'border-[#C9DCCB] bg-[#F3F8F3] text-[#4D7553] hover:bg-[#EAF4EB]'
                                 }`}
                             >
                               <Power className="h-3.5 w-3.5" />
@@ -1062,7 +1228,7 @@ export default function AdminCouponsPage() {
         )}
       </div>
 
-      {/* Create / Edit Modal */}
+      {/* Create / Edit Coupon Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#281912]/60 p-3 backdrop-blur-[2px] sm:p-5">
           <form
@@ -1107,7 +1273,7 @@ export default function AdminCouponsPage() {
             {/* Scrollable Content */}
             <div className="min-h-0 flex-1 overflow-y-auto bg-[#F7F4EF]/65 p-4 sm:p-6">
               <div className="space-y-5">
-                {/* Discount Details */}
+                {/* Coupon Details */}
                 <section className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-5 shadow-sm">
                   <div className="mb-5">
                     <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9A7A68]">
@@ -1166,8 +1332,7 @@ export default function AdminCouponsPage() {
                         </option>
 
                         <option value="fixed">
-                          Fixed Amount
-                          (Rs.)
+                          Fixed Amount (Rs.)
                         </option>
                       </select>
                     </div>
@@ -1195,8 +1360,8 @@ export default function AdminCouponsPage() {
                             ? '20'
                             : '500'
                         }
-                        step="0.01"
                         min="0"
+                        step="0.01"
                         required
                         className="w-full rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] px-4 py-3 text-sm text-[#281912] outline-none transition placeholder:text-[#AA9A91] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10"
                       />
@@ -1230,6 +1395,7 @@ export default function AdminCouponsPage() {
                         </option>
                       </select>
                     </div>
+
                     {/* Specific Products */}
                     {formData.applicableTo ===
                       'products' && (
@@ -1242,13 +1408,18 @@ export default function AdminCouponsPage() {
                                 </p>
 
                                 <p className="mt-1 text-xs text-[#8A7467]">
-                                  Coupon will only apply to
-                                  selected products.
+                                  Coupon will only
+                                  apply to selected
+                                  products.
                                 </p>
                               </div>
 
                               <span className="w-fit rounded-full bg-[#EDE4DC] px-3 py-1 text-xs font-semibold text-[#6B4228]">
-                                {formData.productIds.length}{' '}
+                                {
+                                  formData
+                                    .productIds
+                                    .length
+                                }{' '}
                                 selected
                               </span>
                             </div>
@@ -1258,10 +1429,13 @@ export default function AdminCouponsPage() {
 
                               <input
                                 type="text"
-                                value={productSearch}
+                                value={
+                                  productSearch
+                                }
                                 onChange={(e) =>
                                   setProductSearch(
-                                    e.target.value
+                                    e.target
+                                      .value
                                   )
                                 }
                                 placeholder="Search products..."
@@ -1270,14 +1444,21 @@ export default function AdminCouponsPage() {
                             </div>
 
                             <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
-                              {filteredProducts.length ===
+                              {targetsLoading ? (
+                                <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-[#DCCFC6] bg-[#FFFEFC] px-4 py-6 text-sm text-[#8A7467]">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Loading products...
+                                </div>
+                              ) : filteredProducts.length ===
                                 0 ? (
                                 <div className="rounded-lg border border-dashed border-[#DCCFC6] bg-[#FFFEFC] px-4 py-6 text-center text-sm text-[#8A7467]">
                                   No products found
                                 </div>
                               ) : (
                                 filteredProducts.map(
-                                  (product) => {
+                                  (
+                                    product
+                                  ) => {
                                     const checked =
                                       formData.productIds.includes(
                                         product.id
@@ -1285,7 +1466,9 @@ export default function AdminCouponsPage() {
 
                                     return (
                                       <label
-                                        key={product.id}
+                                        key={
+                                          product.id
+                                        }
                                         className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${checked
                                             ? 'border-[#6B4228] bg-[#F4ECE6]'
                                             : 'border-[#E6DBD3] bg-[#FFFEFC] hover:border-[#CDBCAF]'
@@ -1293,14 +1476,16 @@ export default function AdminCouponsPage() {
                                       >
                                         <input
                                           type="checkbox"
-                                          checked={checked}
+                                          checked={
+                                            checked
+                                          }
                                           onChange={() =>
                                             toggleCouponTarget(
                                               'productIds',
                                               product.id
                                             )
                                           }
-                                          className="h-4 w-4 accent-[#6B4228]"
+                                          className="h-4 w-4 shrink-0 accent-[#6B4228]"
                                         />
 
                                         <div className="min-w-0 flex-1">
@@ -1348,14 +1533,19 @@ export default function AdminCouponsPage() {
                                 </p>
 
                                 <p className="mt-1 text-xs text-[#8A7467]">
-                                  Coupon will apply to
-                                  products inside selected
+                                  Coupon will apply
+                                  to products inside
+                                  selected
                                   categories.
                                 </p>
                               </div>
 
                               <span className="w-fit rounded-full bg-[#EDE4DC] px-3 py-1 text-xs font-semibold text-[#6B4228]">
-                                {formData.categoryIds.length}{' '}
+                                {
+                                  formData
+                                    .categoryIds
+                                    .length
+                                }{' '}
                                 selected
                               </span>
                             </div>
@@ -1365,10 +1555,13 @@ export default function AdminCouponsPage() {
 
                               <input
                                 type="text"
-                                value={categorySearch}
+                                value={
+                                  categorySearch
+                                }
                                 onChange={(e) =>
                                   setCategorySearch(
-                                    e.target.value
+                                    e.target
+                                      .value
                                   )
                                 }
                                 placeholder="Search categories..."
@@ -1377,14 +1570,23 @@ export default function AdminCouponsPage() {
                             </div>
 
                             <div className="mt-3 grid max-h-64 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-                              {filteredCategories.length ===
+                              {targetsLoading ? (
+                                <div className="sm:col-span-2 flex items-center justify-center gap-2 rounded-lg border border-dashed border-[#DCCFC6] bg-[#FFFEFC] px-4 py-6 text-sm text-[#8A7467]">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Loading
+                                  categories...
+                                </div>
+                              ) : filteredCategories.length ===
                                 0 ? (
                                 <div className="sm:col-span-2 rounded-lg border border-dashed border-[#DCCFC6] bg-[#FFFEFC] px-4 py-6 text-center text-sm text-[#8A7467]">
-                                  No categories found
+                                  No categories
+                                  found
                                 </div>
                               ) : (
                                 filteredCategories.map(
-                                  (category) => {
+                                  (
+                                    category
+                                  ) => {
                                     const checked =
                                       formData.categoryIds.includes(
                                         category.id
@@ -1392,7 +1594,9 @@ export default function AdminCouponsPage() {
 
                                     return (
                                       <label
-                                        key={category.id}
+                                        key={
+                                          category.id
+                                        }
                                         className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${checked
                                             ? 'border-[#6B4228] bg-[#F4ECE6]'
                                             : 'border-[#E6DBD3] bg-[#FFFEFC] hover:border-[#CDBCAF]'
@@ -1400,14 +1604,16 @@ export default function AdminCouponsPage() {
                                       >
                                         <input
                                           type="checkbox"
-                                          checked={checked}
+                                          checked={
+                                            checked
+                                          }
                                           onChange={() =>
                                             toggleCouponTarget(
                                               'categoryIds',
                                               category.id
                                             )
                                           }
-                                          className="h-4 w-4 accent-[#6B4228]"
+                                          className="h-4 w-4 shrink-0 accent-[#6B4228]"
                                         />
 
                                         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#281912]">
@@ -1427,29 +1633,29 @@ export default function AdminCouponsPage() {
                           </div>
                         </div>
                       )}
-                  </div>
 
-                  <div className="mt-5">
-                    <label className="mb-2 block text-sm font-semibold text-[#3A2117]">
-                      Description
-                    </label>
+                    <div className="sm:col-span-2">
+                      <label className="mb-2 block text-sm font-semibold text-[#3A2117]">
+                        Description
+                      </label>
 
-                    <textarea
-                      name="description"
-                      value={
-                        formData.description
-                      }
-                      onChange={
-                        handleInputChange
-                      }
-                      placeholder="Describe the offer..."
-                      rows={3}
-                      className="w-full resize-none rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] px-4 py-3 text-sm leading-6 text-[#281912] outline-none transition placeholder:text-[#AA9A91] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10"
-                    />
+                      <textarea
+                        name="description"
+                        value={
+                          formData.description
+                        }
+                        onChange={
+                          handleInputChange
+                        }
+                        placeholder="Describe the offer..."
+                        rows={3}
+                        className="w-full resize-none rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] px-4 py-3 text-sm leading-6 text-[#281912] outline-none transition placeholder:text-[#AA9A91] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10"
+                      />
+                    </div>
                   </div>
                 </section>
 
-                {/* Conditions */}
+                {/* Usage Conditions */}
                 <section className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-5 shadow-sm">
                   <div className="mb-5">
                     <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9A7A68]">
@@ -1491,8 +1697,7 @@ export default function AdminCouponsPage() {
 
                     <div>
                       <label className="mb-2 block text-sm font-semibold text-[#3A2117]">
-                        Maximum Usage
-                        Limit
+                        Maximum Usage Limit
                       </label>
 
                       <input
