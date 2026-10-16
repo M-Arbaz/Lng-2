@@ -1,145 +1,91 @@
 import { db } from './firebase'
-import {
-  doc,
-  getDoc,
-  setDoc,
-} from 'firebase/firestore'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 
 const COLLECTION_NAME = 'bankDetails'
 const DEFAULT_DOC_ID = 'default'
 
-const DEFAULT_BANK_DETAILS = {
+const emptyBankDetails = {
   bankName: '',
   accountTitle: '',
   accountNumber: '',
   iban: '',
   branchCode: '',
-
-  bankInstructions: '',
+  bankTransferInstructions: '',
   codInstructions: '',
-
-  codAdvancePercent: 50,
-
+  codAdvancePercent: 0,
   isActive: false,
-
-  updatedAt: null,
 }
 
-function cleanText(value) {
-  return String(value ?? '').trim()
-}
+function normalizeBankDetails(data = {}) {
+  const rawAdvancePercent = Number(data.codAdvancePercent)
+  const codAdvancePercent = Number.isFinite(rawAdvancePercent)
+    ? Math.min(100, Math.max(0, rawAdvancePercent))
+    : 0
 
-function normalizePercent(value) {
-  const number = Number(value)
-
-  if (!Number.isFinite(number)) {
-    return 0
-  }
-
-  return Math.min(
-    100,
-    Math.max(0, number)
-  )
-}
-
-export function normalizeBankDetails(
-  data = {}
-) {
   return {
-    bankName:
-      cleanText(data.bankName),
-
-    accountTitle:
-      cleanText(data.accountTitle),
-
-    accountNumber:
-      cleanText(data.accountNumber),
-
-    iban:
-      cleanText(data.iban)
-        .toUpperCase(),
-
-    branchCode:
-      cleanText(data.branchCode),
-
-    bankInstructions:
-      cleanText(
-        data.bankInstructions
-      ),
-
-    codInstructions:
-      cleanText(
-        data.codInstructions
-      ),
-
-    codAdvancePercent:
-      normalizePercent(
-        data.codAdvancePercent ??
-        DEFAULT_BANK_DETAILS
-          .codAdvancePercent
-      ),
-
-    isActive:
-      data.isActive === true,
-
-    updatedAt:
-      data.updatedAt || null,
+    ...emptyBankDetails,
+    ...data,
+    bankName: String(data.bankName || '').trim(),
+    accountTitle: String(data.accountTitle || '').trim(),
+    accountNumber: String(data.accountNumber || '').trim(),
+    iban: String(data.iban || '').trim(),
+    branchCode: String(data.branchCode || '').trim(),
+    bankTransferInstructions: String(
+      data.bankTransferInstructions || ''
+    ).trim(),
+    codInstructions: String(data.codInstructions || '').trim(),
+    codAdvancePercent,
+    isActive: data.isActive === true,
   }
 }
 
 export const bankDetailsService = {
-  async getBankDetails() {
-    const docRef = doc(
-      db,
-      COLLECTION_NAME,
-      DEFAULT_DOC_ID
-    )
+  // Singleton bank-details configuration.
+  getBankDetails: async () => {
+    try {
+      const docRef = doc(db, COLLECTION_NAME, DEFAULT_DOC_ID)
+      const docSnap = await getDoc(docRef)
 
-    const snapshot =
-      await getDoc(docRef)
-
-    if (!snapshot.exists()) {
-      return {
-        id: DEFAULT_DOC_ID,
-        ...DEFAULT_BANK_DETAILS,
+      if (!docSnap.exists()) {
+        return {
+          id: DEFAULT_DOC_ID,
+          ...emptyBankDetails,
+        }
       }
-    }
 
-    return {
-      id: snapshot.id,
-      ...normalizeBankDetails(
-        snapshot.data()
-      ),
+      return {
+        id: docSnap.id,
+        ...normalizeBankDetails(docSnap.data()),
+      }
+    } catch (error) {
+      console.error('Error getting bank details:', error)
+
+      // Do not expose fake/sample bank information when Firestore fails.
+      throw error
     }
   },
 
-  async saveBankDetails(data) {
-    const normalized =
-      normalizeBankDetails(data)
+  saveBankDetails: async (data) => {
+    try {
+      const normalizedData = normalizeBankDetails(data)
+      const docRef = doc(db, COLLECTION_NAME, DEFAULT_DOC_ID)
 
-    const payload = {
-      ...normalized,
-      updatedAt:
-        new Date().toISOString(),
-    }
+      await setDoc(
+        docRef,
+        {
+          ...normalizedData,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      )
 
-    const docRef = doc(
-      db,
-      COLLECTION_NAME,
-      DEFAULT_DOC_ID
-    )
-
-    await setDoc(
-      docRef,
-      payload,
-      {
-        merge: true,
+      return {
+        id: DEFAULT_DOC_ID,
+        ...normalizedData,
       }
-    )
-
-    return {
-      id: DEFAULT_DOC_ID,
-      ...payload,
+    } catch (error) {
+      console.error('Error saving bank details:', error)
+      throw error
     }
   },
 }
