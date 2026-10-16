@@ -31,12 +31,9 @@ const INITIAL_FORM = {
   accountNumber: '',
   iban: '',
   branchCode: '',
-
-  bankInstructions: '',
+  bankTransferInstructions: '',
   codInstructions: '',
-
-  codAdvancePercent: '50',
-
+  codAdvancePercent: '0',
   isActive: false,
 }
 
@@ -104,18 +101,17 @@ export default function AdminBankDetailsPage() {
             branchCode:
               data.branchCode || '',
 
-            bankInstructions:
-              data.bankInstructions ||
+            bankTransferInstructions:
+              data.bankTransferInstructions ||
               '',
 
             codInstructions:
-              data.codInstructions ||
-              '',
+              data.codInstructions || '',
 
             codAdvancePercent:
               String(
                 data.codAdvancePercent ??
-                50
+                0
               ),
 
             isActive:
@@ -157,6 +153,7 @@ export default function AdminBankDetailsPage() {
     setFormData(
       (previous) => ({
         ...previous,
+
         [name]:
           name === 'iban'
             ? value.toUpperCase()
@@ -184,6 +181,13 @@ export default function AdminBankDetailsPage() {
     )
 
     setDirty(true)
+
+    if (message.text) {
+      setMessage({
+        type: '',
+        text: '',
+      })
+    }
   }
 
   const validate = () => {
@@ -209,7 +213,7 @@ export default function AdminBankDetailsPage() {
     }
 
     if (formData.isActive) {
-      if (
+      const missingBankData =
         !clean(
           formData.bankName
         ) ||
@@ -222,7 +226,8 @@ export default function AdminBankDetailsPage() {
         !clean(
           formData.iban
         )
-      ) {
+
+      if (missingBankData) {
         setMessage({
           type: 'error',
           text:
@@ -246,52 +251,59 @@ export default function AdminBankDetailsPage() {
 
       setSaving(true)
 
+      setMessage({
+        type: '',
+        text: '',
+      })
+
       try {
         const saved =
-          await bankDetailsService.saveBankDetails({
-            bankName:
-              clean(
-                formData.bankName
-              ),
+          await bankDetailsService.saveBankDetails(
+            {
+              bankName:
+                clean(
+                  formData.bankName
+                ),
 
-            accountTitle:
-              clean(
-                formData.accountTitle
-              ),
+              accountTitle:
+                clean(
+                  formData.accountTitle
+                ),
 
-            accountNumber:
-              clean(
-                formData.accountNumber
-              ),
+              accountNumber:
+                clean(
+                  formData.accountNumber
+                ),
 
-            iban:
-              clean(
-                formData.iban
-              ).toUpperCase(),
+              iban:
+                clean(
+                  formData.iban
+                ).toUpperCase(),
 
-            branchCode:
-              clean(
-                formData.branchCode
-              ),
+              branchCode:
+                clean(
+                  formData.branchCode
+                ),
 
-            bankInstructions:
-              clean(
-                formData.bankInstructions
-              ),
+              bankTransferInstructions:
+                clean(
+                  formData.bankTransferInstructions
+                ),
 
-            codInstructions:
-              clean(
-                formData.codInstructions
-              ),
+              codInstructions:
+                clean(
+                  formData.codInstructions
+                ),
 
-            codAdvancePercent:
-              Number(
-                formData.codAdvancePercent
-              ),
+              codAdvancePercent:
+                Number(
+                  formData.codAdvancePercent
+                ),
 
-            isActive:
-              formData.isActive,
-          })
+              isActive:
+                formData.isActive,
+            }
+          )
 
         setFormData({
           bankName:
@@ -309,13 +321,12 @@ export default function AdminBankDetailsPage() {
           branchCode:
             saved.branchCode || '',
 
-          bankInstructions:
-            saved.bankInstructions ||
+          bankTransferInstructions:
+            saved.bankTransferInstructions ||
             '',
 
           codInstructions:
-            saved.codInstructions ||
-            '',
+            saved.codInstructions || '',
 
           codAdvancePercent:
             String(
@@ -373,6 +384,7 @@ export default function AdminBankDetailsPage() {
         onSubmit={handleSave}
         className="space-y-6"
       >
+        {/* Header */}
         <section className="overflow-hidden rounded-3xl border border-[#4C3429] bg-[#3A2117] shadow-[0_20px_60px_rgba(58,33,23,0.14)]">
           <div className="relative px-5 py-7 sm:px-7">
             <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-white/[0.04]" />
@@ -393,9 +405,10 @@ export default function AdminBankDetailsPage() {
                   </h1>
 
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
-                    Manage the bank account and COD
-                    advance information displayed during
-                    checkout.
+                    Manage bank transfer details,
+                    checkout instructions and
+                    Cash on Delivery advance
+                    settings.
                   </p>
                 </div>
               </div>
@@ -424,6 +437,7 @@ export default function AdminBankDetailsPage() {
           </div>
         </section>
 
+        {/* Messages */}
         {message.text && (
           <div
             className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm ${message.type ===
@@ -445,10 +459,11 @@ export default function AdminBankDetailsPage() {
           </div>
         )}
 
+        {/* Summary */}
         <section className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-[#E5DAD2] bg-[#FFFEFC] p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9A8171]">
-              Checkout Status
+              Bank Transfer
             </p>
 
             <p className="mt-2 text-lg font-semibold text-[#281912]">
@@ -483,6 +498,7 @@ export default function AdminBankDetailsPage() {
           </div>
         </section>
 
+        {/* Bank Transfer Availability */}
         <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
           <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
             <div className="flex items-start gap-3">
@@ -496,9 +512,10 @@ export default function AdminBankDetailsPage() {
                 </h2>
 
                 <p className="mt-1 text-xs leading-5 text-[#806C60]">
-                  Disabling the bank account hides Bank
-                  Deposit and prevents bank details from
-                  appearing at checkout.
+                  Enable this only when
+                  the bank account is ready
+                  to receive customer
+                  payments.
                 </p>
               </div>
             </div>
@@ -512,28 +529,28 @@ export default function AdminBankDetailsPage() {
                 formData.isActive
               }
               onClick={toggleActive}
-              className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left transition ${formData.isActive
+              className={`flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left transition ${formData.isActive
                   ? 'border-[#6B4228]/25 bg-[#F4ECE6]'
                   : 'border-[#DDD1C8] bg-[#F7F4EF]'
                 }`}
             >
               <div>
                 <p className="text-sm font-semibold text-[#281912]">
-                  Bank account{' '}
+                  Bank Transfer{' '}
                   {formData.isActive
-                    ? 'active'
-                    : 'inactive'}
+                    ? 'enabled'
+                    : 'disabled'}
                 </p>
 
                 <p className="mt-1 text-[11px] leading-5 text-[#806C60]">
                   {formData.isActive
-                    ? 'Customers can use this account for applicable advance and bank payments.'
-                    : 'Bank information will remain saved but hidden from checkout.'}
+                    ? 'Bank Deposit will be available at checkout when the required account information is configured.'
+                    : 'Bank account information remains saved but Bank Deposit stays hidden from checkout.'}
                 </p>
               </div>
 
               <span
-                className={`relative h-6 w-11 shrink-0 rounded-full ${formData.isActive
+                className={`relative h-6 w-11 shrink-0 rounded-full transition ${formData.isActive
                     ? 'bg-[#3A2117]'
                     : 'bg-[#C9BDB5]'
                   }`}
@@ -549,6 +566,7 @@ export default function AdminBankDetailsPage() {
           </div>
         </section>
 
+        {/* Bank Account */}
         <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
           <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
             <div className="flex items-start gap-3">
@@ -561,9 +579,10 @@ export default function AdminBankDetailsPage() {
                   Bank Account
                 </h2>
 
-                <p className="mt-1 text-xs text-[#806C60]">
-                  Information customers need to make a
-                  bank transfer.
+                <p className="mt-1 text-xs leading-5 text-[#806C60]">
+                  These details appear only
+                  when Bank Transfer is
+                  enabled and configured.
                 </p>
               </div>
             </div>
@@ -576,6 +595,7 @@ export default function AdminBankDetailsPage() {
               </label>
 
               <input
+                type="text"
                 value={
                   formData.bankName
                 }
@@ -585,7 +605,7 @@ export default function AdminBankDetailsPage() {
                     event.target.value
                   )
                 }
-                placeholder="e.g. Bank Alfalah"
+                placeholder="Enter bank name"
                 className={inputClass}
               />
             </div>
@@ -596,6 +616,7 @@ export default function AdminBankDetailsPage() {
               </label>
 
               <input
+                type="text"
                 value={
                   formData.accountTitle
                 }
@@ -605,7 +626,7 @@ export default function AdminBankDetailsPage() {
                     event.target.value
                   )
                 }
-                placeholder="e.g. Lamp & Glow"
+                placeholder="Enter account title"
                 className={inputClass}
               />
             </div>
@@ -616,6 +637,7 @@ export default function AdminBankDetailsPage() {
               </label>
 
               <input
+                type="text"
                 value={
                   formData.accountNumber
                 }
@@ -625,7 +647,7 @@ export default function AdminBankDetailsPage() {
                     event.target.value
                   )
                 }
-                placeholder="Account number"
+                placeholder="Enter account number"
                 className={inputClass}
               />
             </div>
@@ -636,6 +658,7 @@ export default function AdminBankDetailsPage() {
               </label>
 
               <input
+                type="text"
                 value={
                   formData.iban
                 }
@@ -645,17 +668,18 @@ export default function AdminBankDetailsPage() {
                     event.target.value
                   )
                 }
-                placeholder="PK00..."
+                placeholder="PK..."
                 className={`${inputClass} uppercase`}
               />
             </div>
 
-            <div>
+            <div className="sm:col-span-2">
               <label className={labelClass}>
                 Branch Code
               </label>
 
               <input
+                type="text"
                 value={
                   formData.branchCode
                 }
@@ -672,6 +696,75 @@ export default function AdminBankDetailsPage() {
           </div>
         </section>
 
+        {/* Instructions */}
+        <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
+          <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F2EAE4] text-[#6B4228]">
+                <FileText className="h-5 w-5" />
+              </div>
+
+              <div>
+                <h2 className="text-base font-semibold text-[#281912]">
+                  Checkout Instructions
+                </h2>
+
+                <p className="mt-1 text-xs leading-5 text-[#806C60]">
+                  Keep Bank Transfer and COD
+                  messages separate so the
+                  customer only sees relevant
+                  payment information.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-2">
+            <div>
+              <label className={labelClass}>
+                Bank Transfer Instructions
+              </label>
+
+              <textarea
+                rows={5}
+                value={
+                  formData.bankTransferInstructions
+                }
+                onChange={(event) =>
+                  updateField(
+                    'bankTransferInstructions',
+                    event.target.value
+                  )
+                }
+                placeholder="Explain how the customer should complete the bank transfer."
+                className={`${inputClass} resize-y`}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                COD Instructions
+              </label>
+
+              <textarea
+                rows={5}
+                value={
+                  formData.codInstructions
+                }
+                onChange={(event) =>
+                  updateField(
+                    'codInstructions',
+                    event.target.value
+                  )
+                }
+                placeholder="Explain COD and any advance payment requirement."
+                className={`${inputClass} resize-y`}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* COD Advance */}
         <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
           <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
             <div className="flex items-start gap-3">
@@ -685,8 +778,9 @@ export default function AdminBankDetailsPage() {
                 </h2>
 
                 <p className="mt-1 text-xs leading-5 text-[#806C60]">
-                  Set the percentage customers should pay
-                  in advance for Cash on Delivery.
+                  Set how much of a Cash on
+                  Delivery order must be paid
+                  in advance.
                 </p>
               </div>
             </div>
@@ -698,7 +792,7 @@ export default function AdminBankDetailsPage() {
                 Advance Percentage
               </label>
 
-              <div className="flex overflow-hidden rounded-xl border border-[#DCCFC6]">
+              <div className="flex overflow-hidden rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] focus-within:border-[#6B4228] focus-within:ring-4 focus-within:ring-[#6B4228]/[0.06]">
                 <input
                   type="number"
                   min="0"
@@ -713,7 +807,7 @@ export default function AdminBankDetailsPage() {
                       event.target.value
                     )
                   }
-                  className="w-full bg-[#FFFEFC] px-4 py-3 text-sm text-[#281912] outline-none"
+                  className="w-full bg-transparent px-4 py-3 text-sm text-[#281912] outline-none"
                 />
 
                 <span className="grid min-w-[52px] place-items-center border-l border-[#E5DAD2] bg-[#F7F4EF] text-sm font-semibold text-[#6B4228]">
@@ -722,78 +816,23 @@ export default function AdminBankDetailsPage() {
               </div>
 
               <p className="mt-2 text-[11px] leading-5 text-[#8A7569]">
-                Set 0% if COD should require no advance.
+                Use 0% when Cash on Delivery
+                does not require an advance.
+                No hard-coded advance is
+                applied.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
-          <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F2EAE4] text-[#6B4228]">
-                <FileText className="h-5 w-5" />
-              </div>
+        {/* Sticky Footer */}
+        <div className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-2xl border border-[#E0D4CB] bg-[#FFFEFC]/95 p-3 shadow-[0_16px_45px_rgba(58,33,23,0.14)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+          <p className="px-1 text-[11px] leading-5 text-[#806C60]">
+            {dirty
+              ? 'You have unsaved changes.'
+              : 'All changes are saved.'}
+          </p>
 
-              <div>
-                <h2 className="text-base font-semibold text-[#281912]">
-                  Checkout Instructions
-                </h2>
-
-                <p className="mt-1 text-xs leading-5 text-[#806C60]">
-                  These messages appear with the relevant
-                  payment option.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-5 p-5 lg:grid-cols-2 sm:p-6">
-            <div>
-              <label className={labelClass}>
-                Bank Transfer Instructions
-              </label>
-
-              <textarea
-                rows={5}
-                value={
-                  formData.bankInstructions
-                }
-                onChange={(event) =>
-                  updateField(
-                    'bankInstructions',
-                    event.target.value
-                  )
-                }
-                placeholder="e.g. Transfer the amount to the account above and keep your transaction reference."
-                className={`${inputClass} resize-y`}
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>
-                COD Advance Instructions
-              </label>
-
-              <textarea
-                rows={5}
-                value={
-                  formData.codInstructions
-                }
-                onChange={(event) =>
-                  updateField(
-                    'codInstructions',
-                    event.target.value
-                  )
-                }
-                placeholder="e.g. Pay the required advance before order processing. Remaining balance is payable on delivery."
-                className={`${inputClass} resize-y`}
-              />
-            </div>
-          </div>
-        </section>
-
-        <div className="sticky bottom-4 z-20 flex justify-end rounded-2xl border border-[#E0D4CB] bg-[#FFFEFC]/95 p-3 shadow-[0_16px_45px_rgba(58,33,23,0.14)] backdrop-blur-xl">
           <button
             type="submit"
             disabled={

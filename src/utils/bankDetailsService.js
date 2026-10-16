@@ -1,5 +1,9 @@
 import { db } from './firebase'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import {
+  doc,
+  getDoc,
+  setDoc,
+} from 'firebase/firestore'
 
 const COLLECTION_NAME = 'bankDetails'
 const DEFAULT_DOC_ID = 'default'
@@ -17,34 +21,70 @@ const emptyBankDetails = {
 }
 
 function normalizeBankDetails(data = {}) {
-  const rawAdvancePercent = Number(data.codAdvancePercent)
-  const codAdvancePercent = Number.isFinite(rawAdvancePercent)
-    ? Math.min(100, Math.max(0, rawAdvancePercent))
-    : 0
+  const rawAdvancePercent = Number(
+    data.codAdvancePercent
+  )
+
+  const codAdvancePercent =
+    Number.isFinite(rawAdvancePercent)
+      ? Math.min(
+        100,
+        Math.max(0, rawAdvancePercent)
+      )
+      : 0
 
   return {
-    ...emptyBankDetails,
-    ...data,
-    bankName: String(data.bankName || '').trim(),
-    accountTitle: String(data.accountTitle || '').trim(),
-    accountNumber: String(data.accountNumber || '').trim(),
-    iban: String(data.iban || '').trim(),
-    branchCode: String(data.branchCode || '').trim(),
-    bankTransferInstructions: String(
-      data.bankTransferInstructions || ''
+    bankName: String(
+      data.bankName || ''
     ).trim(),
-    codInstructions: String(data.codInstructions || '').trim(),
+
+    accountTitle: String(
+      data.accountTitle || ''
+    ).trim(),
+
+    accountNumber: String(
+      data.accountNumber || ''
+    ).trim(),
+
+    iban: String(
+      data.iban || ''
+    ).trim(),
+
+    branchCode: String(
+      data.branchCode || ''
+    ).trim(),
+
+    // bankInstructions is kept only as
+    // backward compatibility for older
+    // Firestore data.
+    bankTransferInstructions: String(
+      data.bankTransferInstructions ||
+      data.bankInstructions ||
+      ''
+    ).trim(),
+
+    codInstructions: String(
+      data.codInstructions || ''
+    ).trim(),
+
     codAdvancePercent,
-    isActive: data.isActive === true,
+
+    isActive:
+      data.isActive === true,
   }
 }
 
 export const bankDetailsService = {
-  // Singleton bank-details configuration.
   getBankDetails: async () => {
     try {
-      const docRef = doc(db, COLLECTION_NAME, DEFAULT_DOC_ID)
-      const docSnap = await getDoc(docRef)
+      const docRef = doc(
+        db,
+        COLLECTION_NAME,
+        DEFAULT_DOC_ID
+      )
+
+      const docSnap =
+        await getDoc(docRef)
 
       if (!docSnap.exists()) {
         return {
@@ -55,28 +95,44 @@ export const bankDetailsService = {
 
       return {
         id: docSnap.id,
-        ...normalizeBankDetails(docSnap.data()),
+        ...normalizeBankDetails(
+          docSnap.data()
+        ),
       }
     } catch (error) {
-      console.error('Error getting bank details:', error)
+      console.error(
+        'Error getting bank details:',
+        error
+      )
 
-      // Do not expose fake/sample bank information when Firestore fails.
+      // Important:
+      // Never expose fake/sample bank
+      // information if Firestore fails.
       throw error
     }
   },
 
   saveBankDetails: async (data) => {
     try {
-      const normalizedData = normalizeBankDetails(data)
-      const docRef = doc(db, COLLECTION_NAME, DEFAULT_DOC_ID)
+      const normalizedData =
+        normalizeBankDetails(data)
+
+      const docRef = doc(
+        db,
+        COLLECTION_NAME,
+        DEFAULT_DOC_ID
+      )
 
       await setDoc(
         docRef,
         {
           ...normalizedData,
-          updatedAt: new Date().toISOString(),
+          updatedAt:
+            new Date().toISOString(),
         },
-        { merge: true }
+        {
+          merge: true,
+        }
       )
 
       return {
@@ -84,11 +140,14 @@ export const bankDetailsService = {
         ...normalizedData,
       }
     } catch (error) {
-      console.error('Error saving bank details:', error)
+      console.error(
+        'Error saving bank details:',
+        error
+      )
+
       throw error
     }
   },
 }
 
 export default bankDetailsService
-

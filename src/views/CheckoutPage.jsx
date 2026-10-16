@@ -1028,9 +1028,9 @@ export default function CheckoutPage({
                         />
                       </div>
 
-                      {bankDetails.bankInstructions && (
+                      {bankDetails.bankTransferInstructions && (
                         <div className="border-t border-[#3A2117]/10 px-5 py-4 text-xs leading-5 text-[#6B5A50]">
-                          {bankDetails.bankInstructions}
+                          {bankDetails.bankTransferInstructions}
                         </div>
                       )}
                     </div>
