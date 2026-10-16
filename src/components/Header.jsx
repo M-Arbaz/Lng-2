@@ -259,7 +259,9 @@ const Header = forwardRef(function Header(
         location.pathname.startsWith('/reels/')
       )
     }
-
+    if (key === 'about') {
+      return location.pathname === '/about-us'
+    }
     if (key === 'products') {
       return (
         location.pathname === '/products' ||
@@ -280,6 +282,11 @@ const Header = forwardRef(function Header(
     window.setTimeout(() => {
       if (key === 'products') {
         navigate('/products')
+        return
+      }
+
+      if (key === 'about') {
+        navigate('/about-us')
         return
       }
 
@@ -476,7 +483,13 @@ const Header = forwardRef(function Header(
                   theme={theme}
                   onClick={() => navigateMobile('home')}
                 />
-
+                <MobileMenuItem
+                  icon={Info}
+                  label="About Us"
+                  active={isNavActive('about')}
+                  theme={theme}
+                  onClick={() => navigateMobile('about')}
+                />
                 <MobileMenuItem
                   icon={Grid2X2}
                   label="Collections"
@@ -994,6 +1007,8 @@ const Header = forwardRef(function Header(
                   onClick={() => {
                     if (key === 'products') {
                       navigate('/products')
+                    } else if (key === 'about') {
+                      navigate('/about-us')
                     } else {
                       handleNavigate(key)
                     }
