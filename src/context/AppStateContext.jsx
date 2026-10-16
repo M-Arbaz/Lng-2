@@ -443,8 +443,12 @@ export function AppStateProvider({ children }) {
 
       return order.id
     } catch (error) {
-      console.error('Error placing order:', error)
-      return null
+      console.error(
+        'Error placing order:',
+        error
+      )
+
+      throw error
     }
   }
 

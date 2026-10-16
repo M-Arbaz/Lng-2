@@ -1,7 +1,6 @@
 import { db } from './firebase';
 import {
   collection,
-  addDoc,
   getDocs,
   getDoc,
   doc,
@@ -11,6 +10,7 @@ import {
   serverTimestamp,
   onSnapshot,
   arrayUnion,
+  runTransaction,
 } from 'firebase/firestore';
 const PAYMENT_STATUS_LABELS = {
   pending: 'Payment Pending',
@@ -33,55 +33,240 @@ const normalizePaymentStatus = (value) => {
 };
 export const ordersService = {
   // Create a new order
+  // Create a new order + reserve product stock atomically
   createOrder: async (userId, orderData) => {
     try {
-      const createdAtIso = new Date().toISOString();
+      const createdAtIso =
+        new Date().toISOString();
 
-      const initialPaymentStatus = normalizePaymentStatus(
-        orderData?.paymentStatus
+      const initialPaymentStatus =
+        normalizePaymentStatus(
+          orderData?.paymentStatus
+        );
+
+      const items = Array.isArray(
+        orderData?.items
+      )
+        ? orderData.items
+        : [];
+
+      if (items.length === 0) {
+        throw new Error(
+          'Cannot place an order with no products.'
+        );
+      }
+
+      /*
+       * Same product can exist in multiple cart lines
+       * because of Base Color / Shade / Bulb variants.
+       *
+       * Example:
+       * Product A - Black = qty 1
+       * Product A - Brown = qty 2
+       *
+       * Actual stock reduction must be 3.
+       */
+      const requestedByProduct =
+        new Map();
+
+      items.forEach((item) => {
+        const productId = String(
+          item?.productId || ''
+        ).trim();
+
+        const quantity =
+          Number.parseInt(
+            item?.quantity,
+            10
+          );
+
+        if (
+          !productId ||
+          !Number.isFinite(quantity) ||
+          quantity <= 0
+        ) {
+          throw new Error(
+            'Invalid product information in order.'
+          );
+        }
+
+        requestedByProduct.set(
+          productId,
+          (requestedByProduct.get(
+            productId
+          ) || 0) + quantity
+        );
+      });
+
+      // Generate order ID before the transaction.
+      const orderRef = doc(
+        collection(db, 'orders')
       );
 
-      const orderRef = await addDoc(collection(db, 'orders'), {
-        userId,
-        ...orderData,
+      await runTransaction(
+        db,
+        async (transaction) => {
+          /*
+           * Firestore transactions require reads
+           * before writes.
+           */
+          const productEntries = [];
 
-        status: 'pending',
+          for (const [
+            productId,
+            quantity,
+          ] of requestedByProduct.entries()) {
+            const productRef = doc(
+              db,
+              'products',
+              productId
+            );
 
-        statusHistory: [
-          {
-            status: 'pending',
-            label: 'Order Placed',
-            at: createdAtIso,
-            source: 'system',
-          },
-        ],
+            const productSnapshot =
+              await transaction.get(
+                productRef
+              );
 
-        paymentStatus: initialPaymentStatus,
+            if (
+              !productSnapshot.exists()
+            ) {
+              throw new Error(
+                'One of the products in your cart is no longer available.'
+              );
+            }
 
-        paymentStatusHistory: [
-          {
-            status: initialPaymentStatus,
-            label:
-              PAYMENT_STATUS_LABELS[
-              initialPaymentStatus
+            const productData =
+              productSnapshot.data();
+
+            const currentStock = Number(
+              productData?.stock || 0
+            );
+
+            if (
+              !Number.isFinite(
+                currentStock
+              ) ||
+              currentStock < quantity
+            ) {
+              const productName =
+                productData?.name ||
+                'Product';
+
+              throw new Error(
+                `${productName} only has ${Math.max(
+                  0,
+                  currentStock
+                )} item(s) left in stock.`
+              );
+            }
+
+            productEntries.push({
+              ref: productRef,
+              currentStock,
+              quantity,
+            });
+          }
+
+          /*
+           * All stock checks passed.
+           * Now reduce inventory.
+           */
+          productEntries.forEach(
+            ({
+              ref,
+              currentStock,
+              quantity,
+            }) => {
+              transaction.update(
+                ref,
+                {
+                  stock:
+                    currentStock -
+                    quantity,
+
+                  updatedAt:
+                    serverTimestamp(),
+                }
+              );
+            }
+          );
+
+          /*
+           * Order is created in the SAME
+           * transaction as stock reduction.
+           *
+           * Either everything succeeds,
+           * or nothing is written.
+           */
+          transaction.set(
+            orderRef,
+            {
+              userId,
+              ...orderData,
+
+              status: 'pending',
+
+              statusHistory: [
+                {
+                  status: 'pending',
+                  label:
+                    'Order Placed',
+                  at: createdAtIso,
+                  source: 'system',
+                },
               ],
-            at: createdAtIso,
-            source: 'system',
-          },
-        ],
 
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+              paymentStatus:
+                initialPaymentStatus,
+
+              paymentStatusHistory: [
+                {
+                  status:
+                    initialPaymentStatus,
+
+                  label:
+                    PAYMENT_STATUS_LABELS[
+                    initialPaymentStatus
+                    ],
+
+                  at: createdAtIso,
+                  source: 'system',
+                },
+              ],
+
+              inventoryAdjusted: true,
+
+              inventoryAdjustedAt:
+                serverTimestamp(),
+
+              createdAt:
+                serverTimestamp(),
+
+              updatedAt:
+                serverTimestamp(),
+            }
+          );
+        }
+      );
+
       return {
         id: orderRef.id,
         userId,
         ...orderData,
+
         status: 'pending',
-        paymentStatus: initialPaymentStatus,
+
+        paymentStatus:
+          initialPaymentStatus,
+
+        inventoryAdjusted: true,
       };
     } catch (error) {
-      console.error('Error creating order:', error);
+      console.error(
+        'Error creating order:',
+        error
+      );
+
       throw error;
     }
   },
