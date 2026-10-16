@@ -19,6 +19,8 @@ import {
 } from 'lucide-react'
 import AdminLayout from '../components/AdminLayout'
 import couponsService from '../utils/couponsService.js'
+import productsService from '../utils/productsService.js'
+import categoriesService from '../utils/categoriesService.js'
 
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState([])
@@ -32,13 +34,19 @@ export default function AdminCouponsPage() {
   })
   const [saving, setSaving] = useState(false)
   const [copiedCode, setCopiedCode] = useState(null)
+  const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
 
+  const [productSearch, setProductSearch] = useState('')
+  const [categorySearch, setCategorySearch] = useState('')
   const [formData, setFormData] = useState({
     code: '',
     description: '',
     discountType: 'percentage',
     discountValue: '',
     applicableTo: 'all',
+    productIds: [],
+    categoryIds: [],
     minOrderValue: '',
     maxUsageLimit: '',
     expiryDate: '',
@@ -71,7 +79,43 @@ export default function AdminCouponsPage() {
 
     loadCoupons()
   }, [])
+  useEffect(() => {
+    const loadCouponTargets = async () => {
+      try {
+        const [
+          productData,
+          categoryData,
+        ] = await Promise.all([
+          productsService.getAllProducts(),
+          categoriesService.getAllCategories(),
+        ])
 
+        setProducts(
+          Array.isArray(productData)
+            ? productData
+            : []
+        )
+
+        setCategories(
+          Array.isArray(categoryData)
+            ? categoryData
+            : []
+        )
+      } catch (error) {
+        console.error(
+          'Error loading coupon targets:',
+          error
+        )
+
+        setMessage({
+          type: 'error',
+          text: 'Failed to load products or categories',
+        })
+      }
+    }
+
+    loadCouponTargets()
+  }, [])
   const handleInputChange = (e) => {
     const {
       name,
@@ -80,15 +124,62 @@ export default function AdminCouponsPage() {
       checked,
     } = e.target
 
+    if (name === 'applicableTo') {
+      setFormData((prev) => ({
+        ...prev,
+        applicableTo: value,
+
+        productIds:
+          value === 'products'
+            ? prev.productIds
+            : [],
+
+        categoryIds:
+          value === 'categories'
+            ? prev.categoryIds
+            : [],
+      }))
+
+      setProductSearch('')
+      setCategorySearch('')
+
+      return
+    }
+
     setFormData((prev) => ({
       ...prev,
+
       [name]:
         type === 'checkbox'
           ? checked
           : value,
     }))
   }
+  const toggleCouponTarget = (
+    field,
+    id
+  ) => {
+    setFormData((prev) => {
+      const current =
+        Array.isArray(prev[field])
+          ? prev[field]
+          : []
 
+      const alreadySelected =
+        current.includes(id)
+
+      return {
+        ...prev,
+
+        [field]: alreadySelected
+          ? current.filter(
+            (itemId) =>
+              itemId !== id
+          )
+          : [...current, id],
+      }
+    })
+  }
   const resetForm = () => {
     setFormData({
       code: '',
@@ -154,6 +245,17 @@ export default function AdminCouponsPage() {
         ),
         applicableTo:
           formData.applicableTo,
+        productIds:
+          formData.applicableTo ===
+            'products'
+            ? formData.productIds
+            : [],
+
+        categoryIds:
+          formData.applicableTo ===
+            'categories'
+            ? formData.categoryIds
+            : [],
         minOrderValue:
           formData.minOrderValue
             ? parseFloat(
@@ -248,6 +350,15 @@ export default function AdminCouponsPage() {
       ),
       applicableTo:
         coupon.applicableTo || 'all',
+      productIds:
+        Array.isArray(coupon.productIds)
+          ? coupon.productIds
+          : [],
+
+      categoryIds:
+        Array.isArray(coupon.categoryIds)
+          ? coupon.categoryIds
+          : [],
       minOrderValue: String(
         coupon.minOrderValue ?? ''
       ),
@@ -259,7 +370,31 @@ export default function AdminCouponsPage() {
       isActive:
         coupon.isActive !== false,
     })
+    if (
+      formData.applicableTo ===
+      'products' &&
+      formData.productIds.length === 0
+    ) {
+      setMessage({
+        type: 'error',
+        text: 'Please select at least one product',
+      })
 
+      return
+    }
+
+    if (
+      formData.applicableTo ===
+      'categories' &&
+      formData.categoryIds.length === 0
+    ) {
+      setMessage({
+        type: 'error',
+        text: 'Please select at least one category',
+      })
+
+      return
+    }
     setEditingId(coupon.id)
     setShowForm(true)
   }
@@ -334,8 +469,8 @@ export default function AdminCouponsPage() {
       setMessage({
         type: 'success',
         text: `Coupon ${!coupon.isActive
-            ? 'activated'
-            : 'deactivated'
+          ? 'activated'
+          : 'deactivated'
           }!`,
       })
     } catch (error) {
@@ -393,7 +528,38 @@ export default function AdminCouponsPage() {
           .includes(query)
       )
     })
+  const filteredProducts =
+    products.filter((product) => {
+      const query =
+        productSearch
+          .trim()
+          .toLowerCase()
 
+      if (!query) return true
+
+      return (
+        product.name
+          ?.toLowerCase()
+          .includes(query) ||
+        product.title
+          ?.toLowerCase()
+          .includes(query)
+      )
+    })
+
+  const filteredCategories =
+    categories.filter((category) => {
+      const query =
+        categorySearch
+          .trim()
+          .toLowerCase()
+
+      if (!query) return true
+
+      return category.name
+        ?.toLowerCase()
+        .includes(query)
+    })
   const totalUsage =
     coupons.reduce(
       (sum, coupon) =>
@@ -507,9 +673,9 @@ export default function AdminCouponsPage() {
         {message.text && (
           <div
             className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-sm ${message.type ===
-                'success'
-                ? 'border-[#CFE1D1] bg-[#F3F9F3] text-[#426649]'
-                : 'border-[#E8C9C3] bg-[#FFF4F1] text-[#93483C]'
+              'success'
+              ? 'border-[#CFE1D1] bg-[#F3F9F3] text-[#426649]'
+              : 'border-[#E8C9C3] bg-[#FFF4F1] text-[#93483C]'
               }`}
           >
             {message.type ===
@@ -733,12 +899,12 @@ export default function AdminCouponsPage() {
 
                           <span
                             className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${status ===
-                                'active'
-                                ? 'border-[#C8DDCB] bg-[#F2F8F3] text-[#4A7450]'
-                                : status ===
-                                  'expired'
-                                  ? 'border-[#E5D4B4] bg-[#FFF9EA] text-[#866A28]'
-                                  : 'border-[#D8D0CB] bg-[#F7F4F2] text-[#796B63]'
+                              'active'
+                              ? 'border-[#C8DDCB] bg-[#F2F8F3] text-[#4A7450]'
+                              : status ===
+                                'expired'
+                                ? 'border-[#E5D4B4] bg-[#FFF9EA] text-[#866A28]'
+                                : 'border-[#D8D0CB] bg-[#F7F4F2] text-[#796B63]'
                               }`}
                           >
                             {status ===
@@ -826,8 +992,8 @@ export default function AdminCouponsPage() {
 
                             <span
                               className={`text-right font-semibold ${expired
-                                  ? 'text-[#A05C46]'
-                                  : 'text-[#4D3A31]'
+                                ? 'text-[#A05C46]'
+                                : 'text-[#4D3A31]'
                                 }`}
                             >
                               {formatDate(
@@ -848,8 +1014,8 @@ export default function AdminCouponsPage() {
                                 )
                               }
                               className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-xs font-semibold transition ${coupon.isActive
-                                  ? 'border-[#E1C8C2] bg-[#FFF6F3] text-[#965044] hover:bg-[#FCEAE6]'
-                                  : 'border-[#C9DCCB] bg-[#F3F8F3] text-[#4D7553] hover:bg-[#EAF4EB]'
+                                ? 'border-[#E1C8C2] bg-[#FFF6F3] text-[#965044] hover:bg-[#FCEAE6]'
+                                : 'border-[#C9DCCB] bg-[#F3F8F3] text-[#4D7553] hover:bg-[#EAF4EB]'
                                 }`}
                             >
                               <Power className="h-3.5 w-3.5" />
@@ -1064,6 +1230,203 @@ export default function AdminCouponsPage() {
                         </option>
                       </select>
                     </div>
+                    {/* Specific Products */}
+                    {formData.applicableTo ===
+                      'products' && (
+                        <div className="sm:col-span-2">
+                          <div className="rounded-xl border border-[#E1D5CD] bg-[#F8F5F1] p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-[#3A2117]">
+                                  Select Products
+                                </p>
+
+                                <p className="mt-1 text-xs text-[#8A7467]">
+                                  Coupon will only apply to
+                                  selected products.
+                                </p>
+                              </div>
+
+                              <span className="w-fit rounded-full bg-[#EDE4DC] px-3 py-1 text-xs font-semibold text-[#6B4228]">
+                                {formData.productIds.length}{' '}
+                                selected
+                              </span>
+                            </div>
+
+                            <div className="relative mt-4">
+                              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9A8478]" />
+
+                              <input
+                                type="text"
+                                value={productSearch}
+                                onChange={(e) =>
+                                  setProductSearch(
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="Search products..."
+                                className="w-full rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] py-2.5 pl-10 pr-4 text-sm text-[#281912] outline-none transition placeholder:text-[#AA9A91] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10"
+                              />
+                            </div>
+
+                            <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
+                              {filteredProducts.length ===
+                                0 ? (
+                                <div className="rounded-lg border border-dashed border-[#DCCFC6] bg-[#FFFEFC] px-4 py-6 text-center text-sm text-[#8A7467]">
+                                  No products found
+                                </div>
+                              ) : (
+                                filteredProducts.map(
+                                  (product) => {
+                                    const checked =
+                                      formData.productIds.includes(
+                                        product.id
+                                      )
+
+                                    return (
+                                      <label
+                                        key={product.id}
+                                        className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${checked
+                                            ? 'border-[#6B4228] bg-[#F4ECE6]'
+                                            : 'border-[#E6DBD3] bg-[#FFFEFC] hover:border-[#CDBCAF]'
+                                          }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={() =>
+                                            toggleCouponTarget(
+                                              'productIds',
+                                              product.id
+                                            )
+                                          }
+                                          className="h-4 w-4 accent-[#6B4228]"
+                                        />
+
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-sm font-semibold text-[#281912]">
+                                            {product.name ||
+                                              product.title ||
+                                              'Unnamed Product'}
+                                          </p>
+
+                                          {product.price !=
+                                            null && (
+                                              <p className="mt-0.5 text-xs text-[#8A7467]">
+                                                Rs.{' '}
+                                                {Number(
+                                                  product.price
+                                                ).toLocaleString(
+                                                  'en-PK'
+                                                )}
+                                              </p>
+                                            )}
+                                        </div>
+
+                                        {checked && (
+                                          <CheckCircle className="h-4 w-4 shrink-0 text-[#6B4228]" />
+                                        )}
+                                      </label>
+                                    )
+                                  }
+                                )
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                    {/* Specific Categories */}
+                    {formData.applicableTo ===
+                      'categories' && (
+                        <div className="sm:col-span-2">
+                          <div className="rounded-xl border border-[#E1D5CD] bg-[#F8F5F1] p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-[#3A2117]">
+                                  Select Categories
+                                </p>
+
+                                <p className="mt-1 text-xs text-[#8A7467]">
+                                  Coupon will apply to
+                                  products inside selected
+                                  categories.
+                                </p>
+                              </div>
+
+                              <span className="w-fit rounded-full bg-[#EDE4DC] px-3 py-1 text-xs font-semibold text-[#6B4228]">
+                                {formData.categoryIds.length}{' '}
+                                selected
+                              </span>
+                            </div>
+
+                            <div className="relative mt-4">
+                              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9A8478]" />
+
+                              <input
+                                type="text"
+                                value={categorySearch}
+                                onChange={(e) =>
+                                  setCategorySearch(
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="Search categories..."
+                                className="w-full rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] py-2.5 pl-10 pr-4 text-sm text-[#281912] outline-none transition placeholder:text-[#AA9A91] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10"
+                              />
+                            </div>
+
+                            <div className="mt-3 grid max-h-64 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                              {filteredCategories.length ===
+                                0 ? (
+                                <div className="sm:col-span-2 rounded-lg border border-dashed border-[#DCCFC6] bg-[#FFFEFC] px-4 py-6 text-center text-sm text-[#8A7467]">
+                                  No categories found
+                                </div>
+                              ) : (
+                                filteredCategories.map(
+                                  (category) => {
+                                    const checked =
+                                      formData.categoryIds.includes(
+                                        category.id
+                                      )
+
+                                    return (
+                                      <label
+                                        key={category.id}
+                                        className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${checked
+                                            ? 'border-[#6B4228] bg-[#F4ECE6]'
+                                            : 'border-[#E6DBD3] bg-[#FFFEFC] hover:border-[#CDBCAF]'
+                                          }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={() =>
+                                            toggleCouponTarget(
+                                              'categoryIds',
+                                              category.id
+                                            )
+                                          }
+                                          className="h-4 w-4 accent-[#6B4228]"
+                                        />
+
+                                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#281912]">
+                                          {category.name ||
+                                            'Unnamed Category'}
+                                        </span>
+
+                                        {checked && (
+                                          <CheckCircle className="h-4 w-4 shrink-0 text-[#6B4228]" />
+                                        )}
+                                      </label>
+                                    )
+                                  }
+                                )
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                   </div>
 
                   <div className="mt-5">
