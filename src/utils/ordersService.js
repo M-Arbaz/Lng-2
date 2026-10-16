@@ -31,6 +31,57 @@ const normalizePaymentStatus = (value) => {
     ? normalized
     : 'pending';
 };
+const INVENTORY_RELEASE_STATUSES =
+  new Set([
+    'cancelled',
+    'canceled',
+    'returned',
+  ]);
+
+const normalizeOrderStatus = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+const getOrderProductQuantities = (
+  items = []
+) => {
+  const quantities = new Map();
+
+  if (!Array.isArray(items)) {
+    return quantities;
+  }
+
+  items.forEach((item) => {
+    const productId = String(
+      item?.productId || ''
+    ).trim();
+
+    const quantity =
+      Number.parseInt(
+        item?.quantity,
+        10
+      );
+
+    if (
+      !productId ||
+      !Number.isFinite(quantity) ||
+      quantity <= 0
+    ) {
+      return;
+    }
+
+    quantities.set(
+      productId,
+      (quantities.get(
+        productId
+      ) || 0) + quantity
+    );
+  });
+
+  return quantities;
+};
 export const ordersService = {
   // Create a new order
   // Create a new order + reserve product stock atomically
@@ -233,12 +284,12 @@ export const ordersService = {
                   source: 'system',
                 },
               ],
-
               inventoryAdjusted: true,
 
               inventoryAdjustedAt:
                 serverTimestamp(),
 
+              inventoryRestored: false,
               createdAt:
                 serverTimestamp(),
 
@@ -356,58 +407,317 @@ export const ordersService = {
   },
 
   // Update order status
-  updateOrderStatus: async (orderId, status) => {
+  // Update order status + keep inventory in sync
+  updateOrderStatus: async (
+    orderId,
+    status,
+    source = 'admin'
+  ) => {
     try {
-      const docRef = doc(db, 'orders', orderId);
+      const orderRef = doc(
+        db,
+        'orders',
+        orderId
+      );
 
       const statusLabels = {
         pending: 'Order Placed',
         confirmed: 'Order Confirmed',
         approved: 'Order Approved',
         processing: 'Order Processing',
-        in_production: 'Order in Production',
-        production: 'Order in Production',
+        in_production:
+          'Order in Production',
+        production:
+          'Order in Production',
         ready: 'Order Ready',
-        dispatched: 'Order Dispatched',
+        dispatched:
+          'Order Dispatched',
         shipped: 'Order Shipped',
-        out_for_delivery: 'Out for Delivery',
+        out_for_delivery:
+          'Out for Delivery',
         delivered: 'Order Delivered',
         cancelled: 'Order Cancelled',
         canceled: 'Order Cancelled',
         returned: 'Order Returned',
       };
 
-      const normalizedStatus = String(status || '')
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, '_');
+      const normalizedStatus =
+        normalizeOrderStatus(status);
 
       const label =
-        statusLabels[normalizedStatus] ||
+        statusLabels[
+        normalizedStatus
+        ] ||
         normalizedStatus
           .replace(/_/g, ' ')
-          .replace(/\b\w/g, (char) => char.toUpperCase());
+          .replace(
+            /\b\w/g,
+            (char) =>
+              char.toUpperCase()
+          );
 
       const statusEvent = {
-        status: normalizedStatus,
+        status:
+          normalizedStatus,
         label,
         at: new Date().toISOString(),
-        source: 'admin',
+        source,
       };
 
-      await updateDoc(docRef, {
-        status: normalizedStatus,
-        statusHistory: arrayUnion(statusEvent),
-        updatedAt: serverTimestamp(),
-      });
+      let inventoryRestored = null;
+
+      await runTransaction(
+        db,
+        async (transaction) => {
+          /*
+           * First read order.
+           */
+          const orderSnapshot =
+            await transaction.get(
+              orderRef
+            );
+
+          if (
+            !orderSnapshot.exists()
+          ) {
+            throw new Error(
+              'Order not found.'
+            );
+          }
+
+          const orderData =
+            orderSnapshot.data();
+
+          const inventoryWasAdjusted =
+            orderData
+              ?.inventoryAdjusted ===
+            true;
+
+          const inventoryIsRestored =
+            orderData
+              ?.inventoryRestored ===
+            true;
+
+          const releasingInventory =
+            INVENTORY_RELEASE_STATUSES.has(
+              normalizedStatus
+            );
+
+          /*
+           * We only touch stock for orders
+           * whose stock was originally
+           * deducted by our inventory system.
+           *
+           * This prevents old orders from
+           * accidentally increasing stock.
+           */
+          const shouldRestore =
+            inventoryWasAdjusted &&
+            releasingInventory &&
+            !inventoryIsRestored;
+
+          /*
+           * If admin reopens an order after
+           * cancellation/return, reserve the
+           * stock again.
+           */
+          const shouldReserveAgain =
+            inventoryWasAdjusted &&
+            !releasingInventory &&
+            inventoryIsRestored;
+
+          const requestedByProduct =
+            getOrderProductQuantities(
+              orderData?.items
+            );
+
+          const productEntries = [];
+
+          if (
+            shouldRestore ||
+            shouldReserveAgain
+          ) {
+            /*
+             * Firestore requires transaction
+             * reads before writes.
+             */
+            for (const [
+              productId,
+              quantity,
+            ] of requestedByProduct.entries()) {
+              const productRef =
+                doc(
+                  db,
+                  'products',
+                  productId
+                );
+
+              const productSnapshot =
+                await transaction.get(
+                  productRef
+                );
+
+              /*
+               * Product may have been deleted
+               * after the order was placed.
+               * Nothing can be restored to a
+               * deleted product document.
+               */
+              if (
+                !productSnapshot.exists()
+              ) {
+                continue;
+              }
+
+              const productData =
+                productSnapshot.data();
+
+              const currentStock =
+                Math.max(
+                  0,
+                  Number(
+                    productData
+                      ?.stock || 0
+                  )
+                );
+
+              /*
+               * Reopening a cancelled order
+               * must not create negative stock.
+               */
+              if (
+                shouldReserveAgain &&
+                currentStock <
+                quantity
+              ) {
+                throw new Error(
+                  `${productData
+                    ?.name ||
+                  'Product'
+                  } only has ${currentStock} item(s) left in stock. The order cannot be reopened.`
+                );
+              }
+
+              productEntries.push({
+                ref: productRef,
+                currentStock,
+                quantity,
+              });
+            }
+          }
+
+          /*
+           * All reads completed.
+           * Now inventory writes.
+           */
+          if (shouldRestore) {
+            productEntries.forEach(
+              ({
+                ref,
+                currentStock,
+                quantity,
+              }) => {
+                transaction.update(
+                  ref,
+                  {
+                    stock:
+                      currentStock +
+                      quantity,
+
+                    updatedAt:
+                      serverTimestamp(),
+                  }
+                );
+              }
+            );
+
+            inventoryRestored =
+              true;
+          }
+
+          if (
+            shouldReserveAgain
+          ) {
+            productEntries.forEach(
+              ({
+                ref,
+                currentStock,
+                quantity,
+              }) => {
+                transaction.update(
+                  ref,
+                  {
+                    stock:
+                      currentStock -
+                      quantity,
+
+                    updatedAt:
+                      serverTimestamp(),
+                  }
+                );
+              }
+            );
+
+            inventoryRestored =
+              false;
+          }
+
+          const orderUpdate = {
+            status:
+              normalizedStatus,
+
+            statusHistory:
+              arrayUnion(
+                statusEvent
+              ),
+
+            updatedAt:
+              serverTimestamp(),
+          };
+
+          if (shouldRestore) {
+            orderUpdate.inventoryRestored =
+              true;
+
+            orderUpdate.inventoryRestoredAt =
+              serverTimestamp();
+          }
+
+          if (
+            shouldReserveAgain
+          ) {
+            orderUpdate.inventoryRestored =
+              false;
+
+            orderUpdate.inventoryReReservedAt =
+              serverTimestamp();
+          }
+
+          transaction.update(
+            orderRef,
+            orderUpdate
+          );
+        }
+      );
 
       return {
         id: orderId,
-        status: normalizedStatus,
+        status:
+          normalizedStatus,
         statusEvent,
+        ...(inventoryRestored !==
+          null
+          ? {
+            inventoryRestored,
+          }
+          : {}),
       };
     } catch (error) {
-      console.error('Error updating order status:', error);
+      console.error(
+        'Error updating order status:',
+        error
+      );
+
       throw error;
     }
   },
@@ -472,32 +782,13 @@ export const ordersService = {
   },
 
   // Cancel order
+  // Cancel order
   cancelOrder: async (orderId) => {
-    try {
-      const docRef = doc(db, 'orders', orderId);
-
-      const statusEvent = {
-        status: 'cancelled',
-        label: 'Order Cancelled',
-        at: new Date().toISOString(),
-        source: 'system',
-      };
-
-      await updateDoc(docRef, {
-        status: 'cancelled',
-        statusHistory: arrayUnion(statusEvent),
-        updatedAt: serverTimestamp(),
-      });
-
-      return {
-        id: orderId,
-        status: 'cancelled',
-        statusEvent,
-      };
-    } catch (error) {
-      console.error('Error cancelling order:', error);
-      throw error;
-    }
+    return ordersService.updateOrderStatus(
+      orderId,
+      'cancelled',
+      'system'
+    );
   },
 };
 
