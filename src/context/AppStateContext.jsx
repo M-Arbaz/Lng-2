@@ -11,7 +11,7 @@ import collectionSlidesService from '../utils/collectionSlidesService'
 import instagramGridService from '../utils/instagramGridService'
 import wishlistService from '../utils/wishlistService'
 import reviewsService from '../utils/reviewsService'
-
+import couponsService from '../utils/couponsService'
 const AppStateContext = createContext(null)
 
 function sectionFromPath(pathname) {
@@ -383,14 +383,64 @@ export function AppStateProvider({ children }) {
         items: payload.items,
 
         subtotal: payload.subtotal,
+
+        discountAmount:
+          Number(
+            payload.discountAmount || 0
+          ),
+
+        discountedSubtotal:
+          payload.discountedSubtotal ??
+          Math.max(
+            0,
+            Number(payload.subtotal || 0) -
+            Number(
+              payload.discountAmount || 0
+            )
+          ),
+
+        couponEligibleSubtotal:
+          Number(
+            payload.couponEligibleSubtotal ||
+            0
+          ),
+
+        coupon:
+          payload.coupon || null,
+
         shipping: payload.shipping,
         total: payload.total,
 
         paymentMethod:
-          payload.paymentMethod || 'cash_on_delivery',
+          payload.paymentMethod ||
+          'cash_on_delivery',
       })
-      setOrders((prev) => [order, ...prev])
+      // Coupon usage is counted only after
+      // the Firestore order is successfully created.
+      if (payload.coupon?.id) {
+        try {
+          await couponsService.incrementUsage(
+            payload.coupon.id
+          )
+        } catch (couponError) {
+          // Order already exists at this point.
+          // Coupon counter failure must not
+          // make the customer place it twice.
+          console.error(
+            'Failed to increment coupon usage:',
+            couponError
+          )
+        }
+      }
+
+      setOrders((prev) => [
+        order,
+        ...prev,
+      ])
+
       setCart([])
+      setAppliedCoupon(null)
+
       return order.id
     } catch (error) {
       console.error('Error placing order:', error)

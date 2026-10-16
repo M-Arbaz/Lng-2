@@ -6,8 +6,14 @@ import { useAuth } from '../context/AuthContext'
 import classNames from '../utils/classNames.js'
 import bankDetailsService from '../utils/bankDetailsService'
 import shippingService from '../utils/shippingService'
-
-export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
+import couponsService from '../utils/couponsService'
+export default function CheckoutPage({
+  cart,
+  cartTotal,
+  appliedCoupon,
+  onCouponChange,
+  onPlaceOrder,
+}) {
   const navigate = useNavigate()
   const { user, isLoggedIn, updateProfile } = useAuth()
   const [fullName, setFullName] = useState('')
@@ -21,6 +27,8 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
   const [placedOrderId, setPlacedOrderId] = useState('')
+  const [placedOrderSummary, setPlacedOrderSummary] =
+    useState(null)
   const [loading, setLoading] = useState(false)
   // No default payment method - user must explicitly choose one
   const [paymentMethod, setPaymentMethod] = useState('')
@@ -128,13 +136,26 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
   const qualifiesForFreeShipping = numericTotal === 0 || numericTotal >= freeShippingThreshold
   const selectedCityRate = shippingSettings.cities.find((c) => c.name === city)
   const cityShippingFee = selectedCityRate ? Number(selectedCityRate.fee) || 0 : 0
+  const couponDiscount = Math.min(
+    numericTotal,
+    Math.max(
+      0,
+      Number(
+        appliedCoupon?.discountAmount || 0
+      )
+    )
+  )
 
+  const discountedSubtotal = Math.max(
+    0,
+    numericTotal - couponDiscount
+  )
   // shipping is:
   //  - 0 if the order qualifies for free shipping (regardless of city)
   //  - null if a city hasn't been chosen yet and the order doesn't qualify for free shipping
   //  - the selected city's fee otherwise
   const shipping = qualifiesForFreeShipping ? 0 : city ? cityShippingFee : null
-  const grandTotal = numericTotal + (shipping || 0)
+  const grandTotal = discountedSubtotal + (shipping || 0)
   const validateCustomerStep = () => {
     if (!fullName.trim()) {
       setError('Please enter your full name.')
@@ -271,6 +292,91 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
       return
     }
 
+    let checkoutCoupon =
+      appliedCoupon?.coupon || null
+
+    let checkoutDiscountAmount =
+      couponDiscount
+
+    let checkoutEligibleSubtotal =
+      Number(
+        appliedCoupon?.eligibleSubtotal || 0
+      )
+
+    // Final coupon validation immediately before
+    // creating the Firestore order.
+    if (checkoutCoupon?.code) {
+      try {
+        const couponResult =
+          await couponsService.validateCoupon({
+            code: checkoutCoupon.code,
+            cart,
+            cartTotal: numericTotal,
+          })
+
+        if (!couponResult.valid) {
+          onCouponChange?.(null)
+
+          setError(
+            couponResult.message ||
+            'Your coupon is no longer valid. Please review your order.'
+          )
+
+          return
+        }
+
+        checkoutCoupon =
+          couponResult.coupon
+
+        checkoutDiscountAmount =
+          Math.min(
+            numericTotal,
+            Math.max(
+              0,
+              Number(
+                couponResult.discountAmount ||
+                0
+              )
+            )
+          )
+
+        checkoutEligibleSubtotal =
+          Number(
+            couponResult.eligibleSubtotal || 0
+          )
+
+        onCouponChange?.({
+          coupon: couponResult.coupon,
+          discountAmount:
+            checkoutDiscountAmount,
+          eligibleSubtotal:
+            checkoutEligibleSubtotal,
+        })
+      } catch (couponError) {
+        console.error(
+          'Checkout coupon validation failed:',
+          couponError
+        )
+
+        setError(
+          'We could not verify your coupon. Please try again.'
+        )
+
+        return
+      }
+    }
+
+    const checkoutDiscountedSubtotal =
+      Math.max(
+        0,
+        numericTotal -
+        checkoutDiscountAmount
+      )
+
+    const checkoutGrandTotal =
+      checkoutDiscountedSubtotal +
+      (shipping || 0)
+
     setError('')
     setLoading(true)
 
@@ -323,11 +429,54 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
         bulbOption: item.bulbOption || null,
       })),
       subtotal: numericTotal,
+
+      discountAmount:
+        checkoutDiscountAmount,
+
+      discountedSubtotal:
+        checkoutDiscountedSubtotal,
+
+      couponEligibleSubtotal:
+        checkoutEligibleSubtotal,
+
+      coupon: checkoutCoupon
+        ? {
+          id: checkoutCoupon.id,
+          code: checkoutCoupon.code,
+          description:
+            checkoutCoupon.description || '',
+          discountType:
+            checkoutCoupon.discountType,
+          discountValue:
+            checkoutCoupon.discountValue,
+          applicableTo:
+            checkoutCoupon.applicableTo ||
+            'all',
+          productIds:
+            checkoutCoupon.productIds || [],
+          categoryIds:
+            checkoutCoupon.categoryIds ||
+            [],
+        }
+        : null,
+
       shipping: shipping || 0,
-      total: grandTotal,
+
+      total: checkoutGrandTotal,
     }
 
     try {
+      setPlacedOrderSummary({
+        subtotal: numericTotal,
+        discountAmount:
+          checkoutDiscountAmount,
+        discountedSubtotal:
+          checkoutDiscountedSubtotal,
+        couponCode:
+          checkoutCoupon?.code || '',
+        shipping: shipping || 0,
+        total: checkoutGrandTotal,
+      })
       const orderId = await onPlaceOrder(order)
 
       if (orderId) {
@@ -393,10 +542,19 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
 
         setPlacedOrderId(String(orderId))
       } else {
-        setError('Failed to place order. Please try again.')
+        setPlacedOrderSummary(null)
+
+        setError(
+          'Failed to place order. Please try again.'
+        )
       }
     } catch (err) {
-      setError(err.message || 'Failed to place order. Please try again.')
+      setPlacedOrderSummary(null)
+
+      setError(
+        err.message ||
+        'Failed to place order. Please try again.'
+      )
     } finally {
       setLoading(false)
     }
@@ -550,10 +708,64 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
                     <span>Subtotal</span>
 
                     <span className="font-medium text-[#281912]">
-                      Rs.{formatPKR(numericTotal)}
+                      Rs.
+                      {formatPKR(
+                        placedOrderSummary?.subtotal ??
+                        numericTotal
+                      )}
                     </span>
                   </div>
 
+                  {Number(
+                    placedOrderSummary?.discountAmount ||
+                    0
+                  ) > 0 && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-2">
+                          Discount
+
+                          {placedOrderSummary?.couponCode && (
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-emerald-700">
+                              {
+                                placedOrderSummary.couponCode
+                              }
+                            </span>
+                          )}
+                        </span>
+
+                        <span className="font-semibold text-emerald-700">
+                          - Rs.
+                          {formatPKR(
+                            Number(
+                              placedOrderSummary
+                                ?.discountAmount || 0
+                            )
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  {appliedCoupon &&
+                    couponDiscount > 0 && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-2">
+                          Discount
+
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-emerald-700">
+                            {
+                              appliedCoupon.coupon
+                                ?.code
+                            }
+                          </span>
+                        </span>
+
+                        <span className="font-semibold text-emerald-700">
+                          - Rs.
+                          {formatPKR(
+                            couponDiscount
+                          )}
+                        </span>
+                      </div>
+                    )}
                   <div className="flex items-center justify-between gap-4">
                     <span>
                       Shipping{city ? ` (${city})` : ''}
@@ -585,7 +797,11 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
                       </div>
 
                       <p className="text-xl font-semibold tracking-[-0.03em] text-[#281912]">
-                        Rs.{formatPKR(grandTotal)}
+                        Rs.
+                        {formatPKR(
+                          placedOrderSummary?.total ??
+                          grandTotal
+                        )}
                       </p>
                     </div>
                   </div>
@@ -1369,7 +1585,11 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
                         <div className="border-t border-[#3A2117]/10 bg-[#EEE5DC] px-5 py-4">
                           {paymentMethod === 'bank' ? (
                             <p className="text-xs font-semibold text-[#3A2117]">
-                              Amount to transfer: Rs.{formatPKR(grandTotal)}
+                              Amount to transfer: Rs.
+                              {formatPKR(
+                                placedOrderSummary?.total ??
+                                grandTotal
+                              )}
                             </p>
                           ) : (
                             <>
@@ -1646,10 +1866,93 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
                     <span>Subtotal</span>
 
                     <span className="font-medium text-[#281912]">
-                      Rs.{formatPKR(numericTotal)}
+                      Rs.
+                      {formatPKR(
+                        placedOrderSummary?.subtotal ??
+                        numericTotal
+                      )}
                     </span>
                   </div>
 
+                  {Number(
+                    placedOrderSummary?.discountAmount ||
+                    0
+                  ) > 0 && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-2">
+                          Discount
+
+                          {placedOrderSummary?.couponCode && (
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-emerald-700">
+                              {
+                                placedOrderSummary.couponCode
+                              }
+                            </span>
+                          )}
+                        </span>
+
+                        <span className="font-semibold text-emerald-700">
+                          - Rs.
+                          {formatPKR(
+                            Number(
+                              placedOrderSummary
+                                ?.discountAmount || 0
+                            )
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                  {Number(
+                    placedOrderSummary?.discountAmount ||
+                    0
+                  ) > 0 && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-2">
+                          Discount
+
+                          {placedOrderSummary?.couponCode && (
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-emerald-700">
+                              {
+                                placedOrderSummary.couponCode
+                              }
+                            </span>
+                          )}
+                        </span>
+
+                        <span className="font-semibold text-emerald-700">
+                          - Rs.
+                          {formatPKR(
+                            Number(
+                              placedOrderSummary
+                                ?.discountAmount || 0
+                            )
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  {appliedCoupon &&
+                    couponDiscount > 0 && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-2">
+                          Discount
+
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-emerald-700">
+                            {
+                              appliedCoupon.coupon
+                                ?.code
+                            }
+                          </span>
+                        </span>
+
+                        <span className="font-semibold text-emerald-700">
+                          - Rs.
+                          {formatPKR(
+                            couponDiscount
+                          )}
+                        </span>
+                      </div>
+                    )}
                   <div className="flex items-center justify-between gap-4">
                     <span>
                       Shipping
@@ -1692,7 +1995,11 @@ export default function CheckoutPage({ cart, cartTotal, onPlaceOrder }) {
                       </div>
 
                       <p className="text-xl font-semibold tracking-[-0.03em] text-[#281912]">
-                        Rs.{formatPKR(grandTotal)}
+                        Rs.
+                        {formatPKR(
+                          placedOrderSummary?.total ??
+                          grandTotal
+                        )}
                       </p>
                     </div>
                   </div>
