@@ -12,6 +12,8 @@ export default function CartRoute() {
       cart={app.cart}
       cartItemsCount={app.cartItemsCount}
       cartTotal={app.cartTotal}
+      appliedCoupon={app.appliedCoupon}
+      onCouponChange={app.setAppliedCoupon}
       handleRemoveFromCart={app.handleRemoveFromCart}
       handleUpdateCartQuantity={app.handleUpdateCartQuantity}
       onCheckout={() => router.push('/checkout')}

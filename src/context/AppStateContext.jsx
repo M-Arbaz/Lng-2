@@ -37,6 +37,10 @@ export function AppStateProvider({ children }) {
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [theme, setTheme] = useState('light')
   const [cart, setCart] = useState([])
+
+  const [appliedCoupon, setAppliedCoupon] =
+    useState(null)
+
   const [cartNotification, setCartNotification] =
     useState(null)
 
@@ -140,7 +144,14 @@ export function AppStateProvider({ children }) {
     () => cart.reduce((sum, item) => sum + item.quantity * (item.unitPrice ?? item.product.price), 0),
     [cart],
   )
-
+  useEffect(() => {
+    if (
+      cart.length === 0 &&
+      appliedCoupon
+    ) {
+      setAppliedCoupon(null)
+    }
+  }, [cart.length, appliedCoupon])
   const filteredProducts = useMemo(() => {
     const base = selectedCategory === 'All' ? products : products.filter((p) => p.category === selectedCategory)
     const q = searchQuery.trim().toLowerCase()
@@ -486,6 +497,8 @@ export function AppStateProvider({ children }) {
     cart,
     cartItemsCount,
     cartTotal,
+    appliedCoupon,
+    setAppliedCoupon,
     cartNotification,
     dismissCartNotification,
     wishlist,

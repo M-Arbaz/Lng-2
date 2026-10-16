@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from '@/lib/navigation'
 import shippingService from '../utils/shippingService'
+import couponsService from '../utils/couponsService'
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,12 +14,19 @@ import {
   ShoppingBag,
   Trash2,
   Truck,
+  TicketPercent,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  X,
 } from 'lucide-react'
 
 export default function CartPage({
   cart,
   cartItemsCount,
   cartTotal,
+  appliedCoupon,
+  onCouponChange,
   handleRemoveFromCart,
   handleUpdateCartQuantity,
   onCheckout,
@@ -28,7 +36,19 @@ export default function CartPage({
   const isDark = theme === 'dark'
 
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(15000)
+  const [couponCode, setCouponCode] =
+    useState(
+      appliedCoupon?.coupon?.code || ''
+    )
 
+  const [couponLoading, setCouponLoading] =
+    useState(false)
+
+  const [couponMessage, setCouponMessage] =
+    useState({
+      type: '',
+      text: '',
+    })
   useEffect(() => {
     let active = true
 
@@ -52,7 +72,166 @@ export default function CartPage({
       active = false
     }
   }, [])
+  useEffect(() => {
+    if (appliedCoupon?.coupon?.code) {
+      setCouponCode(
+        appliedCoupon.coupon.code
+      )
+    }
+  }, [appliedCoupon?.coupon?.code])
 
+  const handleApplyCoupon = async (e) => {
+    e?.preventDefault()
+
+    const code =
+      couponCode.trim()
+
+    if (!code) {
+      setCouponMessage({
+        type: 'error',
+        text: 'Please enter a coupon code.',
+      })
+
+      return
+    }
+
+    try {
+      setCouponLoading(true)
+
+      setCouponMessage({
+        type: '',
+        text: '',
+      })
+
+      const result =
+        await couponsService.validateCoupon({
+          code,
+          cart,
+          cartTotal,
+        })
+
+      if (!result.valid) {
+        setCouponMessage({
+          type: 'error',
+          text:
+            result.message ||
+            'Coupon could not be applied.',
+        })
+
+        return
+      }
+
+      onCouponChange?.({
+        coupon: result.coupon,
+        discountAmount:
+          result.discountAmount,
+        eligibleSubtotal:
+          result.eligibleSubtotal,
+      })
+
+      setCouponCode(
+        result.coupon.code
+      )
+
+      setCouponMessage({
+        type: 'success',
+        text:
+          result.message ||
+          'Coupon applied successfully!',
+      })
+    } catch (error) {
+      console.error(
+        'Error applying coupon:',
+        error
+      )
+
+      setCouponMessage({
+        type: 'error',
+        text:
+          'Unable to apply coupon. Please try again.',
+      })
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  const handleRemoveCoupon = () => {
+    onCouponChange?.(null)
+
+    setCouponCode('')
+
+    setCouponMessage({
+      type: '',
+      text: '',
+    })
+  }
+  useEffect(() => {
+    const couponCodeToValidate =
+      appliedCoupon?.coupon?.code
+
+    if (
+      !couponCodeToValidate ||
+      cart.length === 0
+    ) {
+      return
+    }
+
+    let active = true
+
+    const revalidateCoupon = async () => {
+      try {
+        const result =
+          await couponsService.validateCoupon({
+            code: couponCodeToValidate,
+            cart,
+            cartTotal,
+          })
+
+        if (!active) {
+          return
+        }
+
+        if (!result.valid) {
+          onCouponChange?.(null)
+
+          setCouponCode('')
+
+          setCouponMessage({
+            type: 'error',
+            text:
+              result.message ||
+              'The applied coupon is no longer valid for your cart.',
+          })
+
+          return
+        }
+
+        onCouponChange?.({
+          coupon: result.coupon,
+          discountAmount:
+            result.discountAmount,
+          eligibleSubtotal:
+            result.eligibleSubtotal,
+        })
+      } catch (error) {
+        console.error(
+          'Error revalidating coupon:',
+          error
+        )
+      }
+    }
+
+    revalidateCoupon()
+
+    return () => {
+      active = false
+    }
+  }, [
+    cart,
+    cartTotal,
+    appliedCoupon?.coupon?.code,
+    onCouponChange,
+  ])
   const formatPrice = (value) => {
     if (typeof value !== 'number' || Number.isNaN(value)) return '0.00'
 
@@ -76,8 +255,19 @@ export default function CartPage({
   )
 
   // Exact shipping city select hone ke baad Checkout mein add hogi.
-  const grandTotal = cartTotal
+  const couponDiscount = Math.max(
+    0,
+    Number(
+      appliedCoupon?.discountAmount || 0
+    )
+  )
 
+  // Exact shipping city select hone ke baad
+  // Checkout mein add hogi.
+  const grandTotal = Math.max(
+    0,
+    cartTotal - couponDiscount
+  )
   return (
     <main
       className={
@@ -590,7 +780,209 @@ export default function CartPage({
                           Rs.{formatPrice(cartTotal)}
                         </span>
                       </div>
+                      {/* Coupon */}
+                      <div
+                        className={
+                          isDark
+                            ? 'rounded-2xl border border-white/10 bg-white/[0.03] p-4'
+                            : 'rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] p-4'
+                        }
+                      >
+                        <div className="flex items-center gap-2">
+                          <TicketPercent
+                            size={16}
+                            strokeWidth={1.7}
+                            className={
+                              isDark
+                                ? 'text-[#D7A987]'
+                                : 'text-[#6B4228]'
+                            }
+                          />
 
+                          <p
+                            className={
+                              isDark
+                                ? 'text-xs font-semibold text-white'
+                                : 'text-xs font-semibold text-[#3A2117]'
+                            }
+                          >
+                            Promo Code
+                          </p>
+                        </div>
+
+                        {appliedCoupon ? (
+                          <div
+                            className={
+                              isDark
+                                ? 'mt-3 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3'
+                                : 'mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3'
+                            }
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 gap-2.5">
+                                <CheckCircle
+                                  size={17}
+                                  className="mt-0.5 shrink-0 text-emerald-600"
+                                />
+
+                                <div className="min-w-0">
+                                  <p
+                                    className={
+                                      isDark
+                                        ? 'font-mono text-sm font-bold tracking-wide text-emerald-300'
+                                        : 'font-mono text-sm font-bold tracking-wide text-emerald-800'
+                                    }
+                                  >
+                                    {
+                                      appliedCoupon
+                                        .coupon
+                                        .code
+                                    }
+                                  </p>
+
+                                  <p
+                                    className={
+                                      isDark
+                                        ? 'mt-1 text-[10px] leading-4 text-stone-400'
+                                        : 'mt-1 text-[10px] leading-4 text-[#6B5A50]'
+                                    }
+                                  >
+                                    You save Rs.
+                                    {formatPrice(
+                                      couponDiscount
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={
+                                  handleRemoveCoupon
+                                }
+                                aria-label="Remove coupon"
+                                className={
+                                  isDark
+                                    ? 'grid h-8 w-8 shrink-0 place-items-center rounded-full text-stone-400 transition hover:bg-white/10 hover:text-white'
+                                    : 'grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#8A7569] transition hover:bg-[#E9DED6] hover:text-[#3A2117]'
+                                }
+                              >
+                                <X
+                                  size={14}
+                                  strokeWidth={2}
+                                />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <form
+                            onSubmit={
+                              handleApplyCoupon
+                            }
+                            className="mt-3 flex gap-2"
+                          >
+                            <input
+                              type="text"
+                              value={couponCode}
+                              onChange={(e) => {
+                                setCouponCode(
+                                  e.target.value.toUpperCase()
+                                )
+
+                                if (
+                                  couponMessage.text
+                                ) {
+                                  setCouponMessage({
+                                    type: '',
+                                    text: '',
+                                  })
+                                }
+                              }}
+                              placeholder="Enter code"
+                              autoComplete="off"
+                              className={
+                                isDark
+                                  ? 'min-w-0 flex-1 rounded-xl border border-white/10 bg-[#241A15] px-3.5 py-2.5 text-xs font-medium uppercase text-white outline-none placeholder:normal-case placeholder:text-stone-600 focus:border-[#D7A987]/50'
+                                  : 'min-w-0 flex-1 rounded-xl border border-[#3A2117]/15 bg-[#FFFEFC] px-3.5 py-2.5 text-xs font-medium uppercase text-[#281912] outline-none placeholder:normal-case placeholder:text-[#A28E82] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10'
+                              }
+                            />
+
+                            <button
+                              type="submit"
+                              disabled={
+                                couponLoading ||
+                                !couponCode.trim()
+                              }
+                              className="inline-flex min-w-[82px] items-center justify-center gap-1.5 rounded-xl bg-[#3A2117] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#4A2B1F] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {couponLoading ? (
+                                <Loader2
+                                  size={14}
+                                  className="animate-spin"
+                                />
+                              ) : null}
+
+                              Apply
+                            </button>
+                          </form>
+                        )}
+
+                        {couponMessage.text && (
+                          <div
+                            className={`mt-2.5 flex items-start gap-2 text-[10px] leading-4 ${couponMessage.type ===
+                              'success'
+                              ? 'text-emerald-700'
+                              : 'text-rose-600'
+                              }`}
+                          >
+                            {couponMessage.type ===
+                              'success' ? (
+                              <CheckCircle
+                                size={13}
+                                className="mt-0.5 shrink-0"
+                              />
+                            ) : (
+                              <AlertCircle
+                                size={13}
+                                className="mt-0.5 shrink-0"
+                              />
+                            )}
+
+                            <span>
+                              {couponMessage.text}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      {appliedCoupon &&
+                        couponDiscount > 0 && (
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="flex items-center gap-1.5">
+                              Discount
+
+                              <span
+                                className={
+                                  isDark
+                                    ? 'rounded-full bg-emerald-500/10 px-2 py-0.5 font-mono text-[9px] font-semibold text-emerald-300'
+                                    : 'rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-emerald-700'
+                                }
+                              >
+                                {
+                                  appliedCoupon
+                                    .coupon
+                                    .code
+                                }
+                              </span>
+                            </span>
+
+                            <span className="font-semibold text-emerald-700">
+                              - Rs.
+                              {formatPrice(
+                                couponDiscount
+                              )}
+                            </span>
+                          </div>
+                        )}
                       <div className="flex items-center justify-between gap-4">
                         <span>Estimated shipping</span>
 
