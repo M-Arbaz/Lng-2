@@ -250,14 +250,40 @@ const couponsService = {
           ? coupon.categoryIds
           : []
 
+        // Products currently store the category NAME,
+        // while coupons store selected category document IDs.
+        // Resolve selected IDs to their category names.
+        const categorySnapshot = await getDocs(
+          collection(db, 'categories')
+        )
+
+        const selectedCategoryNames =
+          categorySnapshot.docs
+            .filter((categoryDoc) =>
+              categoryIds.includes(categoryDoc.id)
+            )
+            .map((categoryDoc) =>
+              String(
+                categoryDoc.data()?.name || ''
+              )
+                .trim()
+                .toLowerCase()
+            )
+            .filter(Boolean)
+
         eligibleSubtotal = cart.reduce(
           (total, item) => {
-            const categoryId =
-              item?.product?.category
+            const productCategory = String(
+              item?.product?.category || ''
+            )
+              .trim()
+              .toLowerCase()
 
             if (
-              !categoryId ||
-              !categoryIds.includes(categoryId)
+              !productCategory ||
+              !selectedCategoryNames.includes(
+                productCategory
+              )
             ) {
               return total
             }
