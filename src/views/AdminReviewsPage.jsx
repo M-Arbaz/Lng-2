@@ -91,8 +91,8 @@ function Stars({
           <Star
             key={star}
             className={`${iconClass} ${star <= value
-                ? 'fill-[#B77A3F] text-[#B77A3F]'
-                : 'fill-[#E8DED5] text-[#E8DED5]'
+              ? 'fill-[#B77A3F] text-[#B77A3F]'
+              : 'fill-[#E8DED5] text-[#E8DED5]'
               }`}
           />
         )
@@ -960,7 +960,11 @@ export default function AdminReviewsPage() {
 
         showMessage(
           'error',
-          'Failed to save reply.'
+          error?.code ===
+            'permission-denied'
+            ? 'Firebase permission denied while saving reply.'
+            : error?.message ||
+            'Failed to save reply.'
         )
       } finally {
         setReplySavingId(null)
@@ -1115,9 +1119,9 @@ export default function AdminReviewsPage() {
         {message.text && (
           <div
             className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-sm ${message.type ===
-                'success'
-                ? 'border-[#CFE1D1] bg-[#F3F9F3] text-[#426649]'
-                : 'border-[#E8C9C3] bg-[#FFF4F1] text-[#93483C]'
+              'success'
+              ? 'border-[#CFE1D1] bg-[#F3F9F3] text-[#426649]'
+              : 'border-[#E8C9C3] bg-[#FFF4F1] text-[#93483C]'
               }`}
           >
             {message.type ===
@@ -1321,8 +1325,8 @@ export default function AdminReviewsPage() {
             >
               <RefreshCw
                 className={`h-3.5 w-3.5 ${loading
-                    ? 'animate-spin'
-                    : ''
+                  ? 'animate-spin'
+                  : ''
                   }`}
               />
 
@@ -1383,8 +1387,8 @@ export default function AdminReviewsPage() {
                   <article
                     key={review.id}
                     className={`rounded-2xl border bg-[#FFFEFC] p-5 shadow-[0_10px_30px_rgba(58,33,23,0.05)] sm:p-6 ${active
-                        ? 'border-[#E7DCD4]'
-                        : 'border-[#E6DDD7] opacity-75'
+                      ? 'border-[#E7DCD4]'
+                      : 'border-[#E6DDD7] opacity-75'
                       }`}
                   >
                     <div className="flex flex-col gap-5 lg:flex-row">
@@ -1489,8 +1493,8 @@ export default function AdminReviewsPage() {
                                 review.id
                               }
                               className={`flex h-9 w-9 items-center justify-center rounded-lg transition disabled:opacity-50 ${active
-                                  ? 'text-[#44704B] hover:bg-[#EFF8F0]'
-                                  : 'text-[#75645A] hover:bg-[#F7F4EF]'
+                                ? 'text-[#44704B] hover:bg-[#EFF8F0]'
+                                : 'text-[#75645A] hover:bg-[#F7F4EF]'
                                 }`}
                               title={
                                 active
@@ -1850,9 +1854,9 @@ export default function AdminReviewsPage() {
                             >
                               <Star
                                 className={`h-7 w-7 ${star <=
-                                    reviewForm.rating
-                                    ? 'fill-[#B77A3F] text-[#B77A3F]'
-                                    : 'fill-[#E8DED5] text-[#E8DED5]'
+                                  reviewForm.rating
+                                  ? 'fill-[#B77A3F] text-[#B77A3F]'
+                                  : 'fill-[#E8DED5] text-[#E8DED5]'
                                   }`}
                               />
                             </button>
@@ -2025,8 +2029,8 @@ export default function AdminReviewsPage() {
                   >
                     <label
                       className={`block cursor-pointer rounded-xl border p-4 transition ${reviewForm.isActive
-                          ? 'border-[#BFA995] bg-[#F5EEE8]'
-                          : 'border-[#E6DCD5] bg-[#FAF7F4]'
+                        ? 'border-[#BFA995] bg-[#F5EEE8]'
+                        : 'border-[#E6DCD5] bg-[#FAF7F4]'
                         }`}
                     >
                       <div className="flex items-start justify-between gap-4">

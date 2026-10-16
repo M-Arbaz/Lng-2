@@ -349,8 +349,6 @@ export const reviewsService = {
           adminReplyAt:
             now,
 
-          updatedAt:
-            now,
         }
       )
 
@@ -395,7 +393,6 @@ export const reviewsService = {
         {
           adminReply: null,
           adminReplyAt: null,
-          updatedAt: now,
         }
       )
 
