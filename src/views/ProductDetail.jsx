@@ -390,7 +390,13 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
   }, [images, product?.videos, product?.videoUrl])
 
   const productReviews = useMemo(
-    () => reviews.filter((r) => r.productId === productId),
+    () =>
+      reviews.filter(
+        (review) =>
+          review.productId ===
+          productId &&
+          review.isActive !== false
+      ),
     [reviews, productId],
   )
 

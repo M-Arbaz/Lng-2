@@ -1,4 +1,5 @@
-import { db, storage } from './firebase';
+import { db } from './firebase'
+
 import {
   collection,
   getDocs,
@@ -9,164 +10,405 @@ import {
   query,
   where,
   orderBy,
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+} from 'firebase/firestore'
+
+import {
+  uploadToXcdn,
+} from './xcdnUpload'
 
 export const reviewsService = {
-  // Get all reviews
+  // Admin: get every review
   getAllReviews: async () => {
     try {
-      const q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
-      const reviews = [];
-      querySnapshot.forEach((doc) => {
-        reviews.push({
-          id: doc.id,
-          ...doc.data(),
-        });
-      });
-      return reviews;
-    } catch (error) {
-      console.error('Error getting reviews:', error);
-      throw error;
-    }
-  },
-
-  // Get reviews by product ID
-  getReviewsByProductId: async (productId) => {
-    try {
       const q = query(
         collection(db, 'reviews'),
-        where('productId', '==', productId),
-        orderBy('createdAt', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      const reviews = [];
-      querySnapshot.forEach((doc) => {
-        reviews.push({
-          id: doc.id,
-          ...doc.data(),
-        });
-      });
-      return reviews;
+        orderBy(
+          'createdAt',
+          'desc'
+        )
+      )
+
+      const querySnapshot =
+        await getDocs(q)
+
+      const reviews = []
+
+      querySnapshot.forEach(
+        (docSnap) => {
+          reviews.push({
+            id: docSnap.id,
+            ...docSnap.data(),
+          })
+        }
+      )
+
+      return reviews
     } catch (error) {
-      console.error('Error getting reviews by product:', error);
-      throw error;
+      console.error(
+        'Error getting reviews:',
+        error
+      )
+
+      throw error
     }
   },
 
-  // Get reviews by user ID
-  getReviewsByUserId: async (userId) => {
-    try {
-      const q = query(
-        collection(db, 'reviews'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      const reviews = [];
-      querySnapshot.forEach((doc) => {
-        reviews.push({
-          id: doc.id,
-          ...doc.data(),
-        });
-      });
-      return reviews;
-    } catch (error) {
-      console.error('Error getting reviews by user:', error);
-      throw error;
-    }
-  },
+  // Product-specific reviews
+  getReviewsByProductId:
+    async (productId) => {
+      try {
+        const q = query(
+          collection(
+            db,
+            'reviews'
+          ),
 
-  // Add a new review
-  addReview: async (reviewData) => {
+          where(
+            'productId',
+            '==',
+            productId
+          ),
+
+          orderBy(
+            'createdAt',
+            'desc'
+          )
+        )
+
+        const querySnapshot =
+          await getDocs(q)
+
+        const reviews = []
+
+        querySnapshot.forEach(
+          (docSnap) => {
+            reviews.push({
+              id: docSnap.id,
+              ...docSnap.data(),
+            })
+          }
+        )
+
+        return reviews
+      } catch (error) {
+        console.error(
+          'Error getting reviews by product:',
+          error
+        )
+
+        throw error
+      }
+    },
+
+  // Customer review history
+  getReviewsByUserId:
+    async (userId) => {
+      try {
+        const q = query(
+          collection(
+            db,
+            'reviews'
+          ),
+
+          where(
+            'userId',
+            '==',
+            userId
+          ),
+
+          orderBy(
+            'createdAt',
+            'desc'
+          )
+        )
+
+        const querySnapshot =
+          await getDocs(q)
+
+        const reviews = []
+
+        querySnapshot.forEach(
+          (docSnap) => {
+            reviews.push({
+              id: docSnap.id,
+              ...docSnap.data(),
+            })
+          }
+        )
+
+        return reviews
+      } catch (error) {
+        console.error(
+          'Error getting reviews by user:',
+          error
+        )
+
+        throw error
+      }
+    },
+
+  // Add review
+  addReview: async (
+    reviewData
+  ) => {
     try {
-      const docRef = await addDoc(collection(db, 'reviews'), {
+      const now =
+        new Date().toISOString()
+
+      const payload = {
         ...reviewData,
-        createdAt: new Date().toISOString(),
-      });
+
+        /*
+         * Legacy behavior treated a
+         * missing isActive as visible.
+         */
+        isActive:
+          reviewData?.isActive !==
+          false,
+
+        createdAt:
+          reviewData?.createdAt ||
+          now,
+
+        updatedAt: now,
+      }
+
+      const docRef =
+        await addDoc(
+          collection(
+            db,
+            'reviews'
+          ),
+          payload
+        )
+
       return {
         id: docRef.id,
-        ...reviewData,
-        createdAt: new Date().toISOString(),
-      };
-    } catch (error) {
-      console.error('Error adding review:', error);
-      throw error;
-    }
-  },
-
-  // Update an existing review (used for admin-authored review edits)
-  updateReview: async (reviewId, reviewData) => {
-    try {
-      const reviewRef = doc(db, 'reviews', reviewId)
-      await updateDoc(reviewRef, {
-        ...reviewData,
-        updatedAt: new Date().toISOString(),
-      })
-      return { id: reviewId, ...reviewData }
-    } catch (error) {
-      console.error('Error updating review:', error)
-      throw error
-    }
-  },
-
-  // Upload a review screenshot or a manual product image
-  uploadReviewImage: async (file) => {
-    try {
-      const storageRef = ref(storage, `reviews/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      return await getDownloadURL(storageRef);
-    } catch (error) {
-      console.error('Error uploading review image:', error);
-      throw error;
-    }
-  },
-
-  // Delete a review
-  deleteReview: async (reviewId) => {
-    try {
-      await deleteDoc(doc(db, 'reviews', reviewId))
-      return true
-    } catch (error) {
-      console.error('Error deleting review:', error)
-      throw error
-    }
-  },
-
-  // Add or update admin reply to a review
-  addReply: async (reviewId, replyText) => {
-    try {
-      const reviewRef = doc(db, 'reviews', reviewId)
-      await updateDoc(reviewRef, {
-        adminReply: replyText,
-        adminReplyAt: new Date().toISOString(),
-      })
-      return {
-        id: reviewId,
-        adminReply: replyText,
-        adminReplyAt: new Date().toISOString(),
+        ...payload,
       }
     } catch (error) {
-      console.error('Error adding reply:', error)
+      console.error(
+        'Error adding review:',
+        error
+      )
+
       throw error
     }
   },
 
-  // Remove admin reply from a review
-  removeReply: async (reviewId) => {
+  // Update review
+  updateReview: async (
+    reviewId,
+    reviewData
+  ) => {
     try {
-      const reviewRef = doc(db, 'reviews', reviewId)
-      await updateDoc(reviewRef, {
-        adminReply: null,
-        adminReplyAt: null,
-      })
+      if (!reviewId) {
+        throw new Error(
+          'Review ID is required'
+        )
+      }
+
+      const payload = {
+        ...reviewData,
+
+        updatedAt:
+          new Date().toISOString(),
+      }
+
+      await updateDoc(
+        doc(
+          db,
+          'reviews',
+          reviewId
+        ),
+        payload
+      )
+
+      return {
+        id: reviewId,
+        ...payload,
+      }
+    } catch (error) {
+      console.error(
+        'Error updating review:',
+        error
+      )
+
+      throw error
+    }
+  },
+
+  /*
+   * Review screenshot or manual
+   * product image.
+   *
+   * Existing Firebase URLs continue
+   * working. New uploads go to XCDN.
+   */
+  uploadReviewImage:
+    async (file) => {
+      if (!file) {
+        throw new Error(
+          'No review image selected'
+        )
+      }
+
+      try {
+        const url =
+          await uploadToXcdn(
+            file,
+            'reviews'
+          )
+
+        if (!url) {
+          throw new Error(
+            'XCDN did not return an image URL'
+          )
+        }
+
+        return url
+      } catch (error) {
+        console.error(
+          'Error uploading review image to XCDN:',
+          error
+        )
+
+        throw error
+      }
+    },
+
+  deleteReview: async (
+    reviewId
+  ) => {
+    try {
+      if (!reviewId) {
+        throw new Error(
+          'Review ID is required'
+        )
+      }
+
+      await deleteDoc(
+        doc(
+          db,
+          'reviews',
+          reviewId
+        )
+      )
+
       return true
     } catch (error) {
-      console.error('Error removing reply:', error)
+      console.error(
+        'Error deleting review:',
+        error
+      )
+
       throw error
     }
   },
-};
 
-export default reviewsService;
+  /*
+   * Same method handles both:
+   * - first reply
+   * - editing an existing reply
+   */
+  addReply: async (
+    reviewId,
+    replyText
+  ) => {
+    try {
+      const cleanReply =
+        String(
+          replyText || ''
+        ).trim()
+
+      if (!reviewId) {
+        throw new Error(
+          'Review ID is required'
+        )
+      }
+
+      if (!cleanReply) {
+        throw new Error(
+          'Reply text is required'
+        )
+      }
+
+      const now =
+        new Date().toISOString()
+
+      await updateDoc(
+        doc(
+          db,
+          'reviews',
+          reviewId
+        ),
+        {
+          adminReply:
+            cleanReply,
+
+          adminReplyAt:
+            now,
+
+          updatedAt:
+            now,
+        }
+      )
+
+      return {
+        id: reviewId,
+
+        adminReply:
+          cleanReply,
+
+        adminReplyAt:
+          now,
+      }
+    } catch (error) {
+      console.error(
+        'Error saving review reply:',
+        error
+      )
+
+      throw error
+    }
+  },
+
+  removeReply: async (
+    reviewId
+  ) => {
+    try {
+      if (!reviewId) {
+        throw new Error(
+          'Review ID is required'
+        )
+      }
+
+      const now =
+        new Date().toISOString()
+
+      await updateDoc(
+        doc(
+          db,
+          'reviews',
+          reviewId
+        ),
+        {
+          adminReply: null,
+          adminReplyAt: null,
+          updatedAt: now,
+        }
+      )
+
+      return true
+    } catch (error) {
+      console.error(
+        'Error removing review reply:',
+        error
+      )
+
+      throw error
+    }
+  },
+}
+
+export default reviewsService

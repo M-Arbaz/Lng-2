@@ -57,7 +57,72 @@ export default function ReviewsSection({
   setReviewSortBy,
   sortedReviews,
   handleSubmitReview,
+  user,
+  isLoggedIn,
 }) {
+  const submitReview = async (
+    event
+  ) => {
+    event.preventDefault()
+
+    if (
+      !isLoggedIn ||
+      !user?.uid
+    ) {
+      window.alert(
+        'Please log in to submit a review.'
+      )
+
+      return
+    }
+
+    if (
+      !reviewForm.comment
+        .trim() ||
+      !reviewForm.productId
+    ) {
+      return
+    }
+
+    const success =
+      await handleSubmitReview({
+        productId:
+          reviewForm.productId,
+
+        userId:
+          user.uid,
+
+        name:
+          reviewForm.name.trim() ||
+          user.displayName ||
+          user.email ||
+          'Anonymous',
+
+        rating:
+          Number(
+            reviewForm.rating
+          ) || 5,
+
+        comment:
+          reviewForm.comment.trim(),
+
+        createdAt:
+          new Date().toISOString(),
+
+        isActive: true,
+      })
+
+    if (success) {
+      setReviewForm(
+        (prev) => ({
+          ...prev,
+
+          rating: 5,
+          comment: '',
+        })
+      )
+    }
+  }
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 bg-[#F5F1EA]">
       <div className="rounded-3xl border border-[#E5E5E5] bg-white shadow-sm overflow-hidden">
@@ -89,7 +154,7 @@ export default function ReviewsSection({
         <div className="px-5 sm:px-8 pb-8">
           <div className="grid grid-cols-1 lg:grid-cols-[1.2fr,1.8fr] gap-6 items-start">
             <form
-              onSubmit={handleSubmitReview}
+              onSubmit={submitReview}
               className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 space-y-4 text-xs sm:text-sm shadow-sm"
             >
               <div className="flex items-center justify-between gap-3">
@@ -188,7 +253,7 @@ export default function ReviewsSection({
                 Submit Review
               </button>
               <p className="text-[11px] text-stone-500">
-                Reviews are stored locally in your browser for this demo.
+                Reviews are saved to your Lamp & Glow account and product history.
               </p>
             </form>
 
@@ -246,7 +311,25 @@ export default function ReviewsSection({
                           )}
                         </div>
 
-                        <p className="mt-2 text-xs sm:text-sm text-stone-700">{review.comment}</p>
+                        {review.adminReply && (
+                          <div className="mt-4 rounded-2xl border border-[#DCCCBD] bg-[#F7F4EF] p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3A2117] text-[9px] font-bold text-white">
+                                L&G
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-[#3A2117]">
+                                  Lamp & Glow Reply
+                                </p>
+
+                                <p className="mt-1.5 text-xs leading-5 text-[#5F4C42]">
+                                  {review.adminReply}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </li>
                     )
                   })}

@@ -158,23 +158,54 @@ export function AppStateProvider({ children }) {
     if (!q) return base
     return base.filter((p) => (p.name || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q))
   }, [searchQuery, selectedCategory, products])
-
+  const publicReviews = useMemo(
+    () =>
+      reviews.filter(
+        (review) =>
+          review.isActive !== false
+      ),
+    [reviews]
+  )
   const productAverageRating = useMemo(() => {
     const map = {}
-    reviews.forEach((r) => {
+    publicReviews.forEach((r) => {
       if (!map[r.productId]) map[r.productId] = { total: 0, count: 0 }
       map[r.productId].total += r.rating
       map[r.productId].count += 1
     })
     return Object.fromEntries(Object.entries(map).map(([id, value]) => [id, value.total / value.count]))
-  }, [reviews])
+  }, [publicReviews])
 
   const sortedReviews = useMemo(() => {
-    const result = [...reviews]
-    if (reviewSortBy === 'rating') result.sort((a, b) => b.rating - a.rating)
-    else result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const result = [
+      ...publicReviews,
+    ]
+
+    if (
+      reviewSortBy === 'rating'
+    ) {
+      result.sort(
+        (a, b) =>
+          Number(b.rating) -
+          Number(a.rating)
+      )
+    } else {
+      result.sort(
+        (a, b) =>
+          new Date(
+            b.createdAt
+          ).getTime() -
+          new Date(
+            a.createdAt
+          ).getTime()
+      )
+    }
+
     return result
-  }, [reviews, reviewSortBy])
+  }, [
+    publicReviews,
+    reviewSortBy,
+  ])
 
   function handleToggleWishlist(product) {
     setWishlist((prev) => {
