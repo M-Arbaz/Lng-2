@@ -104,7 +104,7 @@ export const collectionSlidesService = {
     try {
       const url = await uploadToXcdn(
         file,
-        'heroBanners'
+        'collectionSlides'
       );
 
       if (!url) {
