@@ -1,6 +1,8 @@
 'use client'
 
 import {
+  useEffect,
+  useMemo,
   useState,
 } from 'react'
 
@@ -8,6 +10,8 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle,
+  Clock,
+  Headphones,
   Loader2,
   Mail,
   MapPin,
@@ -22,6 +26,10 @@ import {
 
 import contactSubmissionsService from '../utils/contactSubmissionsService'
 
+import contactPageService, {
+  normalizeContactPage,
+} from '../utils/contactPageService'
+
 export default function ContactPage({
   theme = 'light',
 }) {
@@ -30,6 +38,18 @@ export default function ContactPage({
 
   const isDark =
     theme === 'dark'
+
+  const [
+    content,
+    setContent,
+  ] = useState(() =>
+    normalizeContactPage()
+  )
+
+  const [
+    settingsLoading,
+    setSettingsLoading,
+  ] = useState(true)
 
   const [form, setForm] =
     useState({
@@ -51,6 +71,60 @@ export default function ContactPage({
     type: '',
     text: '',
   })
+
+  useEffect(() => {
+    const unsubscribe =
+      contactPageService.subscribeContactPage(
+        (data) => {
+          setContent(
+            normalizeContactPage(
+              data
+            )
+          )
+
+          setSettingsLoading(
+            false
+          )
+        },
+
+        (error) => {
+          console.error(
+            'Contact page settings error:',
+            error
+          )
+
+          /*
+           * Defaults remain visible if
+           * Firestore settings cannot load.
+           */
+          setSettingsLoading(
+            false
+          )
+        }
+      )
+
+    return unsubscribe
+  }, [])
+
+  const phoneHref =
+    useMemo(() => {
+      const clean =
+        String(
+          content.phoneText ||
+          ''
+        )
+          .replace(
+            /[^\d+]/g,
+            ''
+          )
+          .trim()
+
+      return clean
+        ? `tel:${clean}`
+        : ''
+    }, [
+      content.phoneText,
+    ])
 
   const handleChange = (
     event
@@ -116,15 +190,8 @@ export default function ContactPage({
 
         await contactSubmissionsService.createSubmission({
           name,
-
           email,
-
           phone,
-
-          /*
-           * Existing Firestore/Admin
-           * schema uses "comment".
-           */
           comment,
 
           source:
@@ -142,6 +209,7 @@ export default function ContactPage({
           type: 'success',
 
           text:
+            content.successMessage ||
             'Thank you. Your message has been sent successfully.',
         })
       } catch (error) {
@@ -198,46 +266,55 @@ export default function ContactPage({
               }`}
           >
             <ArrowLeft className="h-4 w-4" />
-
             Back
           </button>
 
+          {settingsLoading && (
+            <div
+              className={`mt-5 inline-flex items-center gap-2 text-xs ${isDark
+                  ? 'text-[#A99487]'
+                  : 'text-[#8A7467]'
+                }`}
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+
+              Loading contact information...
+            </div>
+          )}
+
           <div className="mt-7 grid grid-cols-1 items-start gap-6 lg:grid-cols-2 lg:gap-10">
-            {/* =====================
-                LEFT CONTENT
-            ====================== */}
+            {/* LEFT */}
             <div className="min-w-0">
-              <p
-                className={`text-xs font-semibold uppercase tracking-[0.2em] ${isDark
-                    ? 'text-[#D8AD87]'
-                    : 'text-[#8A654D]'
-                  }`}
-              >
-                Get in Touch
-              </p>
+              {content.subtitle && (
+                <p
+                  className={`text-xs font-semibold uppercase tracking-[0.2em] ${isDark
+                      ? 'text-[#D8AD87]'
+                      : 'text-[#8A654D]'
+                    }`}
+                >
+                  {content.subtitle}
+                </p>
+              )}
 
               <h1
-                className={`mt-3 text-3xl font-semibold tracking-[-0.035em] sm:text-4xl ${isDark
+                className={`mt-3 break-words text-3xl font-semibold tracking-[-0.035em] sm:text-4xl ${isDark
                     ? 'text-[#FFF8F1]'
                     : 'text-[#281912]'
                   }`}
               >
-                Contact Us
+                {content.pageTitle}
               </h1>
 
-              <p
-                className={`mt-4 max-w-xl text-sm leading-7 sm:text-[15px] ${isDark
-                    ? 'text-[#BDAEA5]'
-                    : 'text-[#6F5E54]'
-                  }`}
-              >
-                Have a question about
-                an order, a product, or
-                a custom request? Send
-                us a message and our
-                team will get back to
-                you as soon as possible.
-              </p>
+              {content.description && (
+                <p
+                  className={`mt-4 max-w-xl whitespace-pre-line break-words text-sm leading-7 sm:text-[15px] ${isDark
+                      ? 'text-[#BDAEA5]'
+                      : 'text-[#6F5E54]'
+                    }`}
+                >
+                  {content.description}
+                </p>
+              )}
 
               {/* Support Card */}
               <div
@@ -248,67 +325,162 @@ export default function ContactPage({
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-xl ${isDark
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDark
                         ? 'bg-[#35251E] text-[#D8AD87]'
                         : 'bg-[#F0E8E1] text-[#6B4228]'
                       }`}
                   >
-                    <MessageSquare className="h-5 w-5" />
+                    <Headphones className="h-5 w-5" />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <p
-                      className={`text-sm font-semibold ${isDark
+                      className={`break-words text-sm font-semibold ${isDark
                           ? 'text-[#FFF8F1]'
                           : 'text-[#281912]'
                         }`}
                     >
-                      Lamp &amp; Glow
-                      Support
+                      {content.supportTitle}
                     </p>
 
-                    <p
-                      className={`mt-0.5 text-xs ${isDark
-                          ? 'text-[#9F8F85]'
-                          : 'text-[#8A7467]'
-                        }`}
-                    >
-                      We&apos;re here to
-                      help.
-                    </p>
+                    {content.supportSubtitle && (
+                      <p
+                        className={`mt-0.5 text-xs ${isDark
+                            ? 'text-[#9F8F85]'
+                            : 'text-[#8A7467]'
+                          }`}
+                      >
+                        {content.supportSubtitle}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="mt-5 space-y-3">
-                  <ContactDetail
-                    icon={Mail}
-                    label="Email"
-                    value="support@lampandglow.com"
-                    href="mailto:support@lampandglow.com"
-                    isDark={isDark}
-                  />
+                  {content.email && (
+                    <ContactDetail
+                      icon={Mail}
+                      label="Email"
+                      value={content.email}
+                      href={`mailto:${content.email}`}
+                      isDark={isDark}
+                    />
+                  )}
 
-                  <ContactDetail
-                    icon={Phone}
-                    label="WhatsApp"
-                    value="(302)-052-1000"
-                    href="tel:3020521000"
-                    isDark={isDark}
-                  />
+                  {content.phoneText && (
+                    <ContactDetail
+                      icon={Phone}
+                      label="Phone / WhatsApp"
+                      value={content.phoneText}
+                      href={phoneHref}
+                      isDark={isDark}
+                    />
+                  )}
 
-                  <ContactDetail
-                    icon={MapPin}
-                    label="Location"
-                    value="Hameed Ullah Mokal Colony, Sahiwal"
-                    isDark={isDark}
-                  />
+                  {content.address && (
+                    <ContactDetail
+                      icon={MapPin}
+                      label="Location"
+                      value={content.address}
+                      isDark={isDark}
+                    />
+                  )}
                 </div>
+
+                {/* Opening Hours */}
+                {content.showOpeningHours &&
+                  content.openingHours && (
+                    <div
+                      className={`mt-6 border-t pt-5 ${isDark
+                          ? 'border-[#49352B]'
+                          : 'border-[#EEE5DF]'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Clock
+                          className={`h-4 w-4 ${isDark
+                              ? 'text-[#D8AD87]'
+                              : 'text-[#6B4228]'
+                            }`}
+                        />
+
+                        <p
+                          className={`text-sm font-semibold ${isDark
+                              ? 'text-[#FFF8F1]'
+                              : 'text-[#281912]'
+                            }`}
+                        >
+                          Opening Hours
+                        </p>
+                      </div>
+
+                      <p
+                        className={`mt-3 whitespace-pre-line text-xs leading-6 ${isDark
+                            ? 'text-[#A99487]'
+                            : 'text-[#7B685D]'
+                          }`}
+                      >
+                        {content.openingHours}
+                      </p>
+                    </div>
+                  )}
+
+                {/* Live Help */}
+                {content.showLiveHelp && (
+                  <div
+                    className={`mt-6 border-t pt-5 ${isDark
+                        ? 'border-[#49352B]'
+                        : 'border-[#EEE5DF]'
+                      }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <MessageSquare
+                        className={`h-4 w-4 ${isDark
+                            ? 'text-[#D8AD87]'
+                            : 'text-[#6B4228]'
+                          }`}
+                      />
+
+                      <h2
+                        className={`text-sm font-semibold ${isDark
+                            ? 'text-[#FFF8F1]'
+                            : 'text-[#281912]'
+                          }`}
+                      >
+                        {content.liveHelpTitle}
+                      </h2>
+                    </div>
+
+                    {content.liveHelpText && (
+                      <p
+                        className={`mt-2 whitespace-pre-line break-words text-xs leading-6 ${isDark
+                            ? 'text-[#A99487]'
+                            : 'text-[#7B685D]'
+                          }`}
+                      >
+                        {content.liveHelpText}
+                      </p>
+                    )}
+
+                    {content.whatsappLink && (
+                      <a
+                        href={content.whatsappLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-5 text-sm font-semibold text-white transition hover:bg-[#281912]"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+
+                        {content.whatsappButtonText ||
+                          'Message Us'}
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* =====================
-                FORM
-            ====================== */}
+            {/* FORM */}
             <div
               className={`rounded-3xl border p-5 shadow-[0_18px_50px_rgba(58,33,23,0.07)] sm:p-7 lg:p-8 ${isDark
                   ? 'border-[#49352B] bg-[#211711]'
@@ -325,36 +497,33 @@ export default function ContactPage({
                   <Send className="h-4 w-4" />
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <h2
-                    className={`text-lg font-semibold ${isDark
+                    className={`break-words text-lg font-semibold ${isDark
                         ? 'text-[#FFF8F1]'
                         : 'text-[#281912]'
                       }`}
                   >
-                    Send a Message
+                    {content.formTitle}
                   </h2>
 
-                  <p
-                    className={`mt-1 text-xs leading-5 ${isDark
-                        ? 'text-[#9F8F85]'
-                        : 'text-[#8A7467]'
-                      }`}
-                  >
-                    Fill in the form and
-                    we&apos;ll respond as
-                    soon as possible.
-                  </p>
+                  {content.formSubtitle && (
+                    <p
+                      className={`mt-1 break-words text-xs leading-5 ${isDark
+                          ? 'text-[#9F8F85]'
+                          : 'text-[#8A7467]'
+                        }`}
+                    >
+                      {content.formSubtitle}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <form
                 className="mt-6 grid grid-cols-1 gap-4"
-                onSubmit={
-                  handleSubmit
-                }
+                onSubmit={handleSubmit}
               >
-                {/* Name */}
                 <label className="grid gap-2">
                   <span
                     className={`text-xs font-semibold ${labelClass}`}
@@ -366,22 +535,15 @@ export default function ContactPage({
                     type="text"
                     name="name"
                     value={form.name}
-                    onChange={
-                      handleChange
-                    }
+                    onChange={handleChange}
                     autoComplete="name"
                     required
-                    disabled={
-                      submitting
-                    }
-                    className={
-                      inputClass
-                    }
+                    disabled={submitting}
+                    className={inputClass}
                     placeholder="Your name"
                   />
                 </label>
 
-                {/* Email */}
                 <label className="grid gap-2">
                   <span
                     className={`text-xs font-semibold ${labelClass}`}
@@ -393,22 +555,15 @@ export default function ContactPage({
                     type="email"
                     name="email"
                     value={form.email}
-                    onChange={
-                      handleChange
-                    }
+                    onChange={handleChange}
                     autoComplete="email"
                     required
-                    disabled={
-                      submitting
-                    }
-                    className={
-                      inputClass
-                    }
+                    disabled={submitting}
+                    className={inputClass}
                     placeholder="you@example.com"
                   />
                 </label>
 
-                {/* Phone */}
                 <label className="grid gap-2">
                   <span
                     className={`text-xs font-semibold ${labelClass}`}
@@ -420,21 +575,14 @@ export default function ContactPage({
                     type="tel"
                     name="phone"
                     value={form.phone}
-                    onChange={
-                      handleChange
-                    }
+                    onChange={handleChange}
                     autoComplete="tel"
-                    disabled={
-                      submitting
-                    }
-                    className={
-                      inputClass
-                    }
+                    disabled={submitting}
+                    className={inputClass}
                     placeholder="+92 300 0000000"
                   />
                 </label>
 
-                {/* Message */}
                 <label className="grid gap-2">
                   <span
                     className={`text-xs font-semibold ${labelClass}`}
@@ -444,25 +592,16 @@ export default function ContactPage({
 
                   <textarea
                     name="message"
-                    value={
-                      form.message
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={form.message}
+                    onChange={handleChange}
                     rows={6}
                     required
-                    disabled={
-                      submitting
-                    }
-                    className={
-                      textAreaClass
-                    }
+                    disabled={submitting}
+                    className={textAreaClass}
                     placeholder="Tell us how we can help..."
                   />
                 </label>
 
-                {/* Feedback */}
                 {submitMessage.text && (
                   <div
                     className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 ${submitMessage.type ===
@@ -483,20 +622,15 @@ export default function ContactPage({
                     )}
 
                     <p className="text-xs font-medium leading-5">
-                      {
-                        submitMessage.text
-                      }
+                      {submitMessage.text}
                     </p>
                   </div>
                 )}
 
-                {/* Submit */}
                 <button
                   type="submit"
-                  disabled={
-                    submitting
-                  }
-                  className={`mt-1 inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition-all duration-200 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transform-none ${isDark
+                  disabled={submitting}
+                  className={`mt-1 inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition-all duration-200 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${isDark
                       ? 'bg-[#D8AD87] text-[#281912] hover:bg-[#E8C09E]'
                       : 'bg-[#3A2117] text-[#FFFEFC] hover:bg-[#281912]'
                     }`}
@@ -504,29 +638,28 @@ export default function ContactPage({
                   {submitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-
                       Sending...
                     </>
                   ) : (
                     <>
                       <Send className="h-4 w-4" />
 
-                      Send Message
+                      {content.submitButtonText ||
+                        'Send Message'}
                     </>
                   )}
                 </button>
 
-                <p
-                  className={`text-center text-[10px] leading-5 ${isDark
-                      ? 'text-[#84756D]'
-                      : 'text-[#9A8478]'
-                    }`}
-                >
-                  Your message will be
-                  sent directly to the
-                  Lamp &amp; Glow
-                  support team.
-                </p>
+                {content.formNote && (
+                  <p
+                    className={`text-center text-[10px] leading-5 ${isDark
+                        ? 'text-[#84756D]'
+                        : 'text-[#9A8478]'
+                      }`}
+                  >
+                    {content.formNote}
+                  </p>
+                )}
               </form>
             </div>
           </div>
@@ -544,7 +677,7 @@ function ContactDetail({
   isDark,
 }) {
   const content = (
-    <div className="flex min-w-0 items-center gap-3">
+    <div className="flex min-w-0 items-start gap-3">
       <div
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${isDark
             ? 'bg-[#33231C] text-[#D8AD87]'
@@ -565,7 +698,7 @@ function ContactDetail({
         </p>
 
         <p
-          className={`mt-0.5 break-words text-sm font-medium ${isDark
+          className={`mt-0.5 whitespace-pre-line break-words text-sm font-medium leading-6 ${isDark
               ? 'text-[#DCCDC4]'
               : 'text-[#4E3D34]'
             }`}
