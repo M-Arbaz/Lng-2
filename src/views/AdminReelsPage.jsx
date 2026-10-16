@@ -1,567 +1,1526 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
 import {
-  Plus,
-  Edit,
-  Trash2,
-  Search,
-  X,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+
+import {
   AlertCircle,
   CheckCircle,
+  Clapperboard,
+  Edit,
   Eye,
   EyeOff,
+  Image as ImageIcon,
+  Link2,
   Loader2,
-  Save,
-  Video,
-  Upload,
-  Link as LinkIcon,
   Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  Upload,
+  Video,
+  X,
 } from 'lucide-react'
+
 import AdminLayout from '../components/AdminLayout'
 import reelsService from '../utils/reelsService'
 
+const createInitialForm = () => ({
+  title: '',
+  caption: '',
+  videoUrl: '',
+  poster: '',
+  isActive: true,
+})
+
+const createInitialModes = () => ({
+  video: 'url',
+  poster: 'url',
+})
+
+const inputClass =
+  'w-full rounded-xl border border-[#DED1C8] bg-[#FFFEFC] px-4 py-3 text-sm text-[#281912] outline-none transition placeholder:text-[#A6978F] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10'
+
 export default function AdminReelsPage() {
-  const [reels, setReels] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [message, setMessage] = useState({ type: '', text: '' })
-  const [saving, setSaving] = useState(false)
-  const [uploadingVideo, setUploadingVideo] = useState(false)
-  const [uploadingPoster, setUploadingPoster] = useState(false)
-  const [previewReel, setPreviewReel] = useState(null)
-  const [inputMode, setInputMode] = useState({ video: 'url', poster: 'url' })
-  const videoFileRef = useRef(null)
-  const posterFileRef = useRef(null)
+  const [reels, setReels] =
+    useState([])
 
-  const [formData, setFormData] = useState({
-    title: '',
-    caption: '',
-    videoUrl: '',
-    poster: '',
-    isActive: true,
-  })
+  const [loading, setLoading] =
+    useState(true)
 
-  // Load reels from Firebase
+  const [searchQuery, setSearchQuery] =
+    useState('')
+
+  const [showForm, setShowForm] =
+    useState(false)
+
+  const [editingId, setEditingId] =
+    useState(null)
+
+  const [formData, setFormData] =
+    useState(createInitialForm)
+
+  const [inputMode, setInputMode] =
+    useState(createInitialModes)
+
+  const [saving, setSaving] =
+    useState(false)
+
+  const [
+    uploadingVideo,
+    setUploadingVideo,
+  ] = useState(false)
+
+  const [
+    uploadingPoster,
+    setUploadingPoster,
+  ] = useState(false)
+
+  const [deletingId, setDeletingId] =
+    useState(null)
+
+  const [togglingId, setTogglingId] =
+    useState(null)
+
+  const [previewReel, setPreviewReel] =
+    useState(null)
+
+  const [message, setMessage] =
+    useState({
+      type: '',
+      text: '',
+    })
+
+  const videoFileRef =
+    useRef(null)
+
+  const posterFileRef =
+    useRef(null)
+
+  const messageTimerRef =
+    useRef(null)
+
+  const formBusy =
+    saving ||
+    uploadingVideo ||
+    uploadingPoster
+
+  const showMessage = (
+    type,
+    text
+  ) => {
+    if (messageTimerRef.current) {
+      window.clearTimeout(
+        messageTimerRef.current
+      )
+    }
+
+    setMessage({
+      type,
+      text,
+    })
+
+    messageTimerRef.current =
+      window.setTimeout(() => {
+        setMessage({
+          type: '',
+          text: '',
+        })
+      }, 3500)
+  }
+
   useEffect(() => {
-    const loadReels = async () => {
-      try {
-        setLoading(true)
-        const data = await reelsService.getAllReels()
-        setReels(data)
-      } catch (e) {
-        console.error('Error loading reels:', e)
-        setMessage({ type: 'error', text: 'Failed to load reels' })
-      } finally {
-        setLoading(false)
+    return () => {
+      if (
+        messageTimerRef.current
+      ) {
+        window.clearTimeout(
+          messageTimerRef.current
+        )
       }
     }
+  }, [])
+
+  const loadReels = async () => {
+    try {
+      setLoading(true)
+
+      const data =
+        await reelsService.getAllReels()
+
+      setReels(
+        Array.isArray(data)
+          ? data
+          : []
+      )
+    } catch (error) {
+      console.error(
+        'Error loading reels:',
+        error
+      )
+
+      showMessage(
+        'error',
+        'Failed to load reels.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     loadReels()
   }, [])
 
-  const handleOpenForm = (reel = null) => {
-    if (reel) {
-      setEditingId(reel.id)
-      setFormData({
-        title: reel.title,
-        caption: reel.caption || '',
-        videoUrl: reel.videoUrl || '',
-        poster: reel.poster || '',
-        isActive: reel.isActive !== false,
-      })
-    } else {
-      setEditingId(null)
-      setFormData({
-        title: '',
-        caption: '',
-        videoUrl: '',
-        poster: '',
-        isActive: true,
-      })
+  const filteredReels =
+    useMemo(() => {
+      const query =
+        searchQuery
+          .trim()
+          .toLowerCase()
+
+      if (!query) {
+        return reels
+      }
+
+      return reels.filter(
+        (reel) =>
+          [
+            reel.title,
+            reel.caption,
+            reel.videoUrl,
+          ].some((value) =>
+            String(value || '')
+              .toLowerCase()
+              .includes(query)
+          )
+      )
+    }, [
+      reels,
+      searchQuery,
+    ])
+
+  const stats =
+    useMemo(() => ({
+      total:
+        reels.length,
+
+      active:
+        reels.filter(
+          (reel) =>
+            reel.isActive !== false
+        ).length,
+
+      inactive:
+        reels.filter(
+          (reel) =>
+            reel.isActive === false
+        ).length,
+
+      posters:
+        reels.filter(
+          (reel) =>
+            Boolean(reel.poster)
+        ).length,
+    }), [reels])
+
+  const resetFormState = () => {
+    setFormData(
+      createInitialForm()
+    )
+
+    setInputMode(
+      createInitialModes()
+    )
+
+    setEditingId(null)
+
+    if (videoFileRef.current) {
+      videoFileRef.current.value =
+        ''
     }
-    setInputMode({ video: 'url', poster: 'url' })
+
+    if (posterFileRef.current) {
+      posterFileRef.current.value =
+        ''
+    }
+  }
+
+  const openCreateForm = () => {
+    resetFormState()
     setShowForm(true)
   }
 
-  const handleCloseForm = () => {
-    setShowForm(false)
-    setEditingId(null)
+  const handleEdit = (reel) => {
+    setEditingId(reel.id)
+
     setFormData({
-      title: '',
-      caption: '',
-      videoUrl: '',
-      poster: '',
-      isActive: true,
+      title:
+        reel.title || '',
+
+      caption:
+        reel.caption || '',
+
+      videoUrl:
+        reel.videoUrl || '',
+
+      poster:
+        reel.poster || '',
+
+      isActive:
+        reel.isActive !== false,
     })
-    setInputMode({ video: 'url', poster: 'url' })
+
+    setInputMode(
+      createInitialModes()
+    )
+
+    setShowForm(true)
   }
 
-  const handleSave = async (e) => {
-    e.preventDefault()
+  const closeForm = () => {
+    if (formBusy) return
 
-    if (!formData.title.trim()) {
-      setMessage({ type: 'error', text: 'Reel title is required' })
-      return
-    }
+    setShowForm(false)
+    resetFormState()
+  }
 
-    if (!formData.videoUrl.trim()) {
-      setMessage({ type: 'error', text: 'Video URL is required' })
-      return
-    }
+  const handleChange = (
+    event
+  ) => {
+    const {
+      name,
+      value,
+      type,
+      checked,
+    } = event.target
 
-    try {
-      setSaving(true)
-      if (editingId) {
-        await reelsService.updateReel(editingId, formData)
-        const updated = await reelsService.getAllReels()
-        setReels(updated)
-        setMessage({ type: 'success', text: 'Reel updated successfully' })
-      } else {
-        await reelsService.createReel(formData)
-        const updated = await reelsService.getAllReels()
-        setReels(updated)
-        setMessage({ type: 'success', text: 'Reel created successfully' })
+    setFormData((prev) => ({
+      ...prev,
+
+      [name]:
+        type === 'checkbox'
+          ? checked
+          : value,
+    }))
+  }
+
+  const handleVideoUpload =
+    async (event) => {
+      const file =
+        event.target.files?.[0]
+
+      if (!file) return
+
+      try {
+        setUploadingVideo(true)
+
+        const url =
+          await reelsService.uploadVideo(
+            file
+          )
+
+        setFormData((prev) => ({
+          ...prev,
+          videoUrl: url,
+        }))
+
+        showMessage(
+          'success',
+          'Reel video uploaded to XCDN.'
+        )
+      } catch (error) {
+        console.error(
+          'Reel video upload failed:',
+          error
+        )
+
+        showMessage(
+          'error',
+          error?.message ||
+          'Failed to upload reel video.'
+        )
+      } finally {
+        setUploadingVideo(false)
+
+        if (videoFileRef.current) {
+          videoFileRef.current.value =
+            ''
+        }
       }
-      handleCloseForm()
-    } catch (error) {
-      console.error('Error saving reel:', error)
-      setMessage({ type: 'error', text: 'Failed to save reel' })
-    } finally {
-      setSaving(false)
     }
-  }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this reel?')) return
+  const handlePosterUpload =
+    async (event) => {
+      const file =
+        event.target.files?.[0]
+
+      if (!file) return
+
+      try {
+        setUploadingPoster(true)
+
+        const url =
+          await reelsService.uploadPoster(
+            file
+          )
+
+        setFormData((prev) => ({
+          ...prev,
+          poster: url,
+        }))
+
+        showMessage(
+          'success',
+          'Reel poster uploaded to XCDN.'
+        )
+      } catch (error) {
+        console.error(
+          'Reel poster upload failed:',
+          error
+        )
+
+        showMessage(
+          'error',
+          error?.message ||
+          'Failed to upload reel poster.'
+        )
+      } finally {
+        setUploadingPoster(false)
+
+        if (posterFileRef.current) {
+          posterFileRef.current.value =
+            ''
+        }
+      }
+    }
+
+  const handleSave = async (
+    event
+  ) => {
+    event.preventDefault()
+
+    const title =
+      formData.title.trim()
+
+    const videoUrl =
+      formData.videoUrl.trim()
+
+    if (!title) {
+      showMessage(
+        'error',
+        'Reel title is required.'
+      )
+
+      return
+    }
+
+    if (!videoUrl) {
+      showMessage(
+        'error',
+        'Reel video is required.'
+      )
+
+      return
+    }
+
+    const payload = {
+      title,
+
+      caption:
+        formData.caption.trim(),
+
+      videoUrl,
+
+      poster:
+        formData.poster.trim(),
+
+      isActive:
+        formData.isActive,
+    }
 
     try {
       setSaving(true)
-      await reelsService.deleteReel(id)
-      const updated = await reelsService.getAllReels()
-      setReels(updated)
-      setMessage({ type: 'success', text: 'Reel deleted successfully' })
+
+      if (editingId) {
+        const updated =
+          await reelsService.updateReel(
+            editingId,
+            payload
+          )
+
+        setReels((prev) =>
+          prev.map((reel) =>
+            reel.id === editingId
+              ? {
+                ...reel,
+                ...updated,
+              }
+              : reel
+          )
+        )
+
+        showMessage(
+          'success',
+          'Reel updated successfully.'
+        )
+      } else {
+        const created =
+          await reelsService.createReel(
+            payload
+          )
+
+        setReels((prev) => [
+          created,
+          ...prev,
+        ])
+
+        showMessage(
+          'success',
+          'Reel created successfully.'
+        )
+      }
+
+      setShowForm(false)
+      resetFormState()
     } catch (error) {
-      console.error('Error deleting reel:', error)
-      setMessage({ type: 'error', text: 'Failed to delete reel' })
+      console.error(
+        'Error saving reel:',
+        error
+      )
+
+      showMessage(
+        'error',
+        error?.message ||
+        'Failed to save reel.'
+      )
     } finally {
       setSaving(false)
     }
   }
 
-  const handleToggleActive = async (id, currentStatus) => {
+  const handleDelete = async (
+    reel
+  ) => {
+    const confirmed =
+      window.confirm(
+        `Delete "${reel.title ||
+        'this reel'
+        }"? This action cannot be undone.`
+      )
+
+    if (!confirmed) return
+
     try {
-      setSaving(true)
-      await reelsService.toggleReelActive(id, !currentStatus)
-      const updated = await reelsService.getAllReels()
-      setReels(updated)
-      setMessage({ type: 'success', text: `Reel ${!currentStatus ? 'activated' : 'deactivated'} successfully` })
+      setDeletingId(reel.id)
+
+      await reelsService.deleteReel(
+        reel.id
+      )
+
+      setReels((prev) =>
+        prev.filter(
+          (item) =>
+            item.id !== reel.id
+        )
+      )
+
+      if (
+        previewReel?.id ===
+        reel.id
+      ) {
+        setPreviewReel(null)
+      }
+
+      showMessage(
+        'success',
+        'Reel deleted successfully.'
+      )
     } catch (error) {
-      console.error('Error toggling active status:', error)
-      setMessage({ type: 'error', text: 'Failed to update active status' })
+      console.error(
+        'Error deleting reel:',
+        error
+      )
+
+      showMessage(
+        'error',
+        'Failed to delete reel.'
+      )
     } finally {
-      setSaving(false)
+      setDeletingId(null)
     }
   }
 
-  const handleVideoUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      setUploadingVideo(true)
-      const url = await reelsService.uploadVideo(file)
-      setFormData((prev) => ({ ...prev, videoUrl: url }))
-      setMessage({ type: 'success', text: 'Video uploaded successfully' })
-    } catch (error) {
-      console.error('Error uploading video:', error)
-      setMessage({ type: 'error', text: 'Failed to upload video' })
-    } finally {
-      setUploadingVideo(false)
-    }
-  }
+  const handleToggleActive =
+    async (reel) => {
+      const nextActive =
+        reel.isActive === false
 
-  const handlePosterUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      setUploadingPoster(true)
-      const url = await reelsService.uploadPoster(file)
-      setFormData((prev) => ({ ...prev, poster: url }))
-      setMessage({ type: 'success', text: 'Poster uploaded successfully' })
-    } catch (error) {
-      console.error('Error uploading poster:', error)
-      setMessage({ type: 'error', text: 'Failed to upload poster' })
-    } finally {
-      setUploadingPoster(false)
-    }
-  }
+      try {
+        setTogglingId(reel.id)
 
-  const filteredReels = reels.filter(
-    (reel) =>
-      reel.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (reel.caption || '').toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+        await reelsService.toggleReelActive(
+          reel.id,
+          nextActive
+        )
+
+        setReels((prev) =>
+          prev.map((item) =>
+            item.id === reel.id
+              ? {
+                ...item,
+                isActive:
+                  nextActive,
+              }
+              : item
+          )
+        )
+
+        showMessage(
+          'success',
+          nextActive
+            ? 'Reel activated.'
+            : 'Reel hidden from storefront.'
+        )
+      } catch (error) {
+        console.error(
+          'Error updating reel visibility:',
+          error
+        )
+
+        showMessage(
+          'error',
+          'Failed to update reel visibility.'
+        )
+      } finally {
+        setTogglingId(null)
+      }
+    }
 
   return (
     <AdminLayout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Reels Management</h1>
-            <p className="text-gray-600 dark:text-gray-400">Create and manage video reels for your store</p>
+      <div className="space-y-6">
+        {/* Header */}
+        <section className="overflow-hidden rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.06)]">
+          <div className="flex flex-col gap-5 px-5 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#3A2117] text-[#FFFEFC]">
+                <Clapperboard className="h-6 w-6" />
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#9A7A68]">
+                  Storefront
+                </p>
+
+                <h1 className="text-2xl font-semibold tracking-tight text-[#281912] sm:text-3xl">
+                  Reels
+                </h1>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#7B685D]">
+                  Create and manage
+                  short-form videos,
+                  posters, captions and
+                  storefront visibility.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                openCreateForm
+              }
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-5 py-3 text-sm font-semibold text-[#FFFEFC] transition hover:bg-[#281912] sm:w-auto"
+            >
+              <Plus className="h-4 w-4" />
+
+              Add Reel
+            </button>
           </div>
+        </section>
 
-          {/* Messages */}
-          {message.text && (
-            <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${message.type === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-[#22C55E]'}`}>
-              {message.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle size={20} />}
-              {message.text}
-            </div>
-          )}
-
-          {/* Preview Modal */}
-          {previewReel && (
-            <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
-                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{previewReel.title}</h3>
-                  <button onClick={() => setPreviewReel(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                    <X size={20} className="text-gray-600 dark:text-gray-400" />
-                  </button>
-                </div>
-                <div className="p-4">
-                  <video
-                    className="w-full rounded-lg bg-black"
-                    src={previewReel.videoUrl}
-                    poster={previewReel.poster}
-                    controls
-                    playsInline
-                    preload="metadata"
-                  />
-                  <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">{previewReel.caption}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Form Section */}
-            {showForm && (
-              <div className="lg:col-span-1">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sticky top-4 max-h-[90vh] overflow-y-auto">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      {editingId ? 'Edit Reel' : 'Create New Reel'}
-                    </h2>
-                    <button
-                      onClick={handleCloseForm}
-                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                    >
-                      <X size={20} className="text-gray-600 dark:text-gray-400" />
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleSave} className="space-y-4">
-                    {/* Title */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Reel Title *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.title}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                        placeholder="e.g., Warm Glow Corner Setup"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    </div>
-
-                    {/* Caption */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Caption / Description
-                      </label>
-                      <textarea
-                        value={formData.caption}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, caption: e.target.value }))}
-                        placeholder="Short description for the reel"
-                        rows="3"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    </div>
-
-                    {/* Video Input */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Video *
-                      </label>
-                      <div className="flex gap-2 mb-2">
-                        <button
-                          type="button"
-                          onClick={() => setInputMode((prev) => ({ ...prev, video: 'url' }))}
-                          className={`px-3 py-1 rounded text-xs font-medium ${inputMode.video === 'url' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-                        >
-                          <LinkIcon size={12} className="inline mr-1" />
-                          URL
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setInputMode((prev) => ({ ...prev, video: 'upload' }))}
-                          className={`px-3 py-1 rounded text-xs font-medium ${inputMode.video === 'upload' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-                        >
-                          <Upload size={12} className="inline mr-1" />
-                          Upload
-                        </button>
-                      </div>
-
-                      {inputMode.video === 'url' ? (
-                        <input
-                          type="url"
-                          value={formData.videoUrl}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, videoUrl: e.target.value }))}
-                          placeholder="https://example.com/video.mp4"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        />
-                      ) : (
-                        <div className="space-y-2">
-                          <input
-                            ref={videoFileRef}
-                            type="file"
-                            accept="video/*"
-                            onChange={handleVideoUpload}
-                            className="hidden"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => videoFileRef.current?.click()}
-                            disabled={uploadingVideo}
-                            className="w-full px-3 py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-center gap-2"
-                          >
-                            {uploadingVideo ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                            {uploadingVideo ? 'Uploading...' : formData.videoUrl ? 'Replace Video' : 'Upload Video'}
-                          </button>
-                          {formData.videoUrl && (
-                            <p className="text-xs text-[#22C55E] dark:text-[#22C55E] truncate">{formData.videoUrl}</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Poster Input */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Poster / Thumbnail
-                      </label>
-                      <div className="flex gap-2 mb-2">
-                        <button
-                          type="button"
-                          onClick={() => setInputMode((prev) => ({ ...prev, poster: 'url' }))}
-                          className={`px-3 py-1 rounded text-xs font-medium ${inputMode.poster === 'url' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-                        >
-                          <LinkIcon size={12} className="inline mr-1" />
-                          URL
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setInputMode((prev) => ({ ...prev, poster: 'upload' }))}
-                          className={`px-3 py-1 rounded text-xs font-medium ${inputMode.poster === 'upload' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-                        >
-                          <Upload size={12} className="inline mr-1" />
-                          Upload
-                        </button>
-                      </div>
-
-                      {inputMode.poster === 'url' ? (
-                        <input
-                          type="url"
-                          value={formData.poster}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, poster: e.target.value }))}
-                          placeholder="https://example.com/poster.jpg"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        />
-                      ) : (
-                        <div className="space-y-2">
-                          <input
-                            ref={posterFileRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handlePosterUpload}
-                            className="hidden"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => posterFileRef.current?.click()}
-                            disabled={uploadingPoster}
-                            className="w-full px-3 py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-center gap-2"
-                          >
-                            {uploadingPoster ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                            {uploadingPoster ? 'Uploading...' : formData.poster ? 'Replace Poster' : 'Upload Poster'}
-                          </button>
-                          {formData.poster && (
-                            <img
-                              src={formData.poster}
-                              alt="Poster preview"
-                              className="w-full h-24 object-cover rounded-lg"
-                              onError={(e) => { e.target.style.display = 'none' }}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Active Status */}
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="isActive"
-                        checked={formData.isActive}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))}
-                        className="rounded"
-                      />
-                      <label htmlFor="isActive" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Active (visible to users)
-                      </label>
-                    </div>
-
-                    {/* Save Button */}
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
-                    >
-                      {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                      {saving ? 'Saving...' : 'Save Reel'}
-                    </button>
-                  </form>
-                </div>
-              </div>
+        {/* Message */}
+        {message.text && (
+          <div
+            className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-sm ${message.type ===
+              'success'
+              ? 'border-[#CFE1D1] bg-[#F3F9F3] text-[#426649]'
+              : 'border-[#E8C9C3] bg-[#FFF4F1] text-[#93483C]'
+              }`}
+          >
+            {message.type ===
+              'success' ? (
+              <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            ) : (
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
             )}
 
-            {/* List Section */}
-            <div className={showForm ? 'lg:col-span-2' : 'lg:col-span-3'}>
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-3 text-gray-400" size={20} />
-                  <input
-                    type="text"
-                    placeholder="Search reels..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <button
-                  onClick={() => handleOpenForm()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg flex items-center gap-2 transition-colors"
-                >
-                  <Plus size={20} />
-                  New Reel
-                </button>
-              </div>
+            <p className="text-sm font-medium">
+              {message.text}
+            </p>
+          </div>
+        )}
 
-              {loading ? (
-                <div className="text-center py-12">
-                  <Loader2 size={32} className="animate-spin mx-auto text-blue-600 mb-2" />
-                  <p className="text-gray-600 dark:text-gray-400">Loading reels...</p>
-                </div>
-              ) : filteredReels.length === 0 ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
-                  <Video size={48} className="mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">No reels created yet</p>
-                  <button
-                    onClick={() => handleOpenForm()}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg inline-flex items-center gap-2 transition-colors"
+        {/* Stats */}
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            icon={Video}
+            label="Total Reels"
+            value={stats.total}
+            text="Configured videos"
+          />
+
+          <StatCard
+            icon={Eye}
+            label="Active"
+            value={stats.active}
+            text="Visible to customers"
+          />
+
+          <StatCard
+            icon={EyeOff}
+            label="Inactive"
+            value={stats.inactive}
+            text="Currently hidden"
+          />
+
+          <StatCard
+            icon={ImageIcon}
+            label="With Poster"
+            value={stats.posters}
+            text="Thumbnail configured"
+          />
+        </section>
+
+        {/* Search */}
+        <section className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-4 shadow-[0_8px_24px_rgba(58,33,23,0.04)] sm:p-5">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9A8478]" />
+
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) =>
+                setSearchQuery(
+                  event.target.value
+                )
+              }
+              placeholder="Search reel title, caption or video URL..."
+              className="w-full rounded-xl border border-[#DED1C8] bg-[#FDFBF8] py-3 pl-11 pr-4 text-sm text-[#281912] outline-none transition placeholder:text-[#A6978F] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10"
+            />
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#EEE5DF] pt-4">
+            <p className="text-sm text-[#7B685D]">
+              Showing{' '}
+              <span className="font-semibold text-[#3A2117]">
+                {
+                  filteredReels.length
+                }
+              </span>{' '}
+              of {reels.length} reels
+            </p>
+
+            <button
+              type="button"
+              onClick={loadReels}
+              disabled={loading}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[#6B4228] transition hover:text-[#281912] disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${loading
+                  ? 'animate-spin'
+                  : ''
+                  }`}
+              />
+
+              Refresh
+            </button>
+          </div>
+        </section>
+
+        {/* Reel list */}
+        {loading ? (
+          <section className="flex min-h-[320px] items-center justify-center rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC]">
+            <div className="text-center">
+              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6B4228]" />
+
+              <p className="mt-3 text-sm font-medium text-[#7B685D]">
+                Loading reels...
+              </p>
+            </div>
+          </section>
+        ) : filteredReels.length ===
+          0 ? (
+          <section className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] px-6 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F0E8E1] text-[#6B4228]">
+              <Clapperboard className="h-7 w-7" />
+            </div>
+
+            <h3 className="mt-4 text-lg font-semibold text-[#281912]">
+              No reels found
+            </h3>
+
+            <p className="mt-1 max-w-sm text-sm text-[#8A7467]">
+              {searchQuery
+                ? 'Try adjusting your search.'
+                : 'Add your first Lamp & Glow reel.'}
+            </p>
+          </section>
+        ) : (
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {filteredReels.map(
+              (reel) => {
+                const active =
+                  reel.isActive !==
+                  false
+
+                return (
+                  <article
+                    key={reel.id}
+                    className={`overflow-hidden rounded-2xl border bg-[#FFFEFC] shadow-[0_10px_30px_rgba(58,33,23,0.05)] transition ${active
+                      ? 'border-[#E7DCD4]'
+                      : 'border-[#E6DDD7] opacity-75'
+                      }`}
                   >
-                    <Plus size={20} />
-                    Create First Reel
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {filteredReels.map((reel) => (
-                    <div key={reel.id} className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
-                      {/* Thumbnail */}
-                      <div className="relative bg-black aspect-video">
-                        {reel.poster ? (
-                          <img
-                            src={reel.poster}
-                            alt={reel.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => { e.target.style.display = 'none' }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-900">
-                            <Video size={40} className="text-gray-600" />
-                          </div>
-                        )}
-                        <button
-                          onClick={() => setPreviewReel(reel)}
-                          className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/50 transition-colors"
-                        >
-                          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                            <Play size={20} className="text-gray-900 ml-1" />
-                          </div>
-                        </button>
-                        <span
-                          className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full ${
-                            reel.isActive !== false
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-[#22C55E]'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
+                    {/* Media */}
+                    <div className="group relative aspect-[9/16] w-full max-h-[430px] overflow-hidden bg-[#1E1714]">
+                      {reel.poster ? (
+                        <img
+                          src={
+                            reel.poster
+                          }
+                          alt={
+                            reel.title ||
+                            'Reel poster'
+                          }
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                        />
+                      ) : (
+                        <video
+                          src={
+                            reel.videoUrl
+                          }
+                          muted
+                          playsInline
+                          preload="metadata"
+                          className="h-full w-full object-cover"
+                        />
+                      )}
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#1C100B]/65 via-transparent to-black/10" />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreviewReel(
+                            reel
+                          )
+                        }
+                        className="absolute inset-0 flex items-center justify-center"
+                        aria-label={`Preview ${reel.title ||
+                          'reel'
                           }`}
-                        >
-                          {reel.isActive !== false ? 'Active' : 'Inactive'}
+                      >
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/90 text-[#3A2117] shadow-lg transition group-hover:scale-110">
+                          <Play className="ml-0.5 h-5 w-5 fill-current" />
+                        </span>
+                      </button>
+
+                      <div className="absolute left-3 top-3">
+                        <span className="rounded-full bg-black/35 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-md">
+                          Reel
                         </span>
                       </div>
 
-                      {/* Info */}
-                      <div className="p-4">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate mb-1">
-                          {reel.title}
-                        </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">
-                          {reel.caption || 'No caption'}
-                        </p>
+                      <div className="absolute right-3 top-3">
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md ${active
+                            ? 'border-emerald-200/40 bg-emerald-950/45 text-emerald-100'
+                            : 'border-white/20 bg-black/45 text-white/80'
+                            }`}
+                        >
+                          {active
+                            ? 'Active'
+                            : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
 
-                        <div className="flex gap-2">
+                    {/* Information */}
+                    <div className="p-4">
+                      <h3 className="truncate text-base font-semibold text-[#281912]">
+                        {reel.title ||
+                          'Untitled Reel'}
+                      </h3>
+
+                      <p className="mt-1.5 min-h-[40px] line-clamp-2 text-xs leading-5 text-[#7B685D]">
+                        {reel.caption ||
+                          'No caption added.'}
+                      </p>
+
+                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#EEE5DF] pt-4">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleToggleActive(
+                              reel
+                            )
+                          }
+                          disabled={
+                            togglingId ===
+                            reel.id
+                          }
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${active
+                            ? 'border-[#C5DBC9] bg-[#EFF8F0] text-[#44704B]'
+                            : 'border-[#DDD4CE] bg-[#F7F4EF] text-[#75645A]'
+                            }`}
+                        >
+                          {togglingId ===
+                            reel.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : active ? (
+                            <Eye className="h-3.5 w-3.5" />
+                          ) : (
+                            <EyeOff className="h-3.5 w-3.5" />
+                          )}
+
+                          {active
+                            ? 'Active'
+                            : 'Inactive'}
+                        </button>
+
+                        <div className="flex items-center gap-1">
                           <button
-                            onClick={() => handleToggleActive(reel.id, reel.isActive !== false)}
-                            disabled={saving}
-                            title={reel.isActive !== false ? 'Deactivate' : 'Activate'}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
+                            type="button"
+                            onClick={() =>
+                              setPreviewReel(
+                                reel
+                              )
+                            }
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B4228] transition hover:bg-[#F7F4EF]"
+                            title="Preview"
                           >
-                            {reel.isActive !== false ? (
-                              <Eye size={18} className="text-[#22C55E]" />
+                            <Play className="h-4 w-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleEdit(
+                                reel
+                              )
+                            }
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B4228] transition hover:bg-[#F7F4EF]"
+                            title="Edit"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDelete(
+                                reel
+                              )
+                            }
+                            disabled={
+                              deletingId ===
+                              reel.id
+                            }
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#954B42] transition hover:bg-[#FFF2EF] disabled:opacity-50"
+                            title="Delete"
+                          >
+                            {deletingId ===
+                              reel.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <EyeOff size={18} className="text-gray-400" />
+                              <Trash2 className="h-4 w-4" />
                             )}
-                          </button>
-                          <button
-                            onClick={() => handleOpenForm(reel)}
-                            disabled={saving}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-                          >
-                            <Edit size={18} className="text-blue-600" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(reel.id)}
-                            disabled={saving}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-                          >
-                            <Trash2 size={18} className="text-[#E53935]" />
                           </button>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </article>
+                )
+              }
+            )}
+          </section>
+        )}
+      </div>
+
+      {/* Preview modal */}
+      {previewReel && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#281912]/75 p-3 backdrop-blur-[3px] sm:p-5">
+          <div className="flex max-h-[94vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#FFFEFC] shadow-[0_30px_90px_rgba(0,0,0,0.38)]">
+            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-[#E8DDD5] px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#9A7A68]">
+                  Reel Preview
+                </p>
+
+                <h3 className="mt-1 truncate text-base font-semibold text-[#281912]">
+                  {previewReel.title}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setPreviewReel(null)
+                }
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#7B685D] transition hover:bg-[#F2ECE7]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 overflow-y-auto bg-[#F7F4EF] p-4">
+              <div className="mx-auto overflow-hidden rounded-2xl bg-black">
+                <video
+                  key={
+                    previewReel.videoUrl
+                  }
+                  src={
+                    previewReel.videoUrl
+                  }
+                  poster={
+                    previewReel.poster ||
+                    undefined
+                  }
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                  preload="metadata"
+                  className="aspect-[9/16] max-h-[72vh] w-full object-cover"
+                />
+              </div>
+
+              {previewReel.caption && (
+                <p className="mt-4 text-sm leading-6 text-[#6F5E54]">
+                  {
+                    previewReel.caption
+                  }
+                </p>
               )}
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Create / Edit modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#281912]/60 p-3 backdrop-blur-[2px] sm:p-5">
+          <div className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[#DCCFC6] bg-[#FFFEFC] shadow-[0_28px_80px_rgba(40,25,18,0.30)]">
+            {/* Fixed Header */}
+            <div className="shrink-0 border-b border-[#E8DDD5] bg-[#FFFEFC] px-5 py-4 sm:px-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#3A2117] text-white">
+                    <Clapperboard className="h-5 w-5" />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9A7A68]">
+                      Storefront
+                    </p>
+
+                    <h3 className="mt-0.5 text-lg font-semibold text-[#281912] sm:text-xl">
+                      {editingId
+                        ? 'Edit Reel'
+                        : 'Add Reel'}
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  disabled={formBusy}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#7B685D] transition hover:bg-[#F2ECE7] disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <form
+              onSubmit={handleSave}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              {/* Scrollable form */}
+              <div className="min-h-0 flex-1 overflow-y-auto bg-[#F7F4EF]/70 p-4 sm:p-6">
+                <div className="space-y-5">
+                  {/* Information */}
+                  <FormSection
+                    eyebrow="Content"
+                    title="Reel Information"
+                    description="Add a clear reel title and an optional supporting caption."
+                  >
+                    <div className="space-y-4">
+                      <div>
+                        <FieldLabel>
+                          Reel Title *
+                        </FieldLabel>
+
+                        <input
+                          type="text"
+                          name="title"
+                          value={
+                            formData.title
+                          }
+                          onChange={
+                            handleChange
+                          }
+                          placeholder="e.g. Warm Glow Corner Setup"
+                          className={
+                            inputClass
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <FieldLabel>
+                          Caption / Description
+                        </FieldLabel>
+
+                        <textarea
+                          name="caption"
+                          value={
+                            formData.caption
+                          }
+                          onChange={
+                            handleChange
+                          }
+                          rows={4}
+                          placeholder="Short description for this reel..."
+                          className={`${inputClass} resize-none`}
+                        />
+                      </div>
+                    </div>
+                  </FormSection>
+
+                  {/* Video */}
+                  <FormSection
+                    eyebrow="Video"
+                    title="Reel Video"
+                    description="Use an existing direct video URL or upload the video directly to Lamp & Glow XCDN."
+                  >
+                    <ModeButtons
+                      value={
+                        inputMode.video
+                      }
+                      onChange={(mode) =>
+                        setInputMode(
+                          (prev) => ({
+                            ...prev,
+                            video:
+                              mode,
+                          })
+                        )
+                      }
+                      uploadLabel="Upload Video"
+                    />
+
+                    {inputMode.video ===
+                      'url' ? (
+                      <div className="mt-4">
+                        <FieldLabel>
+                          Video URL *
+                        </FieldLabel>
+
+                        <input
+                          type="url"
+                          name="videoUrl"
+                          value={
+                            formData.videoUrl
+                          }
+                          onChange={
+                            handleChange
+                          }
+                          placeholder="https://.../video.mp4"
+                          className={
+                            inputClass
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-4">
+                        <input
+                          ref={
+                            videoFileRef
+                          }
+                          type="file"
+                          accept="video/*"
+                          onChange={
+                            handleVideoUpload
+                          }
+                          className="hidden"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            videoFileRef.current?.click()
+                          }
+                          disabled={
+                            uploadingVideo
+                          }
+                          className="flex min-h-[130px] w-full flex-col items-center justify-center rounded-xl border border-dashed border-[#D7C7BC] bg-[#FAF7F4] p-5 text-center transition hover:bg-[#F5EFEA] disabled:opacity-60"
+                        >
+                          {uploadingVideo ? (
+                            <Loader2 className="h-7 w-7 animate-spin text-[#6B4228]" />
+                          ) : (
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EDE4DC] text-[#6B4228]">
+                              <Upload className="h-5 w-5" />
+                            </div>
+                          )}
+
+                          <p className="mt-3 text-sm font-semibold text-[#4E3D34]">
+                            {uploadingVideo
+                              ? 'Uploading video to XCDN...'
+                              : formData.videoUrl
+                                ? 'Replace Reel Video'
+                                : 'Upload Reel Video'}
+                          </p>
+                        </button>
+                      </div>
+                    )}
+
+                    {formData.videoUrl && (
+                      <div className="mt-4 overflow-hidden rounded-xl border border-[#E0D4CB] bg-black">
+                        <video
+                          key={
+                            formData.videoUrl
+                          }
+                          src={
+                            formData.videoUrl
+                          }
+                          poster={
+                            formData.poster ||
+                            undefined
+                          }
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="mx-auto aspect-[9/16] max-h-[420px] w-full object-contain"
+                        />
+                      </div>
+                    )}
+                  </FormSection>
+
+                  {/* Poster */}
+                  <FormSection
+                    eyebrow="Thumbnail"
+                    title="Poster Image"
+                    description="Optional poster image shown before the video starts loading."
+                  >
+                    <ModeButtons
+                      value={
+                        inputMode.poster
+                      }
+                      onChange={(mode) =>
+                        setInputMode(
+                          (prev) => ({
+                            ...prev,
+                            poster:
+                              mode,
+                          })
+                        )
+                      }
+                      uploadLabel="Upload Poster"
+                    />
+
+                    {inputMode.poster ===
+                      'url' ? (
+                      <div className="mt-4">
+                        <FieldLabel>
+                          Poster URL
+                        </FieldLabel>
+
+                        <input
+                          type="url"
+                          name="poster"
+                          value={
+                            formData.poster
+                          }
+                          onChange={
+                            handleChange
+                          }
+                          placeholder="https://.../poster.jpg"
+                          className={
+                            inputClass
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-4">
+                        <input
+                          ref={
+                            posterFileRef
+                          }
+                          type="file"
+                          accept="image/*"
+                          onChange={
+                            handlePosterUpload
+                          }
+                          className="hidden"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            posterFileRef.current?.click()
+                          }
+                          disabled={
+                            uploadingPoster
+                          }
+                          className="flex min-h-[120px] w-full flex-col items-center justify-center rounded-xl border border-dashed border-[#D7C7BC] bg-[#FAF7F4] p-5 text-center transition hover:bg-[#F5EFEA] disabled:opacity-60"
+                        >
+                          {uploadingPoster ? (
+                            <Loader2 className="h-7 w-7 animate-spin text-[#6B4228]" />
+                          ) : (
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EDE4DC] text-[#6B4228]">
+                              <ImageIcon className="h-5 w-5" />
+                            </div>
+                          )}
+
+                          <p className="mt-3 text-sm font-semibold text-[#4E3D34]">
+                            {uploadingPoster
+                              ? 'Uploading poster to XCDN...'
+                              : formData.poster
+                                ? 'Replace Poster Image'
+                                : 'Upload Poster Image'}
+                          </p>
+                        </button>
+                      </div>
+                    )}
+
+                    {formData.poster && (
+                      <div className="mt-4 overflow-hidden rounded-xl border border-[#E0D4CB] bg-[#EEE7E1]">
+                        <img
+                          src={
+                            formData.poster
+                          }
+                          alt="Reel poster preview"
+                          className="mx-auto aspect-[9/16] max-h-[420px] w-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </FormSection>
+
+                  {/* Visibility */}
+                  <FormSection
+                    eyebrow="Display"
+                    title="Storefront Visibility"
+                    description="Choose whether this reel should be visible to customers."
+                  >
+                    <label
+                      className={`block cursor-pointer rounded-xl border p-4 transition ${formData.isActive
+                        ? 'border-[#BFA995] bg-[#F5EEE8]'
+                        : 'border-[#E6DCD5] bg-[#FAF7F4]'
+                        }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EDE4DC] text-[#6B4228]">
+                            {formData.isActive ? (
+                              <Eye className="h-4 w-4" />
+                            ) : (
+                              <EyeOff className="h-4 w-4" />
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-[#281912]">
+                              Active Reel
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-[#8A7467]">
+                              Display this
+                              reel on the
+                              customer-facing
+                              Reels page.
+                            </p>
+                          </div>
+                        </div>
+
+                        <input
+                          type="checkbox"
+                          name="isActive"
+                          checked={
+                            formData.isActive
+                          }
+                          onChange={
+                            handleChange
+                          }
+                          className="mt-1 h-4 w-4 accent-[#6B4228]"
+                        />
+                      </div>
+                    </label>
+                  </FormSection>
+                </div>
+              </div>
+
+              {/* Sticky footer */}
+              <div className="shrink-0 border-t border-[#E8DDD5] bg-[#FFFEFC] px-4 py-4 sm:px-6">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="hidden text-xs text-[#8A7467] sm:block">
+                    Reel title and video
+                    are required.
+                  </p>
+
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={closeForm}
+                      disabled={formBusy}
+                      className="rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] px-5 py-2.5 text-sm font-semibold text-[#6B4228] transition hover:bg-[#F7F4EF] disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={formBusy}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#281912] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {formBusy && (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
+
+                      {saving
+                        ? 'Saving...'
+                        : uploadingVideo
+                          ? 'Uploading Video...'
+                          : uploadingPoster
+                            ? 'Uploading Poster...'
+                            : editingId
+                              ? 'Update Reel'
+                              : 'Create Reel'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminLayout>
+  )
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  text,
+}) {
+  return (
+    <div className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-5 shadow-[0_8px_24px_rgba(58,33,23,0.04)]">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-[#8A7467]">
+            {label}
+          </p>
+
+          <p className="mt-3 text-3xl font-semibold tracking-tight text-[#281912]">
+            {value}
+          </p>
+
+          <p className="mt-1 text-xs text-[#9A8478]">
+            {text}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-[#F0E8E1] p-2.5 text-[#6B4228]">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FormSection({
+  eyebrow,
+  title,
+  description,
+  children,
+}) {
+  return (
+    <section className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-5 shadow-sm sm:p-6">
+      <div className="mb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9A7A68]">
+          {eyebrow}
+        </p>
+
+        <h4 className="mt-1 text-lg font-semibold text-[#281912]">
+          {title}
+        </h4>
+
+        {description && (
+          <p className="mt-1 text-sm leading-6 text-[#8A7467]">
+            {description}
+          </p>
+        )}
+      </div>
+
+      {children}
+    </section>
+  )
+}
+
+function FieldLabel({
+  children,
+}) {
+  return (
+    <label className="mb-2 block text-sm font-semibold text-[#4E3D34]">
+      {children}
+    </label>
+  )
+}
+
+function ModeButtons({
+  value,
+  onChange,
+  uploadLabel,
+}) {
+  return (
+    <div className="inline-flex rounded-xl border border-[#DED1C8] bg-[#F7F4EF] p-1">
+      <button
+        type="button"
+        onClick={() =>
+          onChange('url')
+        }
+        className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${value === 'url'
+          ? 'bg-[#FFFEFC] text-[#3A2117] shadow-sm'
+          : 'text-[#8A7467] hover:text-[#3A2117]'
+          }`}
+      >
+        <Link2 className="h-3.5 w-3.5" />
+        URL
+      </button>
+
+      <button
+        type="button"
+        onClick={() =>
+          onChange('upload')
+        }
+        className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${value === 'upload'
+          ? 'bg-[#FFFEFC] text-[#3A2117] shadow-sm'
+          : 'text-[#8A7467] hover:text-[#3A2117]'
+          }`}
+      >
+        <Upload className="h-3.5 w-3.5" />
+        {uploadLabel}
+      </button>
+    </div>
   )
 }

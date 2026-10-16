@@ -1,4 +1,5 @@
-import { db, storage } from './firebase'
+import { db } from './firebase'
+
 import {
   collection,
   getDocs,
@@ -10,113 +11,294 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+
+import {
+  uploadToXcdn,
+} from './xcdnUpload'
 
 export const reelsService = {
   getAllReels: async () => {
     try {
-      const q = query(collection(db, 'reels'), orderBy('createdAt', 'desc'))
-      const querySnapshot = await getDocs(q)
+      const q = query(
+        collection(db, 'reels'),
+        orderBy(
+          'createdAt',
+          'desc'
+        )
+      )
+
+      const querySnapshot =
+        await getDocs(q)
+
       const reels = []
-      querySnapshot.forEach((docSnap) => {
-        reels.push({ id: docSnap.id, ...docSnap.data() })
-      })
+
+      querySnapshot.forEach(
+        (docSnap) => {
+          reels.push({
+            id: docSnap.id,
+            ...docSnap.data(),
+          })
+        }
+      )
+
       return reels
     } catch (error) {
-      console.error('Error getting reels:', error)
+      console.error(
+        'Error getting reels:',
+        error
+      )
+
       throw error
     }
   },
 
   getReelById: async (id) => {
     try {
-      const docSnap = await getDoc(doc(db, 'reels', id))
-      if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() }
+      if (!id) {
+        throw new Error(
+          'Reel ID is required'
+        )
       }
+
+      const docSnap =
+        await getDoc(
+          doc(
+            db,
+            'reels',
+            id
+          )
+        )
+
+      if (docSnap.exists()) {
+        return {
+          id: docSnap.id,
+          ...docSnap.data(),
+        }
+      }
+
       return null
     } catch (error) {
-      console.error('Error getting reel:', error)
+      console.error(
+        'Error getting reel:',
+        error
+      )
+
       throw error
     }
   },
 
-  createReel: async (reelData) => {
+  createReel: async (
+    reelData
+  ) => {
     try {
+      const now =
+        new Date().toISOString()
+
       const newReel = {
-        title: reelData.title,
-        caption: reelData.caption || '',
-        videoUrl: reelData.videoUrl || '',
-        poster: reelData.poster || '',
-        isActive: reelData.isActive !== false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        title:
+          reelData.title || '',
+
+        caption:
+          reelData.caption || '',
+
+        videoUrl:
+          reelData.videoUrl || '',
+
+        poster:
+          reelData.poster || '',
+
+        isActive:
+          reelData.isActive !== false,
+
+        createdAt: now,
+        updatedAt: now,
       }
-      const docRef = await addDoc(collection(db, 'reels'), newReel)
-      return { id: docRef.id, ...newReel }
+
+      const docRef =
+        await addDoc(
+          collection(
+            db,
+            'reels'
+          ),
+          newReel
+        )
+
+      return {
+        id: docRef.id,
+        ...newReel,
+      }
     } catch (error) {
-      console.error('Error creating reel:', error)
+      console.error(
+        'Error creating reel:',
+        error
+      )
+
       throw error
     }
   },
 
-  updateReel: async (id, reelData) => {
+  updateReel: async (
+    id,
+    reelData
+  ) => {
     try {
+      if (!id) {
+        throw new Error(
+          'Reel ID is required'
+        )
+      }
+
       const updatedReel = {
         ...reelData,
-        updatedAt: new Date().toISOString(),
+
+        updatedAt:
+          new Date().toISOString(),
       }
-      await updateDoc(doc(db, 'reels', id), updatedReel)
-      return { id, ...updatedReel }
+
+      await updateDoc(
+        doc(
+          db,
+          'reels',
+          id
+        ),
+        updatedReel
+      )
+
+      return {
+        id,
+        ...updatedReel,
+      }
     } catch (error) {
-      console.error('Error updating reel:', error)
+      console.error(
+        'Error updating reel:',
+        error
+      )
+
       throw error
     }
   },
 
   deleteReel: async (id) => {
     try {
-      await deleteDoc(doc(db, 'reels', id))
+      if (!id) {
+        throw new Error(
+          'Reel ID is required'
+        )
+      }
+
+      await deleteDoc(
+        doc(
+          db,
+          'reels',
+          id
+        )
+      )
+
       return true
     } catch (error) {
-      console.error('Error deleting reel:', error)
+      console.error(
+        'Error deleting reel:',
+        error
+      )
+
       throw error
     }
   },
 
-  toggleReelActive: async (id, isActive) => {
+  toggleReelActive: async (
+    id,
+    isActive
+  ) => {
     try {
-      await updateDoc(doc(db, 'reels', id), {
-        isActive,
-        updatedAt: new Date().toISOString(),
-      })
+      if (!id) {
+        throw new Error(
+          'Reel ID is required'
+        )
+      }
+
+      await updateDoc(
+        doc(
+          db,
+          'reels',
+          id
+        ),
+        {
+          isActive,
+
+          updatedAt:
+            new Date().toISOString(),
+        }
+      )
+
       return true
     } catch (error) {
-      console.error('Error toggling reel active status:', error)
+      console.error(
+        'Error toggling reel active status:',
+        error
+      )
+
       throw error
     }
   },
 
   uploadVideo: async (file) => {
+    if (!file) {
+      throw new Error(
+        'No reel video selected'
+      )
+    }
+
     try {
-      const storageRef = ref(storage, `reels/videos/${Date.now()}_${file.name}`)
-      await uploadBytes(storageRef, file)
-      const url = await getDownloadURL(storageRef)
+      const url =
+        await uploadToXcdn(
+          file,
+          'reels/videos'
+        )
+
+      if (!url) {
+        throw new Error(
+          'XCDN did not return a video URL'
+        )
+      }
+
       return url
     } catch (error) {
-      console.error('Error uploading video:', error)
+      console.error(
+        'Error uploading reel video to XCDN:',
+        error
+      )
+
       throw error
     }
   },
 
   uploadPoster: async (file) => {
+    if (!file) {
+      throw new Error(
+        'No reel poster selected'
+      )
+    }
+
     try {
-      const storageRef = ref(storage, `reels/posters/${Date.now()}_${file.name}`)
-      await uploadBytes(storageRef, file)
-      const url = await getDownloadURL(storageRef)
+      const url =
+        await uploadToXcdn(
+          file,
+          'reels/posters'
+        )
+
+      if (!url) {
+        throw new Error(
+          'XCDN did not return a poster URL'
+        )
+      }
+
       return url
     } catch (error) {
-      console.error('Error uploading poster:', error)
+      console.error(
+        'Error uploading reel poster to XCDN:',
+        error
+      )
+
       throw error
     }
   },
