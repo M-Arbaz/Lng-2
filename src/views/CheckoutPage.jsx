@@ -33,7 +33,14 @@ export default function CheckoutPage({
   // No default payment method - user must explicitly choose one
   const [paymentMethod, setPaymentMethod] = useState('')
   const [bankDetails, setBankDetails] = useState(null)
-  const [shippingSettings, setShippingSettings] = useState({ cities: [], freeShippingThreshold: 15000 })
+  const [shippingSettings, setShippingSettings] = useState({
+    cities: [],
+    methods: [],
+    freeShippingEnabled: true,
+    freeShippingThreshold: 15000,
+  })
+
+  const [shippingMethodId, setShippingMethodId] = useState('')
   const [shippingLoading, setShippingLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true)
@@ -132,30 +139,69 @@ export default function CheckoutPage({
   }
 
   const numericTotal = parseNumericTotal(cartTotal)
-  const freeShippingThreshold = shippingSettings.freeShippingThreshold ?? 15000
-  const qualifiesForFreeShipping = numericTotal === 0 || numericTotal >= freeShippingThreshold
-  const selectedCityRate = shippingSettings.cities.find((c) => c.name === city)
-  const cityShippingFee = selectedCityRate ? Number(selectedCityRate.fee) || 0 : 0
-  const couponDiscount = Math.min(
-    numericTotal,
-    Math.max(
-      0,
-      Number(
-        appliedCoupon?.discountAmount || 0
-      )
-    )
+
+  const activeShippingMethods = useMemo(
+    () =>
+      (shippingSettings.methods || []).filter(
+        (method) => method.enabled !== false
+      ),
+    [shippingSettings.methods]
   )
+
+  const selectedShippingMethod = useMemo(
+    () =>
+      activeShippingMethods.find(
+        (method) => method.id === shippingMethodId
+      ) || null,
+    [activeShippingMethods, shippingMethodId]
+  )
+
+  useEffect(() => {
+    if (!activeShippingMethods.length) {
+      if (shippingMethodId) {
+        setShippingMethodId('')
+      }
+
+      return
+    }
+
+    const selectedStillExists = activeShippingMethods.some(
+      (method) => method.id === shippingMethodId
+    )
+
+    if (!selectedStillExists) {
+      setShippingMethodId(activeShippingMethods[0].id)
+    }
+  }, [activeShippingMethods, shippingMethodId])
+
+  const shippingQuote = shippingService.calculateShippingQuote(
+    shippingSettings,
+    {
+      cityName: city,
+      methodId: shippingMethodId,
+      subtotal: numericTotal,
+    }
+  )
+
+  const freeShippingEnabled =
+    shippingQuote.freeShippingEnabled
+
+  const freeShippingThreshold =
+    shippingQuote.freeShippingThreshold
+
+  const qualifiesForFreeShipping =
+    shippingQuote.qualifiesForFreeShipping
+
+  const shipping = shippingQuote.fee
 
   const discountedSubtotal = Math.max(
     0,
     numericTotal - couponDiscount
   )
-  // shipping is:
-  //  - 0 if the order qualifies for free shipping (regardless of city)
-  //  - null if a city hasn't been chosen yet and the order doesn't qualify for free shipping
-  //  - the selected city's fee otherwise
-  const shipping = qualifiesForFreeShipping ? 0 : city ? cityShippingFee : null
-  const grandTotal = discountedSubtotal + (shipping || 0)
+
+  const grandTotal =
+    discountedSubtotal +
+    (shipping || 0)
   const validateCustomerStep = () => {
     if (!fullName.trim()) {
       setError('Please enter your full name.')
@@ -212,11 +258,25 @@ export default function CheckoutPage({
       return false
     }
 
+    if (!activeShippingMethods.length) {
+      setError(
+        'No delivery method is currently available. Please contact us for assistance.'
+      )
+      return false
+    }
+
     if (
-      !qualifiesForFreeShipping &&
-      shipping === null
+      !shippingMethodId ||
+      !selectedShippingMethod
     ) {
-      setError('Shipping charges could not be calculated.')
+      setError('Please select a shipping method.')
+      return false
+    }
+
+    if (shipping === null) {
+      setError(
+        'Shipping charges could not be calculated for this delivery option.'
+      )
       return false
     }
 
@@ -392,12 +452,21 @@ export default function CheckoutPage({
       note: note.trim(),
       paymentMethod,
 
-      shippingMethod: {
-        id: 'standard',
-        name: 'Standard Delivery',
-        city: city.trim(),
-        fee: shipping || 0,
-      },
+      shippingMethod: selectedShippingMethod
+        ? {
+          id: selectedShippingMethod.id,
+          name: selectedShippingMethod.name,
+          city: city.trim(),
+          fee: shipping || 0,
+          rateType: selectedShippingMethod.rateType,
+          deliveryEstimate:
+            selectedShippingMethod.deliveryEstimate || '',
+          description:
+            selectedShippingMethod.description || '',
+          policy:
+            selectedShippingMethod.policy || '',
+        }
+        : null,
 
       billingSameAsShipping,
 
@@ -461,6 +530,12 @@ export default function CheckoutPage({
         : null,
 
       shipping: shipping || 0,
+
+      shippingMethodName:
+        selectedShippingMethod?.name || '',
+
+      deliveryEstimate:
+        selectedShippingMethod?.deliveryEstimate || '',
 
       total: checkoutGrandTotal,
     }
@@ -692,11 +767,16 @@ export default function CheckoutPage({
                   </p>
 
                   <h3 className="mt-1 text-sm font-semibold text-[#281912]">
-                    {city || 'Delivery Address'}
+                    {placedOrderSummary?.shippingMethodName ||
+                      selectedShippingMethod?.name ||
+                      'Delivery'}
                   </h3>
 
                   <p className="mt-2 text-xs leading-5 text-[#7A6A60]">
-                    Our team will confirm your order and delivery timeline shortly.
+                    Delivery to {city || 'your address'}.
+                    {placedOrderSummary?.deliveryEstimate
+                      ? ` Estimated ${placedOrderSummary.deliveryEstimate}.`
+                      : ' Our team will confirm the delivery timeline shortly.'}
                   </p>
                 </div>
               </div>
@@ -1219,7 +1299,9 @@ export default function CheckoutPage({
                         <option value="">
                           {shippingLoading
                             ? 'Loading cities...'
-                            : 'Select delivery city'}
+                            : shippingSettings.cities.length
+                              ? 'Select delivery city'
+                              : 'No delivery cities available'}
                         </option>
 
                         {shippingSettings.cities.map((c) => (
@@ -1419,48 +1501,118 @@ export default function CheckoutPage({
                 </div>
 
                 <div className="p-5 sm:p-7">
-                  <div className="rounded-[22px] border-2 border-[#3A2117] bg-[#F7F4EF] p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="mt-1 grid h-5 w-5 place-items-center rounded-full bg-[#3A2117]">
-                        <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                      </div>
+                  {shippingLoading ? (
+                    <div className="rounded-[22px] border border-[#3A2117]/10 bg-[#F7F4EF] p-6 text-center">
+                      <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#D5C8BF] border-t-[#3A2117]" />
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-[#281912]">
-                              Standard Delivery
-                            </p>
-
-                            <p className="mt-1 text-xs text-[#7A6A60]">
-                              Delivery to {city}
-                            </p>
-                          </div>
-
-                          <p className="text-sm font-semibold text-[#6B4228]">
-                            {shipping === 0
-                              ? 'Free'
-                              : shipping === null
-                                ? 'Calculating...'
-                                : `Rs.${formatPKR(shipping)}`}
-                          </p>
-                        </div>
-
-                        {qualifiesForFreeShipping && (
-                          <p className="mt-3 text-[10px] font-medium text-emerald-700">
-                            Your order qualifies for free shipping.
-                          </p>
-                        )}
-                      </div>
+                      <p className="mt-3 text-xs text-[#7A6A60]">
+                        Loading delivery methods...
+                      </p>
                     </div>
-                  </div>
+                  ) : activeShippingMethods.length ? (
+                    <div className="space-y-3">
+                      {activeShippingMethods.map((method) => {
+                        const methodQuote =
+                          shippingService.calculateShippingQuote(
+                            shippingSettings,
+                            {
+                              cityName: city,
+                              methodId: method.id,
+                              subtotal: numericTotal,
+                            }
+                          )
 
-                  <div className="mt-4 rounded-2xl bg-[#EEE5DC] p-4">
-                    <p className="text-[10px] leading-5 text-[#6B5A50]">
-                      Our team will confirm the exact delivery timeline after your
-                      order is reviewed.
-                    </p>
-                  </div>
+                        const selected =
+                          shippingMethodId === method.id
+
+                        return (
+                          <button
+                            key={method.id}
+                            type="button"
+                            onClick={() =>
+                              setShippingMethodId(method.id)
+                            }
+                            className={classNames(
+                              'w-full rounded-[22px] border-2 p-5 text-left transition-all',
+                              selected
+                                ? 'border-[#3A2117] bg-[#F7F4EF] shadow-[0_8px_25px_rgba(58,33,23,0.06)]'
+                                : 'border-[#3A2117]/10 bg-[#FFFEFC] hover:border-[#6B4228]/35'
+                            )}
+                          >
+                            <div className="flex items-start gap-4">
+                              <div
+                                className={classNames(
+                                  'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border',
+                                  selected
+                                    ? 'border-[#3A2117] bg-[#3A2117]'
+                                    : 'border-[#BDAEA5] bg-white'
+                                )}
+                              >
+                                {selected && (
+                                  <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm font-semibold text-[#281912]">
+                                      {method.name}
+                                    </p>
+
+                                    {method.deliveryEstimate && (
+                                      <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-[#8A654D]">
+                                        {method.deliveryEstimate}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <p className="text-sm font-semibold text-[#6B4228]">
+                                    {methodQuote.fee === null
+                                      ? 'Unavailable'
+                                      : methodQuote.fee === 0
+                                        ? 'Free'
+                                        : `Rs.${formatPKR(methodQuote.fee)}`}
+                                  </p>
+                                </div>
+
+                                {method.description && (
+                                  <p className="mt-3 text-xs leading-5 text-[#7A6A60]">
+                                    {method.description}
+                                  </p>
+                                )}
+
+                                {method.policy && (
+                                  <p className="mt-3 rounded-xl bg-[#EEE5DC] px-3 py-2.5 text-[10px] leading-5 text-[#6B5A50]">
+                                    {method.policy}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-[22px] border border-amber-200 bg-amber-50 p-5">
+                      <p className="text-sm font-semibold text-amber-900">
+                        Delivery temporarily unavailable
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-amber-800">
+                        No active shipping method is configured at the moment.
+                        Please contact Lamp & Glow before placing your order.
+                      </p>
+                    </div>
+                  )}
+
+                  {qualifiesForFreeShipping && selectedShippingMethod && (
+                    <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                      <p className="text-[11px] font-semibold text-emerald-800">
+                        Your order qualifies for free shipping.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="mt-7 flex items-center justify-between gap-3">
                     <button
@@ -1474,7 +1626,12 @@ export default function CheckoutPage({
                     <button
                       type="button"
                       onClick={handleNextStep}
-                      className="min-h-[48px] rounded-full bg-[#3A2117] px-7 text-sm font-semibold text-white hover:bg-[#4A2B1F]"
+                      disabled={
+                        shippingLoading ||
+                        !selectedShippingMethod ||
+                        shipping === null
+                      }
+                      className="min-h-[48px] rounded-full bg-[#3A2117] px-7 text-sm font-semibold text-white transition hover:bg-[#4A2B1F] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Continue to Payment →
                     </button>
@@ -1718,12 +1875,22 @@ export default function CheckoutPage({
                       title: 'Shipping Method',
                       step: 3,
                       content: (
-                        <p>
-                          Standard Delivery —{' '}
-                          {shipping === 0
-                            ? 'Free'
-                            : `Rs.${formatPKR(shipping || 0)}`}
-                        </p>
+                        <div className="space-y-1">
+                          <p>
+                            {selectedShippingMethod?.name ||
+                              'Shipping Method'}{' '}
+                            —{' '}
+                            {shipping === 0
+                              ? 'Free'
+                              : `Rs.${formatPKR(shipping || 0)}`}
+                          </p>
+
+                          {selectedShippingMethod?.deliveryEstimate && (
+                            <p className="text-[10px] text-[#8A7569]">
+                              {selectedShippingMethod.deliveryEstimate}
+                            </p>
+                          )}
+                        </div>
                       ),
                     },
                     {
@@ -1956,9 +2123,11 @@ export default function CheckoutPage({
                   <div className="flex items-center justify-between gap-4">
                     <span>
                       Shipping
+                      {selectedShippingMethod?.name
+                        ? ` · ${selectedShippingMethod.name}`
+                        : ''}
                       {city ? ` (${city})` : ''}
                     </span>
-
                     <span
                       className={classNames(
                         'font-medium',
@@ -1975,12 +2144,13 @@ export default function CheckoutPage({
                     </span>
                   </div>
 
-                  {!qualifiesForFreeShipping && (
-                    <div className="rounded-xl bg-[#F7F4EF] px-3 py-2.5 text-[10px] leading-4 text-[#8A654D]">
-                      Free shipping on orders over Rs.
-                      {formatPKR(freeShippingThreshold)}
-                    </div>
-                  )}
+                  {freeShippingEnabled &&
+                    !qualifiesForFreeShipping && (
+                      <div className="rounded-xl bg-[#F7F4EF] px-3 py-2.5 text-[10px] leading-4 text-[#8A654D]">
+                        Free shipping on orders of Rs.
+                        {formatPKR(freeShippingThreshold)} or more.
+                      </div>
+                    )}
 
                   <div className="border-t border-[#3A2117]/10 pt-4">
                     <div className="flex items-end justify-between gap-4">
@@ -2015,7 +2185,15 @@ export default function CheckoutPage({
                   }
                   disabled={
                     loading ||
-                    (currentStep === 5 && (!paymentMethod || !city))
+                    (
+                      currentStep === 5 &&
+                      (
+                        !paymentMethod ||
+                        !city ||
+                        !selectedShippingMethod ||
+                        shipping === null
+                      )
+                    )
                   }
                   className="
                   mt-6 inline-flex min-h-[52px] w-full
