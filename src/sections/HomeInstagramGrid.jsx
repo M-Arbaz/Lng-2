@@ -414,8 +414,8 @@ export default function HomeInstagramGrid({
         </p>
 
         <h2 className={`mt-2 text-2xl font-semibold tracking-[-0.03em] sm:text-3xl ${isDark
-            ? 'text-[#FFF8F1]'
-            : 'text-[#30241D]'
+          ? 'text-[#FFF8F1]'
+          : 'text-[#30241D]'
           }`}>
           Instagram
         </h2>
