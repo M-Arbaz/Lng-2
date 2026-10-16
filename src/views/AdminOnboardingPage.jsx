@@ -1,690 +1,1984 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import {
-  Plus,
-  Edit,
-  Trash2,
-  Search,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+
+import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   CheckCircle,
-  Loader2,
-  Lightbulb,
+  ChevronLeft,
   ChevronRight,
-  X,
-  GripVertical,
+  Edit,
   Eye,
   EyeOff,
+  Lightbulb,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  X,
 } from 'lucide-react'
+
 import AdminLayout from '../components/AdminLayout'
+
 import onboardingService from '../utils/onboardingService.js'
 
 const MODULE_OPTIONS = [
-  { value: '/admin/dashboard', label: 'Dashboard' },
-  { value: '/admin/products', label: 'Products' },
-  { value: '/admin/categories', label: 'Categories' },
-  { value: '/admin/orders', label: 'Orders' },
-  { value: '/admin/customers', label: 'Customers' },
-  { value: '/admin/coupons', label: 'Coupons' },
-  { value: '/admin/payments', label: 'Payments' },
-  { value: '/admin/social-links', label: 'Social Links' },
-  { value: '/admin/onboarding', label: 'Onboarding' },
+  {
+    value:
+      '/admin/dashboard',
+    label: 'Dashboard',
+  },
+  {
+    value:
+      '/admin/products',
+    label: 'Products',
+  },
+  {
+    value:
+      '/admin/categories',
+    label: 'Categories',
+  },
+  {
+    value:
+      '/admin/orders',
+    label: 'Orders',
+  },
+  {
+    value:
+      '/admin/customers',
+    label: 'Customers',
+  },
+  {
+    value:
+      '/admin/coupons',
+    label: 'Coupons',
+  },
+  {
+    value:
+      '/admin/payments',
+    label: 'Payments',
+  },
+  {
+    value:
+      '/admin/custom-orders',
+    label: 'Custom Orders',
+  },
+  {
+    value:
+      '/admin/hero-banners',
+    label: 'Hero Banners',
+  },
+  {
+    value:
+      '/admin/collection-slides',
+    label: 'Collection Slider',
+  },
+  {
+    value:
+      '/admin/instagram-grid',
+    label: 'Instagram Grid',
+  },
+  {
+    value:
+      '/admin/reels',
+    label: 'Reels',
+  },
+  {
+    value:
+      '/admin/blogs',
+    label: 'Blogs',
+  },
+  {
+    value:
+      '/admin/reviews',
+    label: 'Reviews',
+  },
+  {
+    value:
+      '/admin/about',
+    label: 'About Page',
+  },
+  {
+    value:
+      '/admin/pages',
+    label: 'Pages',
+  },
+  {
+    value:
+      '/admin/contact-submissions',
+    label:
+      'Contact Submissions',
+  },
+  {
+    value:
+      '/admin/contact-page',
+    label: 'Contact Page',
+  },
+  {
+    value:
+      '/admin/newsletter',
+    label: 'Newsletter',
+  },
+  {
+    value:
+      '/admin/announcements',
+    label:
+      'Announcement Bar',
+  },
+  {
+    value:
+      '/admin/website-popups',
+    label: 'Website Popups',
+  },
+  {
+    value:
+      '/admin/onboarding',
+    label: 'Onboarding',
+  },
+  {
+    value:
+      '/admin/shipping-fees',
+    label: 'Shipping Fees',
+  },
+  {
+    value:
+      '/admin/bank-details',
+    label: 'Bank Details',
+  },
+  {
+    value:
+      '/admin/social-links',
+    label: 'Social Links',
+  },
+  {
+    value:
+      '/admin/footer',
+    label: 'Footer',
+  },
 ]
 
-export default function AdminOnboardingPage() {
-  const [guides, setGuides] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [message, setMessage] = useState({ type: '', text: '' })
-  const [saving, setSaving] = useState(false)
-  const [previewGuide, setPreviewGuide] = useState(null)
-  const [previewStep, setPreviewStep] = useState(0)
+const inputClass =
+  'w-full rounded-xl border border-[#DED1C8] bg-[#FFFEFC] px-4 py-3 text-sm text-[#281912] outline-none transition placeholder:text-[#A6978F] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10'
 
-  const [formData, setFormData] = useState({
-    modulePath: '/admin/dashboard',
+function createStep() {
+  return {
     title: '',
     description: '',
+    order: 0,
+  }
+}
+
+function createForm() {
+  return {
+    modulePath:
+      '/admin/dashboard',
+
+    title: '',
+
+    description: '',
+
     isActive: true,
-    steps: [{ title: '', description: '', order: 0 }],
+
+    steps: [
+      createStep(),
+    ],
+  }
+}
+
+function formatDate(value) {
+  if (!value) {
+    return '—'
+  }
+
+  const date =
+    new Date(value)
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return '—'
+  }
+
+  return date.toLocaleString(
+    'en-PK',
+    {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }
+  )
+}
+
+function getModuleLabel(
+  path
+) {
+  return (
+    MODULE_OPTIONS.find(
+      (item) =>
+        item.value === path
+    )?.label ||
+    path ||
+    'Unknown Module'
+  )
+}
+
+export default function AdminOnboardingPage() {
+  const [
+    guides,
+    setGuides,
+  ] = useState([])
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true)
+
+  const [
+    searchQuery,
+    setSearchQuery,
+  ] = useState('')
+
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] = useState('all')
+
+  const [
+    showForm,
+    setShowForm,
+  ] = useState(false)
+
+  const [
+    editingId,
+    setEditingId,
+  ] = useState(null)
+
+  const [
+    formData,
+    setFormData,
+  ] = useState(
+    createForm
+  )
+
+  const [
+    saving,
+    setSaving,
+  ] = useState(false)
+
+  const [
+    deletingId,
+    setDeletingId,
+  ] = useState(null)
+
+  const [
+    updatingId,
+    setUpdatingId,
+  ] = useState(null)
+
+  const [
+    previewGuide,
+    setPreviewGuide,
+  ] = useState(null)
+
+  const [
+    previewStep,
+    setPreviewStep,
+  ] = useState(0)
+
+  const [
+    message,
+    setMessage,
+  ] = useState({
+    type: '',
+    text: '',
   })
 
-  // Load guides from Firebase
+  const messageTimerRef =
+    useRef(null)
+
+  const showMessage = (
+    type,
+    text
+  ) => {
+    if (
+      messageTimerRef.current
+    ) {
+      window.clearTimeout(
+        messageTimerRef.current
+      )
+    }
+
+    setMessage({
+      type,
+      text,
+    })
+
+    messageTimerRef.current =
+      window.setTimeout(
+        () => {
+          setMessage({
+            type: '',
+            text: '',
+          })
+        },
+        3500
+      )
+  }
+
   useEffect(() => {
-    const loadGuides = async () => {
-      try {
-        setLoading(true)
-        const data = await onboardingService.getAllGuides()
-        setGuides(data)
-      } catch (e) {
-        console.error('Error loading guides:', e)
-        setMessage({ type: 'error', text: 'Failed to load onboarding guides from Firebase' })
-      } finally {
-        setLoading(false)
+    return () => {
+      if (
+        messageTimerRef.current
+      ) {
+        window.clearTimeout(
+          messageTimerRef.current
+        )
       }
     }
+  }, [])
+
+  const loadGuides =
+    async ({
+      silent = false,
+    } = {}) => {
+      try {
+        if (!silent) {
+          setLoading(true)
+        }
+
+        const data =
+          await onboardingService.getAllGuides()
+
+        setGuides(
+          Array.isArray(data)
+            ? data
+            : []
+        )
+      } catch (error) {
+        console.error(
+          'Onboarding guides load failed:',
+          error
+        )
+
+        showMessage(
+          'error',
+          'Failed to load onboarding guides.'
+        )
+      } finally {
+        if (!silent) {
+          setLoading(false)
+        }
+      }
+    }
+
+  useEffect(() => {
     loadGuides()
   }, [])
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }))
-  }
+  const stats =
+    useMemo(() => {
+      const active =
+        guides.filter(
+          (guide) =>
+            guide.isActive !==
+            false
+        ).length
 
-  const handleStepChange = (index, field, value) => {
-    setFormData((prev) => {
-      const newSteps = [...prev.steps]
-      newSteps[index] = { ...newSteps[index], [field]: value }
-      return { ...prev, steps: newSteps }
-    })
-  }
+      const inactive =
+        guides.length -
+        active
 
-  const addStep = () => {
-    setFormData((prev) => ({
-      ...prev,
-      steps: [...prev.steps, { title: '', description: '', order: prev.steps.length }],
-    }))
-  }
+      const coveredModules =
+        new Set(
+          guides
+            .filter(
+              (guide) =>
+                guide.isActive !==
+                false
+            )
+            .map(
+              (guide) =>
+                guide.modulePath
+            )
+        ).size
 
-  const removeStep = (index) => {
-    setFormData((prev) => {
-      const newSteps = prev.steps.filter((_, i) => i !== index)
-      // Re-order remaining steps
       return {
-        ...prev,
-        steps: newSteps.map((s, i) => ({ ...s, order: i })),
+        total:
+          guides.length,
+
+        active,
+
+        inactive,
+
+        coveredModules,
       }
-    })
-  }
+    }, [
+      guides,
+    ])
 
-  const moveStep = (index, direction) => {
-    if (direction === 'up' && index === 0) return
-    if (direction === 'down' && index === formData.steps.length - 1) return
+  const filteredGuides =
+    useMemo(() => {
+      const query =
+        searchQuery
+          .trim()
+          .toLowerCase()
 
-    setFormData((prev) => {
-      const newSteps = [...prev.steps]
-      const swapIndex = direction === 'up' ? index - 1 : index + 1
-      ;[newSteps[index], newSteps[swapIndex]] = [newSteps[swapIndex], newSteps[index]]
-      return {
-        ...prev,
-        steps: newSteps.map((s, i) => ({ ...s, order: i })),
-      }
-    })
-  }
+      return guides.filter(
+        (guide) => {
+          const active =
+            guide.isActive !==
+            false
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+          const matchesStatus =
+            statusFilter ===
+              'all' ||
+            (statusFilter ===
+              'active'
+              ? active
+              : !active)
 
-    if (!formData.title.trim()) {
-      setMessage({ type: 'error', text: 'Please enter a guide title' })
-      return
-    }
-    if (!formData.modulePath) {
-      setMessage({ type: 'error', text: 'Please select a module' })
-      return
-    }
-    if (formData.steps.length === 0) {
-      setMessage({ type: 'error', text: 'Please add at least one step' })
-      return
-    }
-    if (formData.steps.some((s) => !s.title.trim() || !s.description.trim())) {
-      setMessage({ type: 'error', text: 'All steps must have a title and description' })
-      return
-    }
+          const matchesSearch =
+            !query ||
+            [
+              guide.title,
+              guide.description,
+              guide.modulePath,
+              getModuleLabel(
+                guide.modulePath
+              ),
+            ].some((value) =>
+              String(
+                value || ''
+              )
+                .toLowerCase()
+                .includes(query)
+            )
 
-    setSaving(true)
-
-    try {
-      const payload = {
-        modulePath: formData.modulePath,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        isActive: formData.isActive,
-        steps: formData.steps.map((s, i) => ({
-          title: s.title.trim(),
-          description: s.description.trim(),
-          order: i,
-        })),
-      }
-
-      if (editingId) {
-        await onboardingService.updateGuide(editingId, payload)
-        setGuides((prev) =>
-          prev.map((g) =>
-            g.id === editingId
-              ? { ...g, ...payload, updatedAt: new Date().toISOString() }
-              : g
+          return (
+            matchesStatus &&
+            matchesSearch
           )
-        )
-        setMessage({ type: 'success', text: 'Guide updated successfully!' })
-        setEditingId(null)
-      } else {
-        const newGuide = await onboardingService.createGuide(payload)
-        setGuides((prev) => [...prev, newGuide])
-        setMessage({ type: 'success', text: 'Guide created successfully!' })
-      }
+        }
+      )
+    }, [
+      guides,
+      searchQuery,
+      statusFilter,
+    ])
 
-      resetForm()
-    } catch (error) {
-      console.error('Error saving guide:', error)
-      setMessage({ type: 'error', text: 'Failed to save guide. Please try again.' })
-    } finally {
-      setSaving(false)
+  const resetForm =
+    () => {
+      setFormData(
+        createForm()
+      )
+
+      setEditingId(null)
+      setShowForm(false)
     }
 
-    setTimeout(() => {
-      setMessage({ type: '', text: '' })
-    }, 3000)
-  }
+  const openCreate =
+    () => {
+      setEditingId(null)
 
-  const resetForm = () => {
-    setFormData({
-      modulePath: '/admin/dashboard',
-      title: '',
-      description: '',
-      isActive: true,
-      steps: [{ title: '', description: '', order: 0 }],
-    })
-    setShowForm(false)
-    setEditingId(null)
-  }
+      setFormData(
+        createForm()
+      )
 
-  const handleEdit = (guide) => {
+      setShowForm(true)
+    }
+
+  const handleEdit = (
+    guide
+  ) => {
+    const steps =
+      Array.isArray(
+        guide.steps
+      ) &&
+      guide.steps.length
+        ? [...guide.steps]
+            .sort(
+              (a, b) =>
+                (a.order || 0) -
+                (b.order || 0)
+            )
+            .map(
+              (
+                step,
+                index
+              ) => ({
+                title:
+                  step.title ||
+                  '',
+
+                description:
+                  step.description ||
+                  '',
+
+                order:
+                  index,
+              })
+            )
+        : [
+            createStep(),
+          ]
+
     setFormData({
-      modulePath: guide.modulePath || '/admin/dashboard',
-      title: guide.title || '',
-      description: guide.description || '',
-      isActive: guide.isActive !== false,
-      steps:
-        guide.steps?.length > 0
-          ? [...guide.steps].sort((a, b) => (a.order || 0) - (b.order || 0))
-          : [{ title: '', description: '', order: 0 }],
+      modulePath:
+        guide.modulePath ||
+        '/admin/dashboard',
+
+      title:
+        guide.title || '',
+
+      description:
+        guide.description ||
+        '',
+
+      isActive:
+        guide.isActive !==
+        false,
+
+      steps,
     })
-    setEditingId(guide.id)
+
+    setEditingId(
+      guide.id
+    )
+
     setShowForm(true)
   }
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this guide?')) {
-      try {
-        await onboardingService.deleteGuide(id)
-        setGuides((prev) => prev.filter((g) => g.id !== id))
-        setMessage({ type: 'success', text: 'Guide deleted successfully!' })
-      } catch (error) {
-        console.error('Error deleting guide:', error)
-        setMessage({ type: 'error', text: 'Failed to delete guide. Please try again.' })
-      }
-      setTimeout(() => {
-        setMessage({ type: '', text: '' })
-      }, 3000)
-    }
-  }
+  const handleInputChange =
+    (event) => {
+      const {
+        name,
+        value,
+        type,
+        checked,
+      } = event.target
 
-  const handleToggleActive = async (guide) => {
-    try {
-      const updated = { ...guide, isActive: !guide.isActive }
-      await onboardingService.updateGuide(guide.id, updated)
-      setGuides((prev) =>
-        prev.map((g) => (g.id === guide.id ? { ...g, isActive: !g.isActive } : g))
+      setFormData(
+        (prev) => ({
+          ...prev,
+
+          [name]:
+            type ===
+            'checkbox'
+              ? checked
+              : value,
+        })
       )
-      setMessage({
-        type: 'success',
-        text: `Guide ${updated.isActive ? 'activated' : 'deactivated'} successfully!`,
-      })
-    } catch (error) {
-      console.error('Error toggling guide:', error)
-      setMessage({ type: 'error', text: 'Failed to update guide status.' })
     }
-    setTimeout(() => {
-      setMessage({ type: '', text: '' })
-    }, 3000)
+
+  const handleStepChange =
+    (
+      index,
+      field,
+      value
+    ) => {
+      setFormData(
+        (prev) => {
+          const steps =
+            [...prev.steps]
+
+          steps[index] = {
+            ...steps[index],
+            [field]: value,
+          }
+
+          return {
+            ...prev,
+            steps,
+          }
+        }
+      )
+    }
+
+  const addStep = () => {
+    setFormData(
+      (prev) => ({
+        ...prev,
+
+        steps: [
+          ...prev.steps,
+
+          {
+            ...createStep(),
+
+            order:
+              prev.steps.length,
+          },
+        ],
+      })
+    )
   }
 
-  const openPreview = (guide) => {
-    const sortedSteps = [...(guide.steps || [])].sort(
-      (a, b) => (a.order || 0) - (b.order || 0)
+  const removeStep = (
+    index
+  ) => {
+    setFormData(
+      (prev) => {
+        if (
+          prev.steps.length <=
+          1
+        ) {
+          return prev
+        }
+
+        const steps =
+          prev.steps
+            .filter(
+              (
+                _,
+                stepIndex
+              ) =>
+                stepIndex !==
+                index
+            )
+            .map(
+              (
+                step,
+                stepIndex
+              ) => ({
+                ...step,
+                order:
+                  stepIndex,
+              })
+            )
+
+        return {
+          ...prev,
+          steps,
+        }
+      }
     )
-    setPreviewGuide({ ...guide, steps: sortedSteps })
+  }
+
+  const moveStep = (
+    index,
+    direction
+  ) => {
+    setFormData(
+      (prev) => {
+        const targetIndex =
+          index + direction
+
+        if (
+          targetIndex < 0 ||
+          targetIndex >=
+            prev.steps.length
+        ) {
+          return prev
+        }
+
+        const steps =
+          [...prev.steps]
+
+        const current =
+          steps[index]
+
+        steps[index] =
+          steps[
+            targetIndex
+          ]
+
+        steps[
+          targetIndex
+        ] = current
+
+        return {
+          ...prev,
+
+          steps:
+            steps.map(
+              (
+                step,
+                stepIndex
+              ) => ({
+                ...step,
+                order:
+                  stepIndex,
+              })
+            ),
+        }
+      }
+    )
+  }
+
+  const handleSubmit =
+    async (event) => {
+      event.preventDefault()
+
+      const title =
+        formData.title.trim()
+
+      if (!title) {
+        showMessage(
+          'error',
+          'Guide title is required.'
+        )
+
+        return
+      }
+
+      if (
+        !formData.modulePath
+      ) {
+        showMessage(
+          'error',
+          'Please select a module.'
+        )
+
+        return
+      }
+
+      if (
+        !formData.steps.length
+      ) {
+        showMessage(
+          'error',
+          'Please add at least one step.'
+        )
+
+        return
+      }
+
+      const invalidStep =
+        formData.steps.some(
+          (step) =>
+            !step.title.trim() ||
+            !step.description.trim()
+        )
+
+      if (invalidStep) {
+        showMessage(
+          'error',
+          'Every step needs a title and description.'
+        )
+
+        return
+      }
+
+      try {
+        setSaving(true)
+
+        const payload = {
+          modulePath:
+            formData.modulePath,
+
+          title,
+
+          description:
+            formData.description.trim(),
+
+          isActive:
+            formData.isActive,
+
+          steps:
+            formData.steps.map(
+              (
+                step,
+                index
+              ) => ({
+                title:
+                  step.title.trim(),
+
+                description:
+                  step.description.trim(),
+
+                order:
+                  index,
+              })
+            ),
+        }
+
+        if (editingId) {
+          await onboardingService.updateGuide(
+            editingId,
+            payload
+          )
+
+          showMessage(
+            'success',
+            'Onboarding guide updated successfully.'
+          )
+        } else {
+          await onboardingService.createGuide(
+            payload
+          )
+
+          showMessage(
+            'success',
+            'Onboarding guide created successfully.'
+          )
+        }
+
+        resetForm()
+
+        await loadGuides({
+          silent: true,
+        })
+      } catch (error) {
+        console.error(
+          'Onboarding guide save failed:',
+          error
+        )
+
+        showMessage(
+          'error',
+          error?.message ||
+            'Failed to save onboarding guide.'
+        )
+      } finally {
+        setSaving(false)
+      }
+    }
+
+  const handleToggleActive =
+    async (guide) => {
+      try {
+        setUpdatingId(
+          guide.id
+        )
+
+        await onboardingService.updateGuide(
+          guide.id,
+          {
+            ...guide,
+
+            isActive:
+              guide.isActive ===
+              false,
+          }
+        )
+
+        await loadGuides({
+          silent: true,
+        })
+
+        showMessage(
+          'success',
+          guide.isActive ===
+          false
+            ? 'Guide activated.'
+            : 'Guide deactivated.'
+        )
+      } catch (error) {
+        console.error(
+          'Onboarding guide status update failed:',
+          error
+        )
+
+        showMessage(
+          'error',
+          error?.message ||
+            'Failed to update guide.'
+        )
+      } finally {
+        setUpdatingId(null)
+      }
+    }
+
+  const handleDelete =
+    async (guide) => {
+      const confirmed =
+        window.confirm(
+          `Delete "${guide.title || 'this guide'}"? This action cannot be undone.`
+        )
+
+      if (!confirmed) {
+        return
+      }
+
+      try {
+        setDeletingId(
+          guide.id
+        )
+
+        await onboardingService.deleteGuide(
+          guide.id
+        )
+
+        setGuides(
+          (prev) =>
+            prev.filter(
+              (item) =>
+                item.id !==
+                guide.id
+            )
+        )
+
+        showMessage(
+          'success',
+          'Onboarding guide deleted.'
+        )
+      } catch (error) {
+        console.error(
+          'Onboarding guide delete failed:',
+          error
+        )
+
+        showMessage(
+          'error',
+          error?.message ||
+            'Failed to delete guide.'
+        )
+      } finally {
+        setDeletingId(null)
+      }
+    }
+
+  const openPreview = (
+    guide
+  ) => {
+    const steps =
+      [...(guide.steps || [])]
+        .sort(
+          (a, b) =>
+            (a.order || 0) -
+            (b.order || 0)
+        )
+
+    setPreviewGuide({
+      ...guide,
+      steps,
+    })
+
     setPreviewStep(0)
   }
-
-  const filteredGuides = guides.filter((g) => {
-    const query = searchQuery.toLowerCase()
-    const moduleLabel =
-      MODULE_OPTIONS.find((m) => m.value === g.modulePath)?.label || g.modulePath
-    return (
-      g.title?.toLowerCase().includes(query) ||
-      moduleLabel.toLowerCase().includes(query) ||
-      g.description?.toLowerCase().includes(query)
-    )
-  })
-
-  const getModuleLabel = (path) =>
-    MODULE_OPTIONS.find((m) => m.value === path)?.label || path
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold text-gray-900">Onboarding Guides</h2>
-          <button
-            onClick={() => {
-              resetForm()
-              setShowForm(true)
-            }}
-            className="bg-gradient-to-r from-orange-500 to-[#F5F1EA]0 text-white font-semibold py-2 px-6 rounded-lg hover:shadow-lg transition flex items-center gap-2 transform hover:scale-105"
-          >
-            <Plus className="w-5 h-5" />
-            Add Guide
-          </button>
-        </div>
+        <section className="overflow-hidden rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.06)]">
+          <div className="flex flex-col gap-5 px-5 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#3A2117] text-white">
+                <Lightbulb className="h-6 w-6" />
+              </div>
 
-        {/* Message Alert */}
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#9A7A68]">
+                  Admin Experience
+                </p>
+
+                <h1 className="text-2xl font-semibold tracking-tight text-[#281912] sm:text-3xl">
+                  Onboarding Guides
+                </h1>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#7B685D]">
+                  Create step-by-step
+                  guidance for Admin
+                  modules so team members
+                  can understand important
+                  workflows directly
+                  inside the panel.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                openCreate
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#281912]"
+            >
+              <Plus className="h-4 w-4" />
+
+              Add Guide
+            </button>
+          </div>
+        </section>
+
+        {/* Feedback */}
         {message.text && (
           <div
-            className={`p-4 rounded-lg flex items-center gap-3 ${
-              message.type === 'success'
-                ? 'bg-green-50 border border-green-200'
-                : 'bg-red-50 border border-red-200'
+            className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-sm ${
+              message.type ===
+              'success'
+                ? 'border-[#CFE1D1] bg-[#F3F9F3] text-[#426649]'
+                : 'border-[#E8C9C3] bg-[#FFF4F1] text-[#93483C]'
             }`}
           >
-            {message.type === 'success' ? (
-              <CheckCircle className="w-5 h-5 text-[#22C55E] flex-shrink-0" />
+            {message.type ===
+            'success' ? (
+              <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-[#E53935] flex-shrink-0" />
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
             )}
-            <p
-              className={`font-medium ${
-                message.type === 'success' ? 'text-green-800' : 'text-red-800'
-              }`}
-            >
+
+            <p className="text-sm font-medium">
               {message.text}
             </p>
           </div>
         )}
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search guides by title or module..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+        {/* Stats */}
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            icon={Lightbulb}
+            label="Total Guides"
+            value={stats.total}
+            text="All onboarding guides"
           />
-        </div>
 
-        {/* Guides Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {loading ? (
-            <div className="col-span-full p-12 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-              <span className="ml-3 text-gray-600">Loading guides...</span>
+          <StatCard
+            icon={Eye}
+            label="Active"
+            value={stats.active}
+            text="Available to Admin users"
+          />
+
+          <StatCard
+            icon={EyeOff}
+            label="Inactive"
+            value={stats.inactive}
+            text="Currently hidden"
+          />
+
+          <StatCard
+            icon={CheckCircle}
+            label="Modules Covered"
+            value={
+              stats.coveredModules
+            }
+            text={`of ${MODULE_OPTIONS.length} modules`}
+          />
+        </section>
+
+        {/* Filters */}
+        <section className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-4 shadow-[0_8px_24px_rgba(58,33,23,0.04)] sm:p-5">
+          <div className="grid gap-3 lg:grid-cols-[1fr_220px_auto]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9A8478]" />
+
+              <input
+                type="text"
+                value={
+                  searchQuery
+                }
+                onChange={(event) =>
+                  setSearchQuery(
+                    event.target.value
+                  )
+                }
+                placeholder="Search title, module or description..."
+                className="w-full rounded-xl border border-[#DED1C8] bg-[#FDFBF8] py-3 pl-11 pr-4 text-sm text-[#281912] outline-none transition placeholder:text-[#A6978F] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10"
+              />
             </div>
-          ) : filteredGuides.length === 0 ? (
-            <div className="col-span-full p-12 text-center">
-              <Lightbulb className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg font-medium">No guides found</p>
-              <p className="text-gray-400 text-sm mt-1">
-                {searchQuery
-                  ? 'Try adjusting your search.'
-                  : 'Create your first onboarding guide to get started.'}
+
+            <select
+              value={
+                statusFilter
+              }
+              onChange={(event) =>
+                setStatusFilter(
+                  event.target.value
+                )
+              }
+              className={
+                inputClass
+              }
+            >
+              <option value="all">
+                All Statuses
+              </option>
+
+              <option value="active">
+                Active
+              </option>
+
+              <option value="inactive">
+                Inactive
+              </option>
+            </select>
+
+            <button
+              type="button"
+              onClick={() =>
+                loadGuides()
+              }
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D8C9BF] px-4 py-3 text-sm font-semibold text-[#6B4228] transition hover:bg-[#F7F4EF] disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${
+                  loading
+                    ? 'animate-spin'
+                    : ''
+                }`}
+              />
+
+              Refresh
+            </button>
+          </div>
+
+          <p className="mt-4 border-t border-[#EEE5DF] pt-4 text-sm text-[#7B685D]">
+            Showing{' '}
+            <span className="font-semibold text-[#3A2117]">
+              {
+                filteredGuides.length
+              }
+            </span>{' '}
+            of {guides.length}{' '}
+            guides
+          </p>
+        </section>
+
+        {/* Guides */}
+        {loading ? (
+          <section className="flex min-h-[320px] items-center justify-center rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC]">
+            <div className="text-center">
+              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6B4228]" />
+
+              <p className="mt-3 text-sm font-medium text-[#7B685D]">
+                Loading onboarding
+                guides...
               </p>
             </div>
-          ) : (
-            filteredGuides.map((guide) => (
-              <div
-                key={guide.id}
-                className={`bg-white rounded-xl shadow-md border p-5 transition hover:shadow-lg ${
-                  guide.isActive !== false
-                    ? 'border-gray-200'
-                    : 'border-gray-200 opacity-60'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Lightbulb className="w-5 h-5 text-orange-500" />
-                    <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                      {getModuleLabel(guide.modulePath)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => openPreview(guide)}
-                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                      title="Preview"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleEdit(guide)}
-                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                      title="Edit"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(guide.id)}
-                      className="p-1.5 text-gray-400 hover:text-[#E53935] hover:bg-red-50 rounded-lg transition"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <h3 className="text-lg font-bold text-gray-900 mb-1">
-                  {guide.title}
-                </h3>
-                {guide.description && (
-                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                    {guide.description}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <ChevronRight className="w-4 h-4" />
-                    <span>{guide.steps?.length || 0} step(s)</span>
-                  </div>
-                  <button
-                    onClick={() => handleToggleActive(guide)}
-                    className={`text-xs font-semibold px-3 py-1 rounded-full transition ${
-                      guide.isActive !== false
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {guide.isActive !== false ? 'Active' : 'Inactive'}
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Add/Edit Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-900">
-                {editingId ? 'Edit Guide' : 'Create Guide'}
-              </h3>
-              <button
-                onClick={resetForm}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
+          </section>
+        ) : filteredGuides.length ===
+          0 ? (
+          <section className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] px-6 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F0E8E1] text-[#6B4228]">
+              <Lightbulb className="h-7 w-7" />
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              {/* Module */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Module *
-                </label>
-                <select
-                  name="modulePath"
-                  value={formData.modulePath}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-                >
-                  {MODULE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <h3 className="mt-4 text-lg font-semibold text-[#281912]">
+              No guides found
+            </h3>
 
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Guide Title *
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Welcome to the Dashboard"
-                  required
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-                />
-              </div>
+            <p className="mt-1 max-w-sm text-sm leading-6 text-[#8A7467]">
+              {searchQuery ||
+              statusFilter !==
+                'all'
+                ? 'Try adjusting your search or status filter.'
+                : 'Create your first Admin onboarding guide.'}
+            </p>
+          </section>
+        ) : (
+          <section className="grid gap-4 xl:grid-cols-2">
+            {filteredGuides.map(
+              (guide) => {
+                const active =
+                  guide.isActive !==
+                  false
 
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Description (optional)
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  placeholder="Short description of this guide..."
-                  rows={2}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white resize-none"
-                />
-              </div>
-
-              {/* Active Toggle */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  name="isActive"
-                  checked={formData.isActive}
-                  onChange={handleInputChange}
-                  className="w-5 h-5 text-orange-500 rounded focus:ring-orange-500 border-gray-300"
-                />
-                <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
-                  Active (show to users)
-                </label>
-              </div>
-
-              {/* Steps */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Steps *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addStep}
-                    className="text-sm text-orange-600 font-medium hover:text-orange-700 flex items-center gap-1 transition"
+                return (
+                  <article
+                    key={
+                      guide.id
+                    }
+                    className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-5 shadow-[0_10px_30px_rgba(58,33,23,0.05)] sm:p-6"
                   >
-                    <Plus className="w-4 h-4" />
-                    Add Step
-                  </button>
-                </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-[#F0E8E1] px-2.5 py-1 text-[10px] font-semibold text-[#6B4228]">
+                            {getModuleLabel(
+                              guide.modulePath
+                            )}
+                          </span>
 
-                <div className="space-y-3">
-                  {formData.steps.map((step, index) => (
-                    <div
-                      key={index}
-                      className="border border-gray-200 rounded-xl p-4 bg-gray-50/50"
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        <GripVertical className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs font-bold text-gray-500 uppercase">
-                          Step {index + 1}
-                        </span>
-                        <div className="ml-auto flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => moveStep(index, 'up')}
-                            disabled={index === 0}
-                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 rounded transition"
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+                              active
+                                ? 'border-[#C5DBC9] bg-[#EFF8F0] text-[#44704B]'
+                                : 'border-[#DDD4CE] bg-[#F7F4EF] text-[#75645A]'
+                            }`}
                           >
-                            <ChevronRight className="w-4 h-4 rotate-[-90deg]" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveStep(index, 'down')}
-                            disabled={index === formData.steps.length - 1}
-                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 rounded transition"
-                          >
-                            <ChevronRight className="w-4 h-4 rotate-90" />
-                          </button>
-                          {formData.steps.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeStep(index)}
-                              className="p-1 text-gray-400 hover:text-[#E53935] rounded transition"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          )}
+                            {active
+                              ? 'Active'
+                              : 'Inactive'}
+                          </span>
                         </div>
+
+                        <h3 className="mt-3 break-words text-lg font-semibold text-[#281912]">
+                          {guide.title ||
+                            'Untitled Guide'}
+                        </h3>
+
+                        {guide.description && (
+                          <p className="mt-2 line-clamp-2 break-words text-sm leading-6 text-[#7B685D]">
+                            {
+                              guide.description
+                            }
+                          </p>
+                        )}
                       </div>
 
-                      <div className="space-y-3">
-                        <input
-                          type="text"
-                          value={step.title}
-                          onChange={(e) =>
-                            handleStepChange(index, 'title', e.target.value)
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openPreview(
+                              guide
+                            )
                           }
-                          placeholder="Step title"
-                          required
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white text-sm"
-                        />
-                        <textarea
-                          value={step.description}
-                          onChange={(e) =>
-                            handleStepChange(index, 'description', e.target.value)
+                          title="Preview guide"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B4228] transition hover:bg-[#F7F4EF]"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleEdit(
+                              guide
+                            )
                           }
-                          placeholder="Describe what this step covers..."
-                          rows={2}
-                          required
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white text-sm resize-none"
-                        />
+                          title="Edit guide"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B4228] transition hover:bg-[#F7F4EF]"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDelete(
+                              guide
+                            )
+                          }
+                          disabled={
+                            deletingId ===
+                            guide.id
+                          }
+                          title="Delete guide"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-[#954B42] transition hover:bg-[#FFF2EF] disabled:opacity-50"
+                        >
+                          {deletingId ===
+                          guide.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Submit */}
-              <div className="flex gap-3 pt-2">
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      <InfoBox
+                        label="Steps"
+                        value={`${guide.steps?.length || 0} step(s)`}
+                      />
+
+                      <InfoBox
+                        label="Last Updated"
+                        value={formatDate(
+                          guide.updatedAt ||
+                            guide.createdAt
+                        )}
+                      />
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#EEE5DF] pt-4">
+                      <code className="min-w-0 truncate text-[10px] text-[#9A8478]">
+                        {
+                          guide.modulePath
+                        }
+                      </code>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleToggleActive(
+                            guide
+                          )
+                        }
+                        disabled={
+                          updatingId ===
+                          guide.id
+                        }
+                        className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition disabled:opacity-50 ${
+                          active
+                            ? 'border-[#C5DBC9] bg-[#EFF8F0] text-[#44704B]'
+                            : 'border-[#D8C8BC] bg-[#F7F4EF] text-[#6B4228]'
+                        }`}
+                      >
+                        {updatingId ===
+                        guide.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : active ? (
+                          <Eye className="h-3.5 w-3.5" />
+                        ) : (
+                          <EyeOff className="h-3.5 w-3.5" />
+                        )}
+
+                        {active
+                          ? 'Active'
+                          : 'Inactive'}
+                      </button>
+                    </div>
+                  </article>
+                )
+              }
+            )}
+          </section>
+        )}
+      </div>
+
+      {/* Add / Edit Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#281912]/60 p-3 backdrop-blur-[2px] sm:p-5">
+          <div className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#DCCFC6] bg-[#FFFEFC] shadow-[0_28px_80px_rgba(40,25,18,0.30)]">
+            {/* Fixed Header */}
+            <div className="shrink-0 border-b border-[#E8DDD5] bg-[#FFFEFC] px-5 py-4 sm:px-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#3A2117] text-white">
+                    <Lightbulb className="h-5 w-5" />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9A7A68]">
+                      Admin Guidance
+                    </p>
+
+                    <h3 className="text-lg font-semibold text-[#281912]">
+                      {editingId
+                        ? 'Edit Guide'
+                        : 'Create Guide'}
+                    </h3>
+                  </div>
+                </div>
+
                 <button
                   type="button"
-                  onClick={resetForm}
-                  className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
+                  onClick={
+                    resetForm
+                  }
                   disabled={saving}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-[#F5F1EA]0 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#7B685D] transition hover:bg-[#F2ECE7]"
                 >
-                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {saving ? 'Saving...' : editingId ? 'Update Guide' : 'Create Guide'}
+                  <X className="h-5 w-5" />
                 </button>
+              </div>
+            </div>
+
+            <form
+              onSubmit={
+                handleSubmit
+              }
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              {/* Scrollable Content */}
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-[#F7F4EF]/70 p-4 sm:p-6">
+                <FormSection
+                  title="Guide Information"
+                  description="Choose which Admin module this guide belongs to."
+                >
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <FieldLabel>
+                        Admin Module *
+                      </FieldLabel>
+
+                      <select
+                        name="modulePath"
+                        value={
+                          formData.modulePath
+                        }
+                        onChange={
+                          handleInputChange
+                        }
+                        className={
+                          inputClass
+                        }
+                      >
+                        {MODULE_OPTIONS.map(
+                          (
+                            option
+                          ) => (
+                            <option
+                              key={
+                                option.value
+                              }
+                              value={
+                                option.value
+                              }
+                            >
+                              {
+                                option.label
+                              }
+                            </option>
+                          )
+                        )}
+                      </select>
+
+                      <p className="mt-1.5 text-xs leading-5 text-[#9A8478]">
+                        One active guide
+                        per module. Activating
+                        another guide for
+                        the same module will
+                        disable the previous
+                        one automatically.
+                      </p>
+                    </div>
+
+                    <div>
+                      <FieldLabel>
+                        Guide Title *
+                      </FieldLabel>
+
+                      <input
+                        type="text"
+                        name="title"
+                        value={
+                          formData.title
+                        }
+                        onChange={
+                          handleInputChange
+                        }
+                        className={
+                          inputClass
+                        }
+                        placeholder="Welcome to Products"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <FieldLabel>
+                      Guide Description
+                    </FieldLabel>
+
+                    <textarea
+                      name="description"
+                      value={
+                        formData.description
+                      }
+                      onChange={
+                        handleInputChange
+                      }
+                      rows={3}
+                      className={`${inputClass} resize-none`}
+                      placeholder="Short introduction to this Admin module..."
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <ToggleCard
+                      checked={
+                        formData.isActive
+                      }
+                      name="isActive"
+                      onChange={
+                        handleInputChange
+                      }
+                      title="Guide Active"
+                      description="Show this onboarding guide to Admin users when they open the matching module."
+                    />
+                  </div>
+                </FormSection>
+
+                <FormSection
+                  title="Tour Steps"
+                  description="Add the instructions that Admin users will move through one by one."
+                >
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <p className="text-sm text-[#7B685D]">
+                      {
+                        formData.steps.length
+                      }{' '}
+                      step(s)
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={
+                        addStep
+                      }
+                      className="inline-flex items-center gap-2 rounded-xl border border-[#D8C9BF] bg-[#FFFEFC] px-4 py-2.5 text-xs font-semibold text-[#6B4228] transition hover:bg-[#F7F4EF]"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Step
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {formData.steps.map(
+                      (
+                        step,
+                        index
+                      ) => (
+                        <div
+                          key={
+                            index
+                          }
+                          className="rounded-2xl border border-[#E3D8D0] bg-[#FAF7F4] p-4 sm:p-5"
+                        >
+                          <div className="mb-4 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3A2117] text-xs font-semibold text-white">
+                                {index +
+                                  1}
+                              </div>
+
+                              <p className="text-sm font-semibold text-[#281912]">
+                                Step{' '}
+                                {index +
+                                  1}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  moveStep(
+                                    index,
+                                    -1
+                                  )
+                                }
+                                disabled={
+                                  index ===
+                                  0
+                                }
+                                title="Move up"
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#6B4228] transition hover:bg-[#EEE5DF] disabled:opacity-25"
+                              >
+                                <ArrowUp className="h-4 w-4" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  moveStep(
+                                    index,
+                                    1
+                                  )
+                                }
+                                disabled={
+                                  index ===
+                                  formData
+                                    .steps
+                                    .length -
+                                    1
+                                }
+                                title="Move down"
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#6B4228] transition hover:bg-[#EEE5DF] disabled:opacity-25"
+                              >
+                                <ArrowDown className="h-4 w-4" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeStep(
+                                    index
+                                  )
+                                }
+                                disabled={
+                                  formData
+                                    .steps
+                                    .length <=
+                                  1
+                                }
+                                title="Remove step"
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#954B42] transition hover:bg-[#FFF1EE] disabled:opacity-25"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <FieldLabel>
+                              Step Title *
+                            </FieldLabel>
+
+                            <input
+                              type="text"
+                              value={
+                                step.title
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                handleStepChange(
+                                  index,
+                                  'title',
+                                  event
+                                    .target
+                                    .value
+                                )
+                              }
+                              className={
+                                inputClass
+                              }
+                              placeholder="Add a Product"
+                            />
+                          </div>
+
+                          <div className="mt-4">
+                            <FieldLabel>
+                              Step Description *
+                            </FieldLabel>
+
+                            <textarea
+                              value={
+                                step.description
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                handleStepChange(
+                                  index,
+                                  'description',
+                                  event
+                                    .target
+                                    .value
+                                )
+                              }
+                              rows={4}
+                              className={`${inputClass} resize-none`}
+                              placeholder="Explain what the Admin should do on this step..."
+                            />
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </FormSection>
+              </div>
+
+              {/* Sticky Footer */}
+              <div className="shrink-0 border-t border-[#E8DDD5] bg-[#FFFEFC] px-4 py-4 sm:px-6">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="hidden text-xs text-[#8A7467] sm:block">
+                    Saving an updated
+                    guide will allow users
+                    who completed the old
+                    version to see the
+                    updated tour again.
+                  </p>
+
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={
+                        resetForm
+                      }
+                      disabled={saving}
+                      className="rounded-xl border border-[#DCCFC6] px-5 py-2.5 text-sm font-semibold text-[#6B4228] transition hover:bg-[#F7F4EF]"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#281912] disabled:opacity-50"
+                    >
+                      {saving && (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
+
+                      {saving
+                        ? 'Saving...'
+                        : editingId
+                          ? 'Update Guide'
+                          : 'Create Guide'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Preview Modal */}
-      {previewGuide && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setPreviewGuide(null)}
+      {/* Preview */}
+      {previewGuide &&
+        previewGuide.steps?.length >
+          0 && (
+          <GuidePreview
+            guide={
+              previewGuide
+            }
+            currentStep={
+              previewStep
+            }
+            setCurrentStep={
+              setPreviewStep
+            }
+            onClose={() => {
+              setPreviewGuide(
+                null
+              )
+              setPreviewStep(0)
+            }}
           />
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-orange-500 to-[#F5F1EA]0 px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Lightbulb className="w-5 h-5 text-white" />
-                <h3 className="text-white font-bold text-sm">
-                  {previewGuide.title}
-                </h3>
-              </div>
-              <button
-                onClick={() => setPreviewGuide(null)}
-                className="p-1.5 rounded-lg hover:bg-white/20 transition text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        )}
+    </AdminLayout>
+  )
+}
 
-            <div className="px-6 py-5">
-              <div className="flex items-center gap-1.5 mb-4">
-                {previewGuide.steps.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      idx <= previewStep
-                        ? 'bg-orange-500 w-6'
-                        : 'bg-gray-200 w-4'
-                    }`}
-                  />
-                ))}
-                <span className="ml-2 text-xs text-gray-400 font-medium">
-                  {previewStep + 1} / {previewGuide.steps.length}
-                </span>
-              </div>
+function GuidePreview({
+  guide,
+  currentStep,
+  setCurrentStep,
+  onClose,
+}) {
+  const steps =
+    guide.steps || []
 
-              <h4 className="text-lg font-bold text-gray-900 mb-2">
-                {previewGuide.steps[previewStep]?.title}
-              </h4>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {previewGuide.steps[previewStep]?.description}
+  const step =
+    steps[currentStep]
+
+  const last =
+    currentStep ===
+    steps.length - 1
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#281912]/65 p-4 backdrop-blur-[3px]">
+      <div className="w-full max-w-md overflow-hidden rounded-3xl border border-[#DCCFC6] bg-[#FFFEFC] shadow-[0_30px_90px_rgba(40,25,18,0.35)]">
+        <div className="flex items-center justify-between bg-[#3A2117] px-5 py-4 text-white">
+          <div className="flex min-w-0 items-center gap-3">
+            <Lightbulb className="h-5 w-5 shrink-0 text-[#D8AD87]" />
+
+            <div className="min-w-0">
+              <p className="text-[9px] uppercase tracking-[0.15em] text-[#D8AD87]">
+                Preview
+              </p>
+
+              <p className="truncate text-sm font-semibold">
+                {guide.title}
               </p>
             </div>
+          </div>
 
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          <div className="mb-5 flex items-center gap-1.5">
+            {steps.map(
+              (
+                _,
+                index
+              ) => (
+                <span
+                  key={
+                    index
+                  }
+                  className={`h-1.5 rounded-full transition-all ${
+                    index <=
+                    currentStep
+                      ? 'w-7 bg-[#6B4228]'
+                      : 'w-4 bg-[#E4DAD3]'
+                  }`}
+                />
+              )
+            )}
+
+            <span className="ml-auto text-xs font-medium text-[#9A8478]">
+              {currentStep +
+                1}{' '}
+              / {steps.length}
+            </span>
+          </div>
+
+          <h4 className="break-words text-xl font-semibold text-[#281912]">
+            {step?.title}
+          </h4>
+
+          <p className="mt-3 whitespace-pre-line break-words text-sm leading-7 text-[#6F5E54]">
+            {step?.description}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-[#E8DDD5] bg-[#F7F4EF] px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xs font-semibold text-[#8A7467] transition hover:text-[#3A2117]"
+          >
+            Close Preview
+          </button>
+
+          <div className="flex items-center gap-2">
+            {currentStep >
+              0 && (
               <button
-                onClick={() => setPreviewGuide(null)}
-                className="text-sm text-gray-500 hover:text-gray-700 font-medium transition"
+                type="button"
+                onClick={() =>
+                  setCurrentStep(
+                    (prev) =>
+                      prev - 1
+                  )
+                }
+                className="inline-flex items-center gap-1 rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] px-3 py-2 text-xs font-semibold text-[#6B4228]"
               >
-                Close Preview
+                <ChevronLeft className="h-4 w-4" />
+                Back
               </button>
-              <div className="flex items-center gap-2">
-                {previewStep > 0 && (
-                  <button
-                    onClick={() => setPreviewStep((p) => p - 1)}
-                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    <ChevronRight className="w-4 h-4 rotate-180" />
-                    Back
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    if (previewStep < previewGuide.steps.length - 1) {
-                      setPreviewStep((p) => p + 1)
-                    } else {
-                      setPreviewGuide(null)
-                    }
-                  }}
-                  className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-[#F5F1EA]0 text-white text-sm font-medium hover:shadow-md transition"
-                >
-                  {previewStep === previewGuide.steps.length - 1
-                    ? 'Finish'
-                    : 'Next'}
-                  {previewStep < previewGuide.steps.length - 1 && (
-                    <ChevronRight className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (last) {
+                  onClose()
+                } else {
+                  setCurrentStep(
+                    (prev) =>
+                      prev + 1
+                  )
+                }
+              }}
+              className="inline-flex items-center gap-1 rounded-xl bg-[#3A2117] px-4 py-2 text-xs font-semibold text-white"
+            >
+              {last
+                ? 'Finish'
+                : 'Next'}
+
+              {!last && (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </button>
           </div>
         </div>
-      )}
-    </AdminLayout>
+      </div>
+    </div>
+  )
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  text,
+}) {
+  return (
+    <div className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-5 shadow-[0_8px_24px_rgba(58,33,23,0.04)]">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-[#8A7467]">
+            {label}
+          </p>
+
+          <p className="mt-3 text-3xl font-semibold tracking-tight text-[#281912]">
+            {value}
+          </p>
+
+          <p className="mt-1 text-xs text-[#9A8478]">
+            {text}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-[#F0E8E1] p-2.5 text-[#6B4228]">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InfoBox({
+  label,
+  value,
+}) {
+  return (
+    <div className="rounded-xl border border-[#E9E0DA] bg-[#FAF7F4] p-3.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#9A8478]">
+        {label}
+      </p>
+
+      <p className="mt-1.5 break-words text-xs font-semibold leading-5 text-[#4E3D34]">
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function FormSection({
+  title,
+  description,
+  children,
+}) {
+  return (
+    <section className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-5 shadow-sm sm:p-6">
+      <div className="mb-5">
+        <h4 className="text-lg font-semibold text-[#281912]">
+          {title}
+        </h4>
+
+        {description && (
+          <p className="mt-1 text-sm leading-6 text-[#8A7467]">
+            {description}
+          </p>
+        )}
+      </div>
+
+      {children}
+    </section>
+  )
+}
+
+function FieldLabel({
+  children,
+}) {
+  return (
+    <label className="mb-2 block text-sm font-semibold text-[#4E3D34]">
+      {children}
+    </label>
+  )
+}
+
+function ToggleCard({
+  checked,
+  name,
+  onChange,
+  title,
+  description,
+}) {
+  return (
+    <label
+      className={`block cursor-pointer rounded-xl border p-4 transition ${
+        checked
+          ? 'border-[#BFA995] bg-[#F5EEE8]'
+          : 'border-[#E6DCD5] bg-[#FAF7F4]'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-[#281912]">
+            {title}
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-[#8A7467]">
+            {description}
+          </p>
+        </div>
+
+        <input
+          type="checkbox"
+          name={name}
+          checked={checked}
+          onChange={onChange}
+          className="mt-1 h-4 w-4 accent-[#6B4228]"
+        />
+      </div>
+    </label>
   )
 }
