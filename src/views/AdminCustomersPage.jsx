@@ -221,6 +221,7 @@ export default function AdminCustomersPage() {
       customer.displayName?.toLowerCase().includes(query) ||
       customer.firstName?.toLowerCase().includes(query) ||
       customer.lastName?.toLowerCase().includes(query) ||
+      customer.mobile?.toLowerCase().includes(query) ||
       customer.phone?.toLowerCase().includes(query)
     )
   })
@@ -493,7 +494,8 @@ export default function AdminCustomersPage() {
                                 <Phone className="h-3.5 w-3.5 shrink-0 text-[#9A8478]" />
 
                                 <span>
-                                  {customer.phone ||
+                                  {customer.mobile ||
+                                    customer.phone ||
                                     'N/A'}
                                 </span>
                               </div>
@@ -623,7 +625,8 @@ export default function AdminCustomersPage() {
                               </p>
 
                               <p className="mt-1 truncate font-medium text-[#5F5048]">
-                                {customer.phone ||
+                                {customer.mobile ||
+                                  customer.phone ||
                                   'N/A'}
                               </p>
                             </div>
@@ -779,7 +782,8 @@ export default function AdminCustomersPage() {
                       </p>
 
                       <p className="mt-1.5 text-sm font-semibold text-[#281912]">
-                        {selectedCustomer.phone ||
+                        {selectedCustomer.mobile ||
+                          selectedCustomer.phone ||
                           'N/A'}
                       </p>
                     </div>
