@@ -569,6 +569,38 @@ function buildOrderExportRows(orderList) {
                 order.subtotal || 0
               ),
 
+            'Coupon Code':
+              safeExportText(
+                order.coupon?.code || ''
+              ),
+
+            'Coupon Type':
+              safeExportText(
+                order.coupon?.discountType || ''
+              ),
+
+            'Coupon Value':
+              Number(
+                order.coupon?.discountValue || 0
+              ),
+
+            'Discount Amount (PKR)':
+              Number(
+                order.discountAmount || 0
+              ),
+
+            'Discounted Subtotal (PKR)':
+              Number(
+                order.discountedSubtotal ??
+                Math.max(
+                  0,
+                  Number(order.subtotal || 0) -
+                  Number(
+                    order.discountAmount || 0
+                  )
+                )
+              ),
+
             'Shipping Charges (PKR)':
               Number(
                 order.shipping || 0
@@ -1339,6 +1371,11 @@ export default function AdminOrdersPage() {
           { wch: 18 }, // Unit
           { wch: 18 }, // Line total
           { wch: 20 }, // Subtotal
+          { wch: 18 }, // Coupon code
+          { wch: 18 }, // Coupon type
+          { wch: 16 }, // Coupon value
+          { wch: 22 }, // Discount amount
+          { wch: 24 }, // Discounted subtotal
           { wch: 22 }, // Shipping
           { wch: 20 }, // Total
           { wch: 22 }, // Payment method
@@ -1647,8 +1684,8 @@ export default function AdminOrdersPage() {
                 {!exporting && (
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${exportMenuOpen
-                        ? 'rotate-180'
-                        : ''
+                      ? 'rotate-180'
+                      : ''
                       }`}
                   />
                 )}
@@ -2485,7 +2522,52 @@ export default function AdminOrdersPage() {
                         <span className="text-[#725F54]">
                           Shipping
                         </span>
+                        {Number(
+                          selectedOrder.discountAmount || 0
+                        ) > 0 && (
+                            <>
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="flex items-center gap-2 text-[#725F54]">
+                                  Discount
 
+                                  {selectedOrder.coupon?.code && (
+                                    <span className="rounded-full border border-[#BFD8C3] bg-[#EFF8F0] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#47704D]">
+                                      {selectedOrder.coupon.code}
+                                    </span>
+                                  )}
+                                </span>
+
+                                <span className="font-semibold text-[#47704D]">
+                                  - {formatPKR(
+                                    Number(
+                                      selectedOrder.discountAmount || 0
+                                    )
+                                  )}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-[#725F54]">
+                                  After Discount
+                                </span>
+
+                                <span className="font-semibold text-[#34241C]">
+                                  {formatPKR(
+                                    selectedOrder.discountedSubtotal ??
+                                    Math.max(
+                                      0,
+                                      Number(
+                                        selectedOrder.subtotal || 0
+                                      ) -
+                                      Number(
+                                        selectedOrder.discountAmount || 0
+                                      )
+                                    )
+                                  )}
+                                </span>
+                              </div>
+                            </>
+                          )}
                         <span className="font-semibold text-[#34241C]">
                           {Number(
                             selectedOrder.shipping ||
