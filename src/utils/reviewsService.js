@@ -36,8 +36,8 @@ export const reviewsService = {
       querySnapshot.forEach(
         (docSnap) => {
           reviews.push({
-            id: docSnap.id,
             ...docSnap.data(),
+            id: docSnap.id,
           })
         }
       )
@@ -83,8 +83,8 @@ export const reviewsService = {
         querySnapshot.forEach(
           (docSnap) => {
             reviews.push({
-              id: docSnap.id,
               ...docSnap.data(),
+              id: docSnap.id,
             })
           }
         )
@@ -130,8 +130,8 @@ export const reviewsService = {
         querySnapshot.forEach(
           (docSnap) => {
             reviews.push({
-              id: docSnap.id,
               ...docSnap.data(),
+              id: docSnap.id,
             })
           }
         )
@@ -183,8 +183,8 @@ export const reviewsService = {
         )
 
       return {
-        id: docRef.id,
         ...payload,
+        id: docRef.id,
       }
     } catch (error) {
       console.error(
@@ -321,11 +321,22 @@ export const reviewsService = {
           replyText || ''
         ).trim()
 
-      if (!reviewId) {
+      if (
+        typeof reviewId !== 'string' ||
+        !reviewId.trim()
+      ) {
+        console.error(
+          'Invalid review document ID:',
+          reviewId
+        )
+
         throw new Error(
-          'Review ID is required'
+          'Invalid review document ID'
         )
       }
+
+      const cleanReviewId =
+        reviewId.trim()
 
       if (!cleanReply) {
         throw new Error(
@@ -340,7 +351,7 @@ export const reviewsService = {
         doc(
           db,
           'reviews',
-          reviewId
+          cleanReviewId
         ),
         {
           adminReply:
@@ -388,7 +399,7 @@ export const reviewsService = {
         doc(
           db,
           'reviews',
-          reviewId
+          cleanReviewId
         ),
         {
           adminReply: null,
