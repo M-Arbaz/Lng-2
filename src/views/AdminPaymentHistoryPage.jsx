@@ -3,6 +3,77 @@
 import { useState, useEffect } from 'react'
 import { Search, Download, DollarSign, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react'
 import AdminLayout from '../components/AdminLayout'
+import ordersService from '../utils/ordersService.js'
+
+const PAYMENT_STATUS_CONFIG = {
+  pending: {
+    label: 'Pending',
+    classes: 'border-[#E5D2A3] bg-[#FFF8E5] text-[#80621C]',
+  },
+  partial: {
+    label: 'Partial',
+    classes: 'border-[#DDD0E8] bg-[#F8F3FB] text-[#705180]',
+  },
+  paid: {
+    label: 'Paid',
+    classes: 'border-[#BED7C2] bg-[#EFF8F0] text-[#417048]',
+  },
+  failed: {
+    label: 'Failed',
+    classes: 'border-[#E3C3BC] bg-[#FFF1EE] text-[#944E42]',
+  },
+  refunded: {
+    label: 'Refunded',
+    classes: 'border-[#C8D9E8] bg-[#F0F6FB] text-[#426983]',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    classes: 'border-[#DDD4CE] bg-[#F8F5F2] text-[#6F5D53]',
+  },
+}
+
+function normalizePaymentStatus(value) {
+  const normalized = String(value || 'pending')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+
+  return PAYMENT_STATUS_CONFIG[normalized]
+    ? normalized
+    : 'pending'
+}
+
+function getOrderDate(order) {
+  const value = order?.createdAt || order?.date
+
+  if (!value) return null
+
+  if (typeof value?.toDate === 'function') {
+    return value.toDate()
+  }
+
+  if (typeof value?.seconds === 'number') {
+    return new Date(value.seconds * 1000)
+  }
+
+  const parsed = new Date(value)
+
+  return Number.isNaN(parsed.getTime())
+    ? null
+    : parsed
+}
+
+function formatOrderDate(order) {
+  const date = getOrderDate(order)
+
+  if (!date) return '—'
+
+  return date.toLocaleDateString('en-PK', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
 
 export default function AdminPaymentHistoryPage() {
   const [orders, setOrders] = useState([])
@@ -16,27 +87,33 @@ export default function AdminPaymentHistoryPage() {
   useEffect(() => {
     const loadAllOrders = async () => {
       try {
-        const allOrders = []
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i)
-          if (key && key.includes('user-orders-')) {
-            try {
-              const data = JSON.parse(localStorage.getItem(key))
-              if (Array.isArray(data)) {
-                allOrders.push(...data)
-              }
-            } catch {
-              // Skip invalid data
-            }
-          }
-        }
-        // Sort by creation date (newest first)
-        allOrders.sort(
-          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-        )
-        setOrders(allOrders)
+        setLoading(true)
+
+        const allOrders =
+          await ordersService.getAllOrders()
+
+        const sorted = [
+          ...(Array.isArray(allOrders)
+            ? allOrders
+            : []),
+        ].sort((a, b) => {
+          const dateA =
+            getOrderDate(a)?.getTime() || 0
+
+          const dateB =
+            getOrderDate(b)?.getTime() || 0
+
+          return dateB - dateA
+        })
+
+        setOrders(sorted)
       } catch (error) {
-        console.error('Error loading orders:', error)
+        console.error(
+          'Error loading payment orders:',
+          error
+        )
+
+        setOrders([])
       } finally {
         setLoading(false)
       }
@@ -44,30 +121,41 @@ export default function AdminPaymentHistoryPage() {
 
     loadAllOrders()
   }, [])
-
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
       order.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.email?.toLowerCase().includes(searchQuery.toLowerCase())
 
+    const paymentStatus =
+      normalizePaymentStatus(
+        order.paymentStatus
+      )
+
     const matchesPaymentStatus =
       filterPaymentStatus === 'all' ||
-      (filterPaymentStatus === 'paid' && order.status === 'delivered') ||
-      (filterPaymentStatus === 'pending' && order.status !== 'delivered')
+      paymentStatus === filterPaymentStatus
 
     const matchesPaymentMethod =
       filterPaymentMethod === 'all' ||
       (filterPaymentMethod === 'cod' && (order.paymentMethod === 'cod' || order.paymentMethod === 'cash_on_delivery')) ||
       (filterPaymentMethod === 'bank' && (order.paymentMethod === 'bank' || order.paymentMethod === 'bank_transfer')) ||
       order.paymentMethod === filterPaymentMethod
+    const orderDate = getOrderDate(order)
 
-    const orderDate = new Date(order.createdAt || new Date())
-    const fromDate = dateRange.from ? new Date(dateRange.from) : null
-    const toDate = dateRange.to ? new Date(dateRange.to) : null
+    const fromDate = dateRange.from
+      ? new Date(`${dateRange.from}T00:00:00`)
+      : null
+
+    const toDate = dateRange.to
+      ? new Date(`${dateRange.to}T23:59:59.999`)
+      : null
 
     const matchesDateRange =
-      (!fromDate || orderDate >= fromDate) && (!toDate || orderDate <= toDate)
+      (!fromDate ||
+        (orderDate && orderDate >= fromDate)) &&
+      (!toDate ||
+        (orderDate && orderDate <= toDate))
 
     return matchesSearch && matchesPaymentStatus && matchesPaymentMethod && matchesDateRange
   })
@@ -75,8 +163,19 @@ export default function AdminPaymentHistoryPage() {
   const stats = {
     totalOrders: orders.length,
     totalRevenue: orders.reduce((sum, order) => sum + (order.total || 0), 0),
-    paidOrders: orders.filter((o) => o.status === 'delivered').length,
-    pendingOrders: orders.filter((o) => o.status !== 'delivered').length,
+    paidOrders: orders.filter(
+      (order) =>
+        normalizePaymentStatus(
+          order.paymentStatus
+        ) === 'paid'
+    ).length,
+
+    pendingOrders: orders.filter(
+      (order) =>
+        normalizePaymentStatus(
+          order.paymentStatus
+        ) === 'pending'
+    ).length,
   }
 
   const paymentMethodStats = {
@@ -90,15 +189,19 @@ export default function AdminPaymentHistoryPage() {
     const csvContent = [
       ['Payment History Report', new Date().toLocaleDateString()],
       [],
-      ['Order ID', 'Customer', 'Email', 'Amount', 'Payment Method', 'Status', 'Date'],
+      ['Order ID', 'Customer', 'Email', 'Amount', 'Payment Method', 'Payment Status', 'Date'],
       ...filteredOrders.map((order) => [
         order.id?.substring(0, 8),
         order.fullName,
         order.email,
         `Rs.${order.total?.toLocaleString()}`,
         order.paymentMethod === 'cash_on_delivery' ? 'Cash on Delivery' : order.paymentMethod,
-        order.status,
-        new Date(order.createdAt).toLocaleDateString(),
+        PAYMENT_STATUS_CONFIG[
+          normalizePaymentStatus(
+            order.paymentStatus
+          )
+        ].label,
+        formatOrderDate(order),
       ]),
       [],
       ['Total Revenue', `Rs.${filteredOrders.reduce((sum, o) => sum + (o.total || 0), 0).toLocaleString()}`],
@@ -161,8 +264,7 @@ export default function AdminPaymentHistoryPage() {
             </div>
             <p className="text-3xl font-bold">{stats.pendingOrders}</p>
             <p className="text-orange-100 text-xs mt-2">
-              Awaiting payment or delivery
-            </p>
+              Payment not received yet            </p>
           </div>
 
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-xl text-white shadow-lg">
@@ -223,8 +325,12 @@ export default function AdminPaymentHistoryPage() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             >
               <option value="all">All Payment Status</option>
-              <option value="paid">Paid</option>
               <option value="pending">Pending</option>
+              <option value="partial">Partial</option>
+              <option value="paid">Paid</option>
+              <option value="failed">Failed</option>
+              <option value="refunded">Refunded</option>
+              <option value="cancelled">Cancelled</option>
             </select>
 
             {/* Payment Method */}
@@ -285,8 +391,17 @@ export default function AdminPaymentHistoryPage() {
                   <tbody className="divide-y divide-gray-200">
                     {filteredOrders.map((order) => {
                       const paymentStatus =
-                        order.status === 'delivered' ? 'Paid' : 'Pending'
-                      const isPaid = order.status === 'delivered'
+                        normalizePaymentStatus(
+                          order.paymentStatus
+                        )
+
+                      const paymentConfig =
+                        PAYMENT_STATUS_CONFIG[
+                        paymentStatus
+                        ]
+
+                      const isPaid =
+                        paymentStatus === 'paid'
 
                       return (
                         <tr
@@ -322,22 +437,18 @@ export default function AdminPaymentHistoryPage() {
                           </td>
                           <td className="px-6 py-4 text-sm">
                             <span
-                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
-                                isPaid
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-orange-100 text-orange-800'
-                              }`}
+                              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${paymentConfig.classes}`}
                             >
                               {isPaid ? (
                                 <CheckCircle className="w-3 h-3" />
                               ) : (
                                 <AlertCircle className="w-3 h-3" />
                               )}
-                              {paymentStatus}
+                              {paymentConfig.label}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">
-                            {new Date(order.createdAt).toLocaleDateString()}
+                            {formatOrderDate(order)}
                           </td>
                         </tr>
                       )
@@ -372,7 +483,7 @@ export default function AdminPaymentHistoryPage() {
                 <p className="text-2xl font-bold text-gray-900">
                   Rs.{Math.round(
                     filteredOrders.reduce((sum, o) => sum + (o.total || 0), 0) /
-                      filteredOrders.length
+                    filteredOrders.length
                   ).toLocaleString()}
                 </p>
               </div>
