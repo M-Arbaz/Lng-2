@@ -37,6 +37,7 @@ export function AppStateProvider({ children }) {
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [theme, setTheme] = useState('light')
   const [cart, setCart] = useState([])
+  const [cartHydrated, setCartHydrated] = useState(false)
 
   const [appliedCoupon, setAppliedCoupon] =
     useState(null)
@@ -75,7 +76,75 @@ export function AppStateProvider({ children }) {
   useEffect(() => {
     try { window.localStorage.setItem('lg-theme', theme) } catch { }
   }, [theme])
+  // Restore cart after browser refresh.
+  useEffect(() => {
+    try {
+      const savedCart =
+        window.localStorage.getItem('lg-cart')
 
+      if (savedCart) {
+        const parsedCart =
+          JSON.parse(savedCart)
+
+        if (Array.isArray(parsedCart)) {
+          const validCart =
+            parsedCart.filter(
+              (item) =>
+                item &&
+                item.id &&
+                item.product &&
+                item.product.id &&
+                Number(item.quantity) > 0
+            )
+
+          setCart(validCart)
+        }
+      }
+    } catch (error) {
+      console.error(
+        'Failed to restore cart:',
+        error
+      )
+
+      try {
+        window.localStorage.removeItem(
+          'lg-cart'
+        )
+      } catch { }
+    } finally {
+      setCartHydrated(true)
+    }
+  }, [])
+
+  // Persist every cart change.
+  //
+  // cartHydrated check is important:
+  // without it the initial empty React state could
+  // overwrite the previously saved cart before it
+  // has been restored from localStorage.
+  useEffect(() => {
+    if (!cartHydrated) {
+      return
+    }
+
+    try {
+      if (cart.length > 0) {
+        window.localStorage.setItem(
+          'lg-cart',
+          JSON.stringify(cart)
+        )
+      } else {
+        window.localStorage.removeItem(
+          'lg-cart'
+        )
+      }
+    } catch (error) {
+      console.error(
+        'Failed to persist cart:',
+        error
+      )
+    }
+  }, [cart, cartHydrated])
   useEffect(() => {
     const loadReviews = async () => {
       try {
