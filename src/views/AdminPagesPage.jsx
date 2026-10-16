@@ -1,423 +1,1375 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Search, X, AlertCircle, CheckCircle, Eye, EyeOff, Loader2, Save } from 'lucide-react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+
+import {
+  AlertCircle,
+  CheckCircle,
+  Copy,
+  Edit,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  FileText,
+  Globe2,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react'
+
 import AdminLayout from '../components/AdminLayout'
 import RichTextEditor from '../components/RichTextEditor.jsx'
-import pagesService from '../utils/pagesService'
+
+import pagesService, {
+  normalizeSlug,
+} from '../utils/pagesService'
+
+const createInitialForm = () => ({
+  title: '',
+  slug: '',
+  description: '',
+  content: '',
+  isPublished: false,
+})
+
+const inputClass =
+  'w-full rounded-xl border border-[#DED1C8] bg-[#FFFEFC] px-4 py-3 text-sm text-[#281912] outline-none transition placeholder:text-[#A6978F] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10'
+
+function formatDate(value) {
+  if (!value) {
+    return '—'
+  }
+
+  const date =
+    new Date(value)
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return '—'
+  }
+
+  return date.toLocaleString(
+    'en-PK',
+    {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }
+  )
+}
+
+function stripHtml(value) {
+  if (!value) {
+    return ''
+  }
+
+  return String(value)
+    .replace(
+      /<[^>]*>/g,
+      ' '
+    )
+    .replace(
+      /\s+/g,
+      ' '
+    )
+    .trim()
+}
 
 export default function AdminPagesPage() {
-  const [pages, setPages] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [message, setMessage] = useState({ type: '', text: '' })
-  const [saving, setSaving] = useState(false)
-  const [formData, setFormData] = useState({
-    title: '',
-    slug: '',
-    description: '',
-    content: '',
-    isPublished: false,
-  })
+  const [pages, setPages] =
+    useState([])
 
-  // Load pages from Firebase
+  const [loading, setLoading] =
+    useState(true)
+
+  const [
+    searchQuery,
+    setSearchQuery,
+  ] = useState('')
+
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] = useState('all')
+
+  const [showForm, setShowForm] =
+    useState(false)
+
+  const [
+    editingId,
+    setEditingId,
+  ] = useState(null)
+
+  const [formData, setFormData] =
+    useState(
+      createInitialForm
+    )
+
+  const [
+    slugManuallyEdited,
+    setSlugManuallyEdited,
+  ] = useState(false)
+
+  const [saving, setSaving] =
+    useState(false)
+
+  const [
+    deletingId,
+    setDeletingId,
+  ] = useState(null)
+
+  const [
+    togglingId,
+    setTogglingId,
+  ] = useState(null)
+
+  const [message, setMessage] =
+    useState({
+      type: '',
+      text: '',
+    })
+
+  const messageTimerRef =
+    useRef(null)
+
+  const showMessage = (
+    type,
+    text
+  ) => {
+    if (
+      messageTimerRef.current
+    ) {
+      window.clearTimeout(
+        messageTimerRef.current
+      )
+    }
+
+    setMessage({
+      type,
+      text,
+    })
+
+    messageTimerRef.current =
+      window.setTimeout(() => {
+        setMessage({
+          type: '',
+          text: '',
+        })
+      }, 3500)
+  }
+
   useEffect(() => {
-    const loadPages = async () => {
-      try {
-        setLoading(true)
-        const data = await pagesService.getAllPages()
-        setPages(data)
-      } catch (e) {
-        console.error('Error loading pages:', e)
-        setMessage({ type: 'error', text: 'Failed to load pages' })
-      } finally {
-        setLoading(false)
+    return () => {
+      if (
+        messageTimerRef.current
+      ) {
+        window.clearTimeout(
+          messageTimerRef.current
+        )
       }
     }
+  }, [])
+
+  const loadPages = async () => {
+    try {
+      setLoading(true)
+
+      const data =
+        await pagesService.getAllPages()
+
+      setPages(
+        Array.isArray(data)
+          ? data
+          : []
+      )
+    } catch (error) {
+      console.error(
+        'Error loading pages:',
+        error
+      )
+
+      showMessage(
+        'error',
+        'Failed to load pages.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     loadPages()
   }, [])
 
+  const stats = useMemo(
+    () => ({
+      total:
+        pages.length,
 
-  // Generate slug from title
-  const generateSlug = (title) => {
-    return title
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
+      published:
+        pages.filter(
+          (page) =>
+            page.isPublished ===
+            true
+        ).length,
+
+      drafts:
+        pages.filter(
+          (page) =>
+            page.isPublished !==
+            true
+        ).length,
+    }),
+    [pages]
+  )
+
+  const filteredPages =
+    useMemo(() => {
+      const query =
+        searchQuery
+          .trim()
+          .toLowerCase()
+
+      return pages.filter(
+        (page) => {
+          const matchesSearch =
+            !query ||
+            [
+              page.title,
+              page.slug,
+              page.description,
+              stripHtml(
+                page.content
+              ),
+            ].some((value) =>
+              String(value || '')
+                .toLowerCase()
+                .includes(query)
+            )
+
+          const matchesStatus =
+            statusFilter ===
+            'all' ||
+            (statusFilter ===
+              'published'
+              ? page.isPublished ===
+              true
+              : page.isPublished !==
+              true)
+
+          return (
+            matchesSearch &&
+            matchesStatus
+          )
+        }
+      )
+    }, [
+      pages,
+      searchQuery,
+      statusFilter,
+    ])
+
+  const resetForm = () => {
+    setFormData(
+      createInitialForm()
+    )
+
+    setEditingId(null)
+
+    setSlugManuallyEdited(
+      false
+    )
   }
 
-  const handleTitleChange = (e) => {
-    const title = e.target.value
-    setFormData((prev) => ({
-      ...prev,
-      title,
-      slug: formData.slug === '' || formData.slug === generateSlug(formData.title) ? generateSlug(title) : prev.slug,
-    }))
-  }
+  const openCreateForm = () => {
+    resetForm()
 
-  const handleOpenForm = (page = null) => {
-    if (page) {
-      setEditingId(page.id)
-      setFormData({
-        title: page.title,
-        slug: page.slug,
-        description: page.description || '',
-        content: page.content,
-        isPublished: page.isPublished,
-      })
-    } else {
-      setEditingId(null)
-      setFormData({
-        title: '',
-        slug: '',
-        description: '',
-        content: '',
-        isPublished: false,
-      })
-    }
     setShowForm(true)
   }
 
-  const handleCloseForm = () => {
-    setShowForm(false)
-    setEditingId(null)
+  const openEditForm = (
+    page
+  ) => {
+    setEditingId(
+      page.id
+    )
+
     setFormData({
-      title: '',
-      slug: '',
-      description: '',
-      content: '',
-      isPublished: false,
+      title:
+        page.title || '',
+
+      slug:
+        page.slug || '',
+
+      description:
+        page.description || '',
+
+      content:
+        page.content || '',
+
+      isPublished:
+        page.isPublished ===
+        true,
     })
+
+    /*
+     * Existing page URLs should not
+     * silently change when admin edits
+     * the title.
+     */
+    setSlugManuallyEdited(
+      true
+    )
+
+    setShowForm(true)
   }
 
-  const handleSave = async (e) => {
-    e.preventDefault()
-
-    if (!formData.title.trim()) {
-      setMessage({ type: 'error', text: 'Page title is required' })
+  const closeForm = () => {
+    if (saving) {
       return
     }
 
-    if (!formData.slug.trim()) {
-      setMessage({ type: 'error', text: 'Page slug is required' })
+    setShowForm(false)
+    resetForm()
+  }
+
+  const handleTitleChange = (
+    event
+  ) => {
+    const title =
+      event.target.value
+
+    setFormData((prev) => ({
+      ...prev,
+
+      title,
+
+      slug:
+        !editingId &&
+          !slugManuallyEdited
+          ? normalizeSlug(
+            title
+          )
+          : prev.slug,
+    }))
+  }
+
+  const handleSlugChange = (
+    event
+  ) => {
+    const raw =
+      event.target.value
+
+    setSlugManuallyEdited(
+      true
+    )
+
+    setFormData((prev) => ({
+      ...prev,
+
+      slug:
+        normalizeSlug(raw),
+    }))
+  }
+
+  const handleInputChange = (
+    event
+  ) => {
+    const {
+      name,
+      value,
+      type,
+      checked,
+    } = event.target
+
+    setFormData((prev) => ({
+      ...prev,
+
+      [name]:
+        type === 'checkbox'
+          ? checked
+          : value,
+    }))
+  }
+
+  const handleContentChange = (
+    html
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      content: html,
+    }))
+  }
+
+  const handleSave = async (
+    event
+  ) => {
+    event.preventDefault()
+
+    const title =
+      formData.title.trim()
+
+    const slug =
+      normalizeSlug(
+        formData.slug
+      )
+
+    const content =
+      String(
+        formData.content || ''
+      ).trim()
+
+    if (!title) {
+      showMessage(
+        'error',
+        'Page title is required.'
+      )
+
       return
     }
 
-    if (!formData.content.trim()) {
-      setMessage({ type: 'error', text: 'Page content is required' })
+    if (!slug) {
+      showMessage(
+        'error',
+        'Page slug is required.'
+      )
+
+      return
+    }
+
+    if (!content) {
+      showMessage(
+        'error',
+        'Page content is required.'
+      )
+
       return
     }
 
     try {
       setSaving(true)
-      if (editingId) {
-        await pagesService.updatePage(editingId, formData)
-        const updated = await pagesService.getAllPages()
-        setPages(updated)
-        setMessage({ type: 'success', text: 'Page updated successfully' })
-      } else {
-        await pagesService.createPage(formData)
-        const updated = await pagesService.getAllPages()
-        setPages(updated)
-        setMessage({ type: 'success', text: 'Page created successfully' })
+
+      const payload = {
+        title,
+
+        slug,
+
+        description:
+          formData.description.trim(),
+
+        content,
+
+        isPublished:
+          formData.isPublished,
       }
-      handleCloseForm()
+
+      if (editingId) {
+        const updated =
+          await pagesService.updatePage(
+            editingId,
+            payload
+          )
+
+        setPages((prev) =>
+          prev.map((page) =>
+            page.id ===
+              editingId
+              ? {
+                ...page,
+                ...updated,
+              }
+              : page
+          )
+        )
+
+        showMessage(
+          'success',
+          'Page updated successfully.'
+        )
+      } else {
+        const created =
+          await pagesService.createPage(
+            payload
+          )
+
+        setPages((prev) => [
+          created,
+          ...prev,
+        ])
+
+        showMessage(
+          'success',
+          'Page created successfully.'
+        )
+      }
+
+      setShowForm(false)
+      resetForm()
     } catch (error) {
-      console.error('Error saving page:', error)
-      setMessage({ type: 'error', text: 'Failed to save page' })
+      console.error(
+        'Error saving page:',
+        error
+      )
+
+      showMessage(
+        'error',
+        error?.message ||
+        'Failed to save page.'
+      )
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this page?')) return
+  const handleDelete = async (
+    page
+  ) => {
+    const confirmed =
+      window.confirm(
+        `Delete "${page.title || 'this page'}"? This action cannot be undone.`
+      )
+
+    if (!confirmed) {
+      return
+    }
 
     try {
-      setSaving(true)
-      await pagesService.deletePage(id)
-      const updated = await pagesService.getAllPages()
-      setPages(updated)
-      setMessage({ type: 'success', text: 'Page deleted successfully' })
+      setDeletingId(
+        page.id
+      )
+
+      await pagesService.deletePage(
+        page.id
+      )
+
+      setPages((prev) =>
+        prev.filter(
+          (current) =>
+            current.id !==
+            page.id
+        )
+      )
+
+      showMessage(
+        'success',
+        'Page deleted successfully.'
+      )
     } catch (error) {
-      console.error('Error deleting page:', error)
-      setMessage({ type: 'error', text: 'Failed to delete page' })
+      console.error(
+        'Error deleting page:',
+        error
+      )
+
+      showMessage(
+        'error',
+        'Failed to delete page.'
+      )
     } finally {
-      setSaving(false)
+      setDeletingId(null)
     }
   }
 
-  const handleTogglePublish = async (id, currentStatus) => {
+  const handleTogglePublish =
+    async (page) => {
+      const nextStatus =
+        page.isPublished !==
+        true
+
+      try {
+        setTogglingId(
+          page.id
+        )
+
+        const updated =
+          await pagesService.togglePagePublish(
+            page.id,
+            nextStatus
+          )
+
+        setPages((prev) =>
+          prev.map((item) =>
+            item.id ===
+              page.id
+              ? {
+                ...item,
+                ...updated,
+              }
+              : item
+          )
+        )
+
+        showMessage(
+          'success',
+          nextStatus
+            ? 'Page published successfully.'
+            : 'Page moved to draft.'
+        )
+      } catch (error) {
+        console.error(
+          'Publish update failed:',
+          error
+        )
+
+        showMessage(
+          'error',
+          'Failed to update page visibility.'
+        )
+      } finally {
+        setTogglingId(null)
+      }
+    }
+
+  const copyPageUrl = async (
+    slug
+  ) => {
     try {
-      setSaving(true)
-      await pagesService.togglePagePublish(id, !currentStatus)
-      const updated = await pagesService.getAllPages()
-      setPages(updated)
-      setMessage({ type: 'success', text: `Page ${!currentStatus ? 'published' : 'unpublished'} successfully` })
+      const relativeUrl =
+        `/${slug}`
+
+      const url =
+        typeof window !==
+          'undefined'
+          ? `${window.location.origin}${relativeUrl}`
+          : relativeUrl
+
+      await navigator.clipboard.writeText(
+        url
+      )
+
+      showMessage(
+        'success',
+        'Page URL copied.'
+      )
     } catch (error) {
-      console.error('Error toggling publish:', error)
-      setMessage({ type: 'error', text: 'Failed to update publish status' })
-    } finally {
-      setSaving(false)
+      console.error(
+        'Copy URL failed:',
+        error
+      )
+
+      showMessage(
+        'error',
+        'Could not copy the page URL.'
+      )
     }
   }
-
-  const filteredPages = pages.filter(
-    (page) =>
-      page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      page.slug.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
 
   return (
     <AdminLayout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Pages Management</h1>
-            <p className="text-gray-600 dark:text-gray-400">Create and manage custom content pages with rich text formatting</p>
+      <div className="space-y-6">
+        {/* Header */}
+        <section className="overflow-hidden rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.06)]">
+          <div className="flex flex-col gap-5 px-5 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#3A2117] text-[#FFFEFC]">
+                <FileText className="h-6 w-6" />
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#9A7A68]">
+                  Storefront
+                </p>
+
+                <h1 className="text-2xl font-semibold tracking-tight text-[#281912] sm:text-3xl">
+                  Pages
+                </h1>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#7B685D]">
+                  Create and manage
+                  custom content,
+                  information and policy
+                  pages using the shared
+                  Lamp & Glow content
+                  layout.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                openCreateForm
+              }
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-5 py-3 text-sm font-semibold text-[#FFFEFC] transition hover:bg-[#281912] sm:w-auto"
+            >
+              <Plus className="h-4 w-4" />
+
+              Add Page
+            </button>
+          </div>
+        </section>
+
+        {/* Feedback */}
+        {message.text && (
+          <div
+            className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-sm ${message.type ===
+                'success'
+                ? 'border-[#CFE1D1] bg-[#F3F9F3] text-[#426649]'
+                : 'border-[#E8C9C3] bg-[#FFF4F1] text-[#93483C]'
+              }`}
+          >
+            {message.type ===
+              'success' ? (
+              <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            ) : (
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            )}
+
+            <p className="text-sm font-medium">
+              {message.text}
+            </p>
+          </div>
+        )}
+
+        {/* Stats */}
+        <section className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            icon={FileText}
+            label="Total Pages"
+            value={stats.total}
+            text="All custom pages"
+          />
+
+          <StatCard
+            icon={Eye}
+            label="Published"
+            value={
+              stats.published
+            }
+            text="Visible to customers"
+          />
+
+          <StatCard
+            icon={EyeOff}
+            label="Drafts"
+            value={stats.drafts}
+            text="Hidden from storefront"
+          />
+        </section>
+
+        {/* Search / Filter */}
+        <section className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-4 shadow-[0_8px_24px_rgba(58,33,23,0.04)] sm:p-5">
+          <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9A8478]" />
+
+              <input
+                type="text"
+                value={
+                  searchQuery
+                }
+                onChange={(event) =>
+                  setSearchQuery(
+                    event.target.value
+                  )
+                }
+                placeholder="Search title, URL, description or content..."
+                className="w-full rounded-xl border border-[#DED1C8] bg-[#FDFBF8] py-3 pl-11 pr-4 text-sm text-[#281912] outline-none transition placeholder:text-[#A6978F] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10"
+              />
+            </div>
+
+            <select
+              value={
+                statusFilter
+              }
+              onChange={(event) =>
+                setStatusFilter(
+                  event.target.value
+                )
+              }
+              className={
+                inputClass
+              }
+            >
+              <option value="all">
+                All Statuses
+              </option>
+
+              <option value="published">
+                Published
+              </option>
+
+              <option value="draft">
+                Draft
+              </option>
+            </select>
           </div>
 
-          {/* Messages */}
-          {message.text && (
-            <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${message.type === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-[#22C55E]'}`}>
-              {message.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle size={20} />}
-              {message.text}
-            </div>
-          )}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#EEE5DF] pt-4">
+            <p className="text-sm text-[#7B685D]">
+              Showing{' '}
+              <span className="font-semibold text-[#3A2117]">
+                {
+                  filteredPages.length
+                }
+              </span>{' '}
+              of {pages.length} pages
+            </p>
 
-          {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Form Section */}
-            {showForm && (
-              <div className="lg:col-span-1">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sticky top-4">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      {editingId ? 'Edit Page' : 'Create New Page'}
-                    </h2>
-                    <button
-                      onClick={handleCloseForm}
-                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                    >
-                      <X size={20} className="text-gray-600 dark:text-gray-400" />
-                    </button>
+            <button
+              type="button"
+              onClick={loadPages}
+              disabled={loading}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[#6B4228] transition hover:text-[#281912] disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${loading
+                    ? 'animate-spin'
+                    : ''
+                  }`}
+              />
+
+              Refresh
+            </button>
+          </div>
+        </section>
+
+        {/* Pages */}
+        {loading ? (
+          <section className="flex min-h-[320px] items-center justify-center rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC]">
+            <div className="text-center">
+              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6B4228]" />
+
+              <p className="mt-3 text-sm font-medium text-[#7B685D]">
+                Loading pages...
+              </p>
+            </div>
+          </section>
+        ) : filteredPages.length ===
+          0 ? (
+          <section className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] px-6 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F0E8E1] text-[#6B4228]">
+              <FileText className="h-7 w-7" />
+            </div>
+
+            <h3 className="mt-4 text-lg font-semibold text-[#281912]">
+              No pages found
+            </h3>
+
+            <p className="mt-1 max-w-sm text-sm leading-6 text-[#8A7467]">
+              {searchQuery ||
+                statusFilter !==
+                'all'
+                ? 'Try adjusting your search or filter.'
+                : 'Create your first custom information or policy page.'}
+            </p>
+          </section>
+        ) : (
+          <section className="grid gap-4 xl:grid-cols-2">
+            {filteredPages.map(
+              (page) => {
+                const published =
+                  page.isPublished ===
+                  true
+
+                const preview =
+                  page.description ||
+                  stripHtml(
+                    page.content
+                  ) ||
+                  'No page description.'
+
+                return (
+                  <article
+                    key={page.id}
+                    className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-5 shadow-[0_10px_30px_rgba(58,33,23,0.05)] sm:p-6"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${published
+                                ? 'border-[#C5DBC9] bg-[#EFF8F0] text-[#44704B]'
+                                : 'border-[#DDD4CE] bg-[#F7F4EF] text-[#75645A]'
+                              }`}
+                          >
+                            {published ? (
+                              <Eye className="h-3 w-3" />
+                            ) : (
+                              <EyeOff className="h-3 w-3" />
+                            )}
+
+                            {published
+                              ? 'Published'
+                              : 'Draft'}
+                          </span>
+
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#F7F4EF] px-2.5 py-1 font-mono text-[10px] text-[#8A7467]">
+                            <Globe2 className="h-3 w-3" />
+
+                            /{page.slug}
+                          </span>
+                        </div>
+
+                        <h3 className="mt-3 break-words text-lg font-semibold leading-6 text-[#281912]">
+                          {page.title ||
+                            'Untitled Page'}
+                        </h3>
+
+                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#7B685D]">
+                          {preview}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      <InfoBox
+                        label="Created"
+                        value={formatDate(
+                          page.createdAt
+                        )}
+                      />
+
+                      <InfoBox
+                        label="Last Updated"
+                        value={formatDate(
+                          page.updatedAt
+                        )}
+                      />
+                    </div>
+
+                    <div className="mt-5 flex flex-col gap-3 border-t border-[#EEE5DF] pt-4 sm:flex-row sm:items-center sm:justify-between">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleTogglePublish(
+                            page
+                          )
+                        }
+                        disabled={
+                          togglingId ===
+                          page.id
+                        }
+                        className={`inline-flex items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition disabled:opacity-50 ${published
+                            ? 'border-[#C5DBC9] bg-[#EFF8F0] text-[#44704B]'
+                            : 'border-[#DDD4CE] bg-[#F7F4EF] text-[#75645A]'
+                          }`}
+                      >
+                        {togglingId ===
+                          page.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : published ? (
+                          <Eye className="h-3.5 w-3.5" />
+                        ) : (
+                          <EyeOff className="h-3.5 w-3.5" />
+                        )}
+
+                        {published
+                          ? 'Published'
+                          : 'Draft'}
+                      </button>
+
+                      <div className="flex flex-wrap justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            copyPageUrl(
+                              page.slug
+                            )
+                          }
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B4228] transition hover:bg-[#F7F4EF]"
+                          title="Copy URL"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+
+                        {published && (
+                          <a
+                            href={`/${page.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B4228] transition hover:bg-[#F7F4EF]"
+                            title="Open page"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openEditForm(
+                              page
+                            )
+                          }
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-[#6B4228] transition hover:bg-[#F7F4EF]"
+                          title="Edit"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDelete(
+                              page
+                            )
+                          }
+                          disabled={
+                            deletingId ===
+                            page.id
+                          }
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-[#954B42] transition hover:bg-[#FFF2EF] disabled:opacity-50"
+                          title="Delete"
+                        >
+                          {deletingId ===
+                            page.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                )
+              }
+            )}
+          </section>
+        )}
+      </div>
+
+      {/* Create / Edit Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#281912]/60 p-3 backdrop-blur-[2px] sm:p-5">
+          <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#DCCFC6] bg-[#FFFEFC] shadow-[0_28px_80px_rgba(40,25,18,0.30)]">
+            {/* Fixed Header */}
+            <div className="shrink-0 border-b border-[#E8DDD5] bg-[#FFFEFC] px-5 py-4 sm:px-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#3A2117] text-white">
+                    <FileText className="h-5 w-5" />
                   </div>
 
-                  <form onSubmit={handleSave} className="space-y-4">
-                    {/* Title */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Page Title *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.title}
-                        onChange={handleTitleChange}
-                        placeholder="e.g., About Us, Contact"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9A7A68]">
+                      Storefront
+                    </p>
 
-                    {/* Slug */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Page Slug *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.slug}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            slug: e.target.value,
-                          }))
-                        }
-                        placeholder="e.g., about-us"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
-                      />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Access at: /{formData.slug}</p>
-                    </div>
+                    <h3 className="mt-0.5 text-lg font-semibold text-[#281912] sm:text-xl">
+                      {editingId
+                        ? 'Edit Page'
+                        : 'Create Page'}
+                    </h3>
+                  </div>
+                </div>
 
-                    {/* Description */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Description (SEO)
-                      </label>
-                      <textarea
-                        value={formData.description}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        placeholder="Page meta description"
-                        rows="2"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    </div>
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  disabled={saving}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#7B685D] transition hover:bg-[#F2ECE7] disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
 
-                    {/* Published Status */}
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="isPublished"
-                        checked={formData.isPublished}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            isPublished: e.target.checked,
-                          }))
-                        }
-                        className="rounded"
-                      />
-                      <label htmlFor="isPublished" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Publish this page
-                      </label>
-                    </div>
+            <form
+              onSubmit={handleSave}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              {/* Scrollable Content */}
+              <div className="min-h-0 flex-1 overflow-y-auto bg-[#F7F4EF]/70 p-4 sm:p-6">
+                <div className="space-y-5">
+                  {/* Basic information */}
+                  <FormSection
+                    eyebrow="Page"
+                    title="Page Information"
+                    description="Configure the customer-facing page title, URL and introductory description."
+                  >
+                    <div className="space-y-4">
+                      <div>
+                        <FieldLabel>
+                          Page Title *
+                        </FieldLabel>
 
-                    {/* Save Button */}
+                        <input
+                          type="text"
+                          value={
+                            formData.title
+                          }
+                          onChange={
+                            handleTitleChange
+                          }
+                          placeholder="e.g. Privacy Policy"
+                          className={
+                            inputClass
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <FieldLabel>
+                          Page URL / Slug *
+                        </FieldLabel>
+
+                        <div className="flex overflow-hidden rounded-xl border border-[#DED1C8] bg-[#FFFEFC] focus-within:border-[#6B4228] focus-within:ring-2 focus-within:ring-[#6B4228]/10">
+                          <span className="flex shrink-0 items-center border-r border-[#E7DCD4] bg-[#F7F4EF] px-4 text-sm font-medium text-[#8A7467]">
+                            /
+                          </span>
+
+                          <input
+                            type="text"
+                            value={
+                              formData.slug
+                            }
+                            onChange={
+                              handleSlugChange
+                            }
+                            placeholder="privacy-policy"
+                            className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[#281912] outline-none"
+                          />
+                        </div>
+
+                        <p className="mt-1.5 text-xs leading-5 text-[#9A8478]">
+                          Public URL:{' '}
+                          <span className="font-mono font-medium text-[#6B4228]">
+                            /
+                            {formData.slug ||
+                              'page-slug'}
+                          </span>
+                        </p>
+
+                        {editingId && (
+                          <p className="mt-1 text-xs text-[#A06C55]">
+                            Changing the
+                            slug changes the
+                            public page URL.
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <FieldLabel>
+                          Page Description /
+                          Intro
+                        </FieldLabel>
+
+                        <textarea
+                          name="description"
+                          value={
+                            formData.description
+                          }
+                          onChange={
+                            handleInputChange
+                          }
+                          rows={3}
+                          placeholder="Short description shown below the page title..."
+                          className={`${inputClass} resize-none`}
+                        />
+                      </div>
+                    </div>
+                  </FormSection>
+
+                  {/* Content */}
+                  <FormSection
+                    eyebrow="Content"
+                    title="Page Content"
+                    description="This content automatically uses the shared responsive policy/page layout on the storefront."
+                  >
+                    <RichTextEditor
+                      value={
+                        formData.content
+                      }
+                      onChange={
+                        handleContentChange
+                      }
+                      placeholder="Write your page content here..."
+                      minHeight={380}
+                    />
+                  </FormSection>
+
+                  {/* Visibility */}
+                  <FormSection
+                    eyebrow="Publishing"
+                    title="Page Visibility"
+                    description="Draft pages remain available inside Admin but cannot be opened by customers."
+                  >
+                    <label
+                      className={`block cursor-pointer rounded-xl border p-4 transition ${formData.isPublished
+                          ? 'border-[#BFA995] bg-[#F5EEE8]'
+                          : 'border-[#E6DCD5] bg-[#FAF7F4]'
+                        }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EDE4DC] text-[#6B4228]">
+                            {formData.isPublished ? (
+                              <Eye className="h-4 w-4" />
+                            ) : (
+                              <EyeOff className="h-4 w-4" />
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-[#281912]">
+                              Publish this
+                              page
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-[#8A7467]">
+                              {formData.isPublished
+                                ? 'Customers can open this page from its public URL.'
+                                : 'This page remains hidden until you publish it.'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <input
+                          type="checkbox"
+                          name="isPublished"
+                          checked={
+                            formData.isPublished
+                          }
+                          onChange={
+                            handleInputChange
+                          }
+                          className="mt-1 h-4 w-4 accent-[#6B4228]"
+                        />
+                      </div>
+                    </label>
+                  </FormSection>
+                </div>
+              </div>
+
+              {/* Sticky Action Footer */}
+              <div className="shrink-0 border-t border-[#E8DDD5] bg-[#FFFEFC] px-4 py-4 sm:px-6">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="hidden text-xs leading-5 text-[#8A7467] sm:block">
+                    Title, unique URL and
+                    page content are
+                    required.
+                  </p>
+
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={closeForm}
+                      disabled={saving}
+                      className="rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] px-5 py-2.5 text-sm font-semibold text-[#6B4228] transition hover:bg-[#F7F4EF] disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+
                     <button
                       type="submit"
                       disabled={saving}
-                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#281912] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                      {saving ? 'Saving...' : 'Save Page'}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
+                      {saving && (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
 
-            {/* Content Editor & List Section */}
-            <div className={showForm ? 'lg:col-span-2' : 'lg:col-span-3'}>
-              {showForm ? (
-                /* Content Editor */
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    Page Content * (Rich Text Editor)
-                  </label>
-
-                  <RichTextEditor
-                    value={formData.content}
-                    onChange={(html) => setFormData((prev) => ({ ...prev, content: html }))}
-                    placeholder="Write your page content here..."
-                    minHeight={380}
-                  />
-                </div>
-              ) : (
-                /* List Section */
-                <div>
-                  <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-3 top-3 text-gray-400" size={20} />
-                      <input
-                        type="text"
-                        placeholder="Search pages..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <button
-                      onClick={() => handleOpenForm()}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg flex items-center gap-2 transition-colors"
-                    >
-                      <Plus size={20} />
-                      New Page
+                      {saving
+                        ? 'Saving...'
+                        : editingId
+                          ? 'Update Page'
+                          : 'Create Page'}
                     </button>
                   </div>
-
-                  {loading ? (
-                    <div className="text-center py-12">
-                      <Loader2 size={32} className="animate-spin mx-auto text-blue-600 mb-2" />
-                      <p className="text-gray-600 dark:text-gray-400">Loading pages...</p>
-                    </div>
-                  ) : filteredPages.length === 0 ? (
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
-                      <p className="text-gray-500 dark:text-gray-400 mb-4">No pages created yet</p>
-                      <button
-                        onClick={() => handleOpenForm()}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg inline-flex items-center gap-2 transition-colors"
-                      >
-                        <Plus size={20} />
-                        Create First Page
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid gap-4">
-                      {filteredPages.map((page) => (
-                        <div key={page.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-lg transition-shadow">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                                  {page.title}
-                                </h3>
-                                <span
-                                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                    page.isPublished
-                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-[#22C55E]'
-                                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                                  }`}
-                                >
-                                  {page.isPublished ? 'Published' : 'Draft'}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                URL: <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">/{page.slug}</code>
-                              </p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                                {page.description || 'No description'}
-                              </p>
-                            </div>
-
-                            <div className="flex gap-2 flex-shrink-0">
-                              <button
-                                onClick={() => handleTogglePublish(page.id, page.isPublished)}
-                                disabled={saving}
-                                title={page.isPublished ? 'Unpublish' : 'Publish'}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-                              >
-                                {page.isPublished ? (
-                                  <Eye size={18} className="text-[#22C55E]" />
-                                ) : (
-                                  <EyeOff size={18} className="text-gray-400" />
-                                )}
-                              </button>
-                              <button
-                                onClick={() => handleOpenForm(page)}
-                                disabled={saving}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-                              >
-                                <Edit size={18} className="text-blue-600" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(page.id)}
-                                disabled={saving}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-                              >
-                                <Trash2 size={18} className="text-[#E53935]" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </AdminLayout>
+  )
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  text,
+}) {
+  return (
+    <div className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-5 shadow-[0_8px_24px_rgba(58,33,23,0.04)]">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-[#8A7467]">
+            {label}
+          </p>
+
+          <p className="mt-3 text-3xl font-semibold tracking-tight text-[#281912]">
+            {value}
+          </p>
+
+          <p className="mt-1 text-xs text-[#9A8478]">
+            {text}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-[#F0E8E1] p-2.5 text-[#6B4228]">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InfoBox({
+  label,
+  value,
+}) {
+  return (
+    <div className="rounded-xl border border-[#E9E0DA] bg-[#FAF7F4] p-3.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#9A8478]">
+        {label}
+      </p>
+
+      <p className="mt-1.5 break-words text-xs font-semibold leading-5 text-[#4E3D34]">
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function FormSection({
+  eyebrow,
+  title,
+  description,
+  children,
+}) {
+  return (
+    <section className="rounded-2xl border border-[#E7DCD4] bg-[#FFFEFC] p-5 shadow-sm sm:p-6">
+      <div className="mb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9A7A68]">
+          {eyebrow}
+        </p>
+
+        <h4 className="mt-1 text-lg font-semibold text-[#281912]">
+          {title}
+        </h4>
+
+        {description && (
+          <p className="mt-1 text-sm leading-6 text-[#8A7467]">
+            {description}
+          </p>
+        )}
+      </div>
+
+      {children}
+    </section>
+  )
+}
+
+function FieldLabel({
+  children,
+}) {
+  return (
+    <label className="mb-2 block text-sm font-semibold text-[#4E3D34]">
+      {children}
+    </label>
   )
 }
