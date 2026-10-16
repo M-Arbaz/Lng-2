@@ -1,4 +1,4 @@
-import BlogDetail from '@/pages/BlogDetail'
+import BlogDetail from '@/views/BlogDetail'
 import { createMetadata, humanizeSlug } from '@/lib/seo'
 
 export async function generateMetadata({ params }) {

@@ -1,6 +1,6 @@
 'use client'
 
-import CollectionDetailPage from '@/pages/CollectionDetailPage'
+import CollectionDetailPage from '@/views/CollectionDetailPage'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function CollectionDetailRoute() {

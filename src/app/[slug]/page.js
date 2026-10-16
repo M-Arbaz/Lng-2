@@ -1,4 +1,4 @@
-import PublicPage from '@/pages/PublicPage'
+import PublicPage from '@/views/PublicPage'
 import { createMetadata, humanizeSlug } from '@/lib/seo'
 
 export async function generateMetadata({ params }) {

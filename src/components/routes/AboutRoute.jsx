@@ -1,6 +1,6 @@
 'use client'
 
-import AboutPage from '@/pages/AboutPage'
+import AboutPage from '@/views/AboutPage'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function AboutRoute() {

@@ -1,6 +1,6 @@
 'use client'
 
-import SaleProductsPage from '@/pages/SaleProductsPage'
+import SaleProductsPage from '@/views/SaleProductsPage'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function SaleRoute() {

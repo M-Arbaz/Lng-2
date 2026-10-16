@@ -1,5 +1,5 @@
 import AdminGuard from '@/components/AdminGuard'
-import AdminShippingPage from '@/pages/AdminShippingPage'
+import AdminShippingPage from '@/views/AdminShippingPage'
 import { createMetadata } from '@/lib/seo'
 
 export const metadata = createMetadata({ title: 'Admin Shipping Fees', path: '/admin/shipping-fees', noIndex: true })

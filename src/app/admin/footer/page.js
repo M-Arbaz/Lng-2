@@ -1,5 +1,5 @@
 import AdminGuard from '@/components/AdminGuard'
-import AdminFooterPage from '@/pages/AdminFooterPage'
+import AdminFooterPage from '@/views/AdminFooterPage'
 import { createMetadata } from '@/lib/seo'
 
 export const metadata = createMetadata({ title: 'Admin Footer', path: '/admin/footer', noIndex: true })

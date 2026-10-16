@@ -1,6 +1,6 @@
 'use client'
 
-import ProductsPage from '@/pages/ProductsPage'
+import ProductsPage from '@/views/ProductsPage'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function ProductsRoute() {

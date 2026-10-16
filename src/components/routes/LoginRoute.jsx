@@ -1,6 +1,6 @@
 'use client'
 
-import LoginPage from '@/pages/LoginPage'
+import LoginPage from '@/views/LoginPage'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function LoginRoute() {

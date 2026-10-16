@@ -1,6 +1,6 @@
 'use client'
 
-import CheckoutPage from '@/pages/CheckoutPage'
+import CheckoutPage from '@/views/CheckoutPage'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function CheckoutRoute() {

@@ -1,5 +1,5 @@
 import AdminGuard from '@/components/AdminGuard'
-import AdminContactPage from '@/pages/AdminContactPage'
+import AdminContactPage from '@/views/AdminContactPage'
 import { createMetadata } from '@/lib/seo'
 
 export const metadata = createMetadata({ title: 'Admin Contact Page', path: '/admin/contact-page', noIndex: true })

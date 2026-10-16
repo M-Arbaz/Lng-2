@@ -1,4 +1,4 @@
-import ContactUsPage from '@/pages/ContactUsPage'
+import ContactUsPage from '@/views/ContactUsPage'
 import { createMetadata } from '@/lib/seo'
 
 export const metadata = createMetadata({

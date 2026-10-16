@@ -1,6 +1,6 @@
 'use client'
 
-import NewArrivalsPage from '@/pages/NewArrivalsPage'
+import NewArrivalsPage from '@/views/NewArrivalsPage'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function NewArrivalsRoute() {

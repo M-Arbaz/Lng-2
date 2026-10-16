@@ -1,4 +1,4 @@
-import ReelsPage from '@/pages/ReelsPage'
+import ReelsPage from '@/views/ReelsPage'
 import { createMetadata } from '@/lib/seo'
 
 export async function generateMetadata({ params }) {

@@ -1,6 +1,6 @@
 'use client'
 
-import ContactPage from '@/pages/ContactPage'
+import ContactPage from '@/views/ContactPage'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function ContactRoute() {

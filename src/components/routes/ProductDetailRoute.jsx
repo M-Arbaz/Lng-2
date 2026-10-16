@@ -1,6 +1,6 @@
 'use client'
 
-import ProductDetail from '@/pages/ProductDetail'
+import ProductDetail from '@/views/ProductDetail'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function ProductDetailRoute() {

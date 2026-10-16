@@ -1,4 +1,4 @@
-import BlogsList from '@/pages/BlogsList'
+import BlogsList from '@/views/BlogsList'
 import { createMetadata } from '@/lib/seo'
 
 export const metadata = createMetadata({

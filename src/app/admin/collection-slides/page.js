@@ -1,5 +1,5 @@
 import AdminGuard from '@/components/AdminGuard'
-import AdminCollectionSlidesPage from '@/pages/AdminCollectionSlidesPage'
+import AdminCollectionSlidesPage from '@/views/AdminCollectionSlidesPage'
 import { createMetadata } from '@/lib/seo'
 
 export const metadata = createMetadata({ title: 'Admin Collection Slides', path: '/admin/collection-slides', noIndex: true })

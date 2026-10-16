@@ -1,6 +1,6 @@
 'use client'
 
-import OrdersPage from '@/pages/OrdersPage'
+import OrdersPage from '@/views/OrdersPage'
 import AuthGuard from '@/components/AuthGuard'
 import { useAppState } from '@/context/AppStateContext'
 

@@ -1,6 +1,6 @@
 'use client'
 
-import CartPage from '@/pages/CartPage'
+import CartPage from '@/views/CartPage'
 import { useAppState } from '@/context/AppStateContext'
 import { useRouter } from 'next/navigation'
 

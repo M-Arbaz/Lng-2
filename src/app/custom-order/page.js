@@ -1,4 +1,4 @@
-import CustomOrderPage from '@/pages/CustomOrderPage'
+import CustomOrderPage from '@/views/CustomOrderPage'
 import { createMetadata } from '@/lib/seo'
 
 export const metadata = createMetadata({

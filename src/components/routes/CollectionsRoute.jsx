@@ -1,6 +1,6 @@
 'use client'
 
-import CollectionsPage from '@/pages/CollectionsPage'
+import CollectionsPage from '@/views/CollectionsPage'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function CollectionsRoute() {

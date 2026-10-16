@@ -1,5 +1,5 @@
 import AdminGuard from '@/components/AdminGuard'
-import AdminWebsitePopupsPage from '@/pages/AdminWebsitePopupsPage'
+import AdminWebsitePopupsPage from '@/views/AdminWebsitePopupsPage'
 import { createMetadata } from '@/lib/seo'
 
 export const metadata = createMetadata({ title: 'Admin Website Popups', path: '/admin/website-popups', noIndex: true })

@@ -1,4 +1,4 @@
-import ShippingPolicyPage from '@/pages/ShippingPolicyPage'
+import ShippingPolicyPage from '@/views/ShippingPolicyPage'
 import { createMetadata } from '@/lib/seo'
 
 export const metadata = createMetadata({

@@ -1,6 +1,6 @@
 'use client'
 
-import WishlistPage from '@/pages/WishlistPage'
+import WishlistPage from '@/views/WishlistPage'
 import AuthGuard from '@/components/AuthGuard'
 import { useAppState } from '@/context/AppStateContext'
 

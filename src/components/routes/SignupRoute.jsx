@@ -1,6 +1,6 @@
 'use client'
 
-import SignupPage from '@/pages/SignupPage'
+import SignupPage from '@/views/SignupPage'
 import { useAppState } from '@/context/AppStateContext'
 
 export default function SignupRoute() {
