@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useNavigate } from '@/lib/navigation'
 import { useAdminAuth } from '../context/AdminAuthContext'
+import { login as serverAdminLogin } from '@/app/actions/auth'
 import {
   AlertCircle,
   ArrowRight,
@@ -16,7 +17,6 @@ import {
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
-  const { adminLogin } = useAdminAuth()
 
   const [formData, setFormData] = useState({
     email: '',
@@ -55,14 +55,21 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      const result = await adminLogin(email, password)
+      const result = await serverAdminLogin(
+        new FormData(e.currentTarget)
+      )
 
-      if (!result?.admin) {
-        setError('Invalid admin email or password.')
+      if (result?.error) {
+        setError(result.error)
         return
       }
 
-      navigate('/admin/dashboard')
+      if (result?.success) {
+        navigate('/admin/dashboard')
+        return
+      }
+
+      setError('Unable to sign in right now. Please try again.')
     } catch (err) {
       console.error('Admin login failed:', err)
       setError('Unable to sign in right now. Please try again.')

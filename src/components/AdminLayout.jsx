@@ -232,17 +232,21 @@ export default function AdminLayout({ children }) {
     setUserMenuOpen(false)
   }
 
-  const handleLogout = () => {
-    adminLogout()
-    navigate('/admin/login')
+  const handleLogout = async () => {
+    try {
+      await adminLogout()
+      navigate('/admin/login')
+    } catch (err) {
+      console.error('Admin logout failed:', err)
+    }
   }
 
   const SidebarContent = ({ mobile = false }) => (
     <>
       <div
         className={`flex h-[88px] flex-shrink-0 items-center border-b border-white/10 ${desktopCollapsed && !mobile
-            ? 'justify-center px-3'
-            : 'justify-between px-5'
+          ? 'justify-center px-3'
+          : 'justify-between px-5'
           }`}
       >
         {(!desktopCollapsed || mobile) && (
@@ -317,8 +321,8 @@ export default function AdminLayout({ children }) {
                       onClick={() => handleNavigate(item.path)}
                       title={desktopCollapsed && !mobile ? item.label : ''}
                       className={`group flex w-full items-center rounded-xl transition-all duration-200 ${desktopCollapsed && !mobile
-                          ? 'justify-center px-2 py-3'
-                          : 'gap-3 px-3 py-2.5'
+                        ? 'justify-center px-2 py-3'
+                        : 'gap-3 px-3 py-2.5'
                         } ${active
                           ? 'bg-[#F7F4EF] text-[#3A2117] shadow-[0_8px_24px_rgba(0,0,0,0.12)]'
                           : 'text-[#E7DAD1] hover:bg-white/10 hover:text-white'
@@ -326,8 +330,8 @@ export default function AdminLayout({ children }) {
                     >
                       <Icon
                         className={`h-[18px] w-[18px] flex-shrink-0 ${active
-                            ? 'text-[#6B4228]'
-                            : 'text-[#CDB9AC] group-hover:text-white'
+                          ? 'text-[#6B4228]'
+                          : 'text-[#CDB9AC] group-hover:text-white'
                           }`}
                       />
 
@@ -351,8 +355,8 @@ export default function AdminLayout({ children }) {
           onClick={handleLogout}
           title={desktopCollapsed && !mobile ? 'Logout' : ''}
           className={`flex w-full items-center rounded-xl text-[#F2CEC8] transition hover:bg-[#7A302A]/35 hover:text-white ${desktopCollapsed && !mobile
-              ? 'justify-center px-2 py-3'
-              : 'gap-3 px-3 py-2.5'
+            ? 'justify-center px-2 py-3'
+            : 'gap-3 px-3 py-2.5'
             }`}
         >
           <LogOut className="h-[18px] w-[18px] flex-shrink-0" />

@@ -1,18 +1,17 @@
-'use client'
+import { redirect } from 'next/navigation'
+import { getAdminSession } from '@/lib/admin-session'
+import { AdminAuthProvider } from '@/context/AdminAuthContext'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAdminAuth } from '@/context/AdminAuthContext'
+export default async function AdminGuard({ children }) {
+  const admin = await getAdminSession()
 
-export default function AdminGuard({ children }) {
-  const router = useRouter()
-  const { ready, isAdminLoggedIn } = useAdminAuth()
+  if (!admin) {
+    redirect('/admin/login')
+  }
 
-  useEffect(() => {
-    if (ready && !isAdminLoggedIn()) router.replace('/admin/login')
-  }, [ready, isAdminLoggedIn, router])
-
-  if (!ready) return <div className="min-h-screen bg-gray-50" />
-  if (!isAdminLoggedIn()) return <div className="min-h-screen bg-gray-50" />
-  return children
+  return (
+    <AdminAuthProvider initialAdminUser={admin}>
+      {children}
+    </AdminAuthProvider>
+  )
 }
