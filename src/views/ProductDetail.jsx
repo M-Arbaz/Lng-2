@@ -676,8 +676,14 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
 
                 {/* ── Vertical Thumbnail Strip (desktop) ── */}
                 <div
-                  className="hidden sm:flex flex-col gap-3 overflow-y-auto pr-1"
-                  style={{
+                  className="hidden sm:flex flex-col gap-3 overflow-y-auto pr-1
+  [&::-webkit-scrollbar]:w-1
+  [&::-webkit-scrollbar-track]:bg-[#F7F4EF]
+  [&::-webkit-scrollbar-thumb]:rounded-full
+  [&::-webkit-scrollbar-thumb]:bg-[#8B6954]
+  [&::-webkit-scrollbar-thumb:hover]:bg-[#3A2117]
+  [scrollbar-width:thin]
+  [scrollbar-color:#8B6954_#F7F4EF]"                  style={{
                     height: 'clamp(400px, 58vh, 560px)',
                   }}
                 >

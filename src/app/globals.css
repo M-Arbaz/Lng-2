@@ -326,3 +326,34 @@ button {
 .dark .page-content hr {
   border-top-color: #374151;
 }
+
+/* Lamp & Glow — Premium Global Scrollbar */
+
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: #8b6954 #f7f4ef;
+}
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f7f4ef;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #8b6954;
+  border-radius: 999px;
+  border: 1px solid #f7f4ef;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a2117;
+}
+
+::-webkit-scrollbar-corner {
+  background: #f7f4ef;
+}
