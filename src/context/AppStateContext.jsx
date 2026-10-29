@@ -1141,7 +1141,57 @@ export function AppStateProvider({
                 'cash_on_delivery',
             }
           )
+        // Send order notification emails after Firestore saves the order.
+        try {
+          if (order.email && order.id) {
+            const response = await fetch(
+              'https://email.lampandglow.pk/api/notify-order',
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  orderId: order.id,
+                  fullName: order.fullName,
+                  email: order.email,
+                  phone: order.phone,
+                  addressLine1: order.addressLine1,
+                  addressLine2: order.addressLine2,
+                  city: order.city,
+                  state: order.state,
+                  postalCode: order.postalCode,
+                  note: order.note,
+                  paymentMethod: order.paymentMethod,
+                  status: order.status,
+                  items: order.items,
+                  subtotal: order.subtotal,
+                  discountAmount: order.discountAmount,
+                  shipping: order.shipping,
+                  total: order.total,
+                }),
+              }
+            );
 
+            if (!response.ok) {
+              console.error(
+                'Order saved, but email API returned an error:',
+                response.status
+              );
+            }
+          } else {
+            console.warn(
+              'Order saved, but email notification skipped: customer email is missing.'
+            );
+          }
+        } catch (emailError) {
+          // Do not make the customer place the same order again
+          // just because email delivery failed.
+          console.error(
+            'Order saved, but email notification failed:',
+            emailError
+          );
+        }
         /*
          * Coupon usage is
          * counted only after
