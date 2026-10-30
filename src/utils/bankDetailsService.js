@@ -1,3 +1,4 @@
+
 import { db } from './firebase'
 import {
   doc,
@@ -15,6 +16,8 @@ const emptyBankDetails = {
   iban: '',
   branchCode: '',
   bankTransferInstructions: '',
+  bankTransferDiscountEnabled: false,
+  bankTransferDiscountPercent: 0,
   codInstructions: '',
   codAdvancePercent: 0,
   qrCodeImage: '',
@@ -24,66 +27,52 @@ const emptyBankDetails = {
 }
 
 function normalizeBankDetails(data = {}) {
-  const rawAdvancePercent = Number(
-    data.codAdvancePercent
+  const rawAdvancePercent = Number(data.codAdvancePercent)
+  const codAdvancePercent = Number.isFinite(rawAdvancePercent)
+    ? Math.min(100, Math.max(0, rawAdvancePercent))
+    : 0
+
+  const rawBankDiscountPercent = Number(
+    data.bankTransferDiscountPercent
   )
 
-  const codAdvancePercent =
-    Number.isFinite(rawAdvancePercent)
-      ? Math.min(
-        100,
-        Math.max(0, rawAdvancePercent)
-      )
-      : 0
+  const bankTransferDiscountPercent = Number.isFinite(
+    rawBankDiscountPercent
+  )
+    ? Math.min(100, Math.max(0, rawBankDiscountPercent))
+    : 0
 
   return {
-    bankName: String(
-      data.bankName || ''
-    ).trim(),
+    bankName: String(data.bankName || '').trim(),
+    accountTitle: String(data.accountTitle || '').trim(),
+    accountNumber: String(data.accountNumber || '').trim(),
+    iban: String(data.iban || '').trim(),
+    branchCode: String(data.branchCode || '').trim(),
 
-    accountTitle: String(
-      data.accountTitle || ''
-    ).trim(),
-
-    accountNumber: String(
-      data.accountNumber || ''
-    ).trim(),
-
-    iban: String(
-      data.iban || ''
-    ).trim(),
-
-    branchCode: String(
-      data.branchCode || ''
-    ).trim(),
-
-    // bankInstructions is kept only as
-    // backward compatibility for older
-    // Firestore data.
     bankTransferInstructions: String(
       data.bankTransferInstructions ||
       data.bankInstructions ||
       ''
     ).trim(),
 
-    codInstructions: String(
-      data.codInstructions || ''
-    ).trim(),
-    qrCodeImage: String(
-      data.qrCodeImage || ''
-    ).trim(),
+    bankTransferDiscountEnabled:
+      data.bankTransferDiscountEnabled === true,
+
+    bankTransferDiscountPercent,
+
+    codInstructions: String(data.codInstructions || '').trim(),
+
+    qrCodeImage: String(data.qrCodeImage || '').trim(),
 
     qrCodeInstructions: String(
       data.qrCodeInstructions || ''
     ).trim(),
 
-    qrCodeEnabled:
-      data.qrCodeEnabled === true,
+    qrCodeEnabled: data.qrCodeEnabled === true,
 
     codAdvancePercent,
 
-    isActive:
-      data.isActive === true,
+    isActive: data.isActive === true,
   }
 }
 
@@ -96,8 +85,7 @@ export const bankDetailsService = {
         DEFAULT_DOC_ID
       )
 
-      const docSnap =
-        await getDoc(docRef)
+      const docSnap = await getDoc(docRef)
 
       if (!docSnap.exists()) {
         return {
@@ -108,27 +96,17 @@ export const bankDetailsService = {
 
       return {
         id: docSnap.id,
-        ...normalizeBankDetails(
-          docSnap.data()
-        ),
+        ...normalizeBankDetails(docSnap.data()),
       }
     } catch (error) {
-      console.error(
-        'Error getting bank details:',
-        error
-      )
-
-      // Important:
-      // Never expose fake/sample bank
-      // information if Firestore fails.
+      console.error('Error getting bank details:', error)
       throw error
     }
   },
 
   saveBankDetails: async (data) => {
     try {
-      const normalizedData =
-        normalizeBankDetails(data)
+      const normalizedData = normalizeBankDetails(data)
 
       const docRef = doc(
         db,
@@ -140,8 +118,7 @@ export const bankDetailsService = {
         docRef,
         {
           ...normalizedData,
-          updatedAt:
-            new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
         {
           merge: true,
@@ -153,11 +130,7 @@ export const bankDetailsService = {
         ...normalizedData,
       }
     } catch (error) {
-      console.error(
-        'Error saving bank details:',
-        error
-      )
-
+      console.error('Error saving bank details:', error)
       throw error
     }
   },

@@ -759,6 +759,40 @@ export default function CheckoutPage({
       )
       : 0
 
+  const bankTransferDiscountPercent =
+    bankAccountActive &&
+      bankDetails?.bankTransferDiscountEnabled === true
+      ? Math.min(
+        100,
+        Math.max(
+          0,
+          safeNumber(
+            bankDetails?.bankTransferDiscountPercent
+          )
+        )
+      )
+      : 0
+
+  const bankTransferDiscountAmount =
+    paymentMethod === 'bank' &&
+      bankTransferDiscountPercent > 0
+      ? Math.min(
+        discountedSubtotal,
+        Math.round(
+          discountedSubtotal *
+          (bankTransferDiscountPercent / 100)
+        )
+      )
+      : 0
+
+  const finalDiscountedSubtotal = Math.max(
+    0,
+    discountedSubtotal - bankTransferDiscountAmount
+  )
+
+  const grandTotal =
+    finalDiscountedSubtotal + (shipping ?? 0)
+
   const requiresCodAdvance =
     bankAccountActive &&
     advancePercent > 0
@@ -1141,16 +1175,42 @@ export default function CheckoutPage({
         }
       }
 
-      const checkoutDiscountedSubtotal =
-        Math.max(
-          0,
-          numericTotal -
-          checkoutDiscountAmount
-        )
+
+      const checkoutDiscountedSubtotal = Math.max(
+        0,
+        numericTotal - checkoutDiscountAmount
+      )
+
+      const checkoutBankTransferDiscountPercent =
+        paymentMethod === 'bank'
+          ? bankTransferDiscountPercent
+          : 0
+
+      const checkoutBankTransferDiscountAmount =
+        checkoutBankTransferDiscountPercent > 0
+          ? Math.min(
+            checkoutDiscountedSubtotal,
+            Math.round(
+              checkoutDiscountedSubtotal *
+              (checkoutBankTransferDiscountPercent / 100)
+            )
+          )
+          : 0
+
+      const checkoutFinalDiscountedSubtotal = Math.max(
+        0,
+        checkoutDiscountedSubtotal -
+        checkoutBankTransferDiscountAmount
+      )
+
+      const checkoutTotalDiscountAmount =
+        checkoutDiscountAmount +
+        checkoutBankTransferDiscountAmount
 
       const checkoutGrandTotal =
-        checkoutDiscountedSubtotal +
+        checkoutFinalDiscountedSubtotal +
         (shipping ?? 0)
+
 
       const checkoutAdvanceAmount =
         paymentMethod ===
@@ -1371,11 +1431,20 @@ export default function CheckoutPage({
         subtotal:
           numericTotal,
 
-        discountAmount:
-          checkoutDiscountAmount,
+        // Combined total discount
+        discountAmount: checkoutTotalDiscountAmount,
 
-        discountedSubtotal:
-          checkoutDiscountedSubtotal,
+        // Individual discount breakdown
+        couponDiscountAmount: checkoutDiscountAmount,
+
+        bankTransferDiscountPercent:
+          checkoutBankTransferDiscountPercent,
+
+        bankTransferDiscountAmount:
+          checkoutBankTransferDiscountAmount,
+
+        // Final subtotal after both discounts
+        discountedSubtotal: checkoutFinalDiscountedSubtotal,
 
         couponEligibleSubtotal:
           checkoutEligibleSubtotal,
@@ -1749,7 +1818,17 @@ export default function CheckoutPage({
                       )}
                     </span>
                   </div>
+                  {bankTransferDiscountAmount > 0 && (
+                    <div className="flex justify-between gap-4">
+                      <span>
+                        Bank Transfer Discount ({bankTransferDiscountPercent}%)
+                      </span>
 
+                      <span className="font-semibold text-emerald-700">
+                        - Rs.{formatPKR(bankTransferDiscountAmount)}
+                      </span>
+                    </div>
+                  )}
                   {safeNumber(
                     placedOrderSummary?.discountAmount
                   ) > 0 && (
@@ -1769,7 +1848,23 @@ export default function CheckoutPage({
                         </span>
                       </div>
                     )}
+                  {safeNumber(
+                    placedOrderSummary?.bankTransferDiscountAmount
+                  ) > 0 && (
+                      <div className="flex justify-between gap-4">
+                        <span>
+                          Bank Transfer Discount (
+                          {placedOrderSummary.bankTransferDiscountPercent}%)
+                        </span>
 
+                        <span className="font-semibold text-emerald-700">
+                          - Rs.
+                          {formatPKR(
+                            placedOrderSummary.bankTransferDiscountAmount
+                          )}
+                        </span>
+                      </div>
+                    )}
                   <div className="flex justify-between gap-4">
                     <span>
                       Shipping
@@ -2688,12 +2783,9 @@ export default function CheckoutPage({
                             </p>
 
                             <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
-                              Transfer
-                              payment
-                              directly
-                              to our
-                              bank
-                              account.
+                              {bankTransferDiscountPercent > 0
+                                ? `Get ${bankTransferDiscountPercent}% OFF when you pay through Bank Transfer.`
+                                : 'Transfer payment directly to our bank account.'}
                             </p>
                           </div>
                         </div>

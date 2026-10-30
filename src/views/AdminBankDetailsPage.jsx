@@ -36,6 +36,8 @@ const INITIAL_FORM = {
   iban: '',
   branchCode: '',
   bankTransferInstructions: '',
+  bankTransferDiscountEnabled: false,
+  bankTransferDiscountPercent: '0',
   codInstructions: '',
   qrCodeImage: '',
   qrCodeInstructions: '',
@@ -114,7 +116,11 @@ export default function AdminBankDetailsPage() {
             bankTransferInstructions:
               data.bankTransferInstructions ||
               '',
+            bankTransferDiscountEnabled:
+              data.bankTransferDiscountEnabled === true,
 
+            bankTransferDiscountPercent:
+              String(data.bankTransferDiscountPercent ?? 0),
             codInstructions:
               data.codInstructions || '',
 
@@ -262,6 +268,22 @@ export default function AdminBankDetailsPage() {
   }
 
   const validate = () => {
+    const bankDiscountPercent = Number(
+      formData.bankTransferDiscountPercent
+    )
+
+    if (
+      !Number.isFinite(bankDiscountPercent) ||
+      bankDiscountPercent < 0 ||
+      bankDiscountPercent > 100
+    ) {
+      setMessage({
+        type: 'error',
+        text: 'Bank Transfer discount must be between 0 and 100%.',
+      })
+
+      return false
+    }
     const advancePercent =
       Number(
         formData.codAdvancePercent
@@ -370,7 +392,11 @@ export default function AdminBankDetailsPage() {
                 clean(
                   formData.bankTransferInstructions
                 ),
+              bankTransferDiscountEnabled:
+                formData.bankTransferDiscountEnabled,
 
+              bankTransferDiscountPercent:
+                Number(formData.bankTransferDiscountPercent),
               codInstructions:
                 clean(
                   formData.codInstructions
@@ -412,7 +438,11 @@ export default function AdminBankDetailsPage() {
           bankTransferInstructions:
             saved.bankTransferInstructions ||
             '',
+          bankTransferDiscountEnabled:
+            saved.bankTransferDiscountEnabled === true,
 
+          bankTransferDiscountPercent:
+            String(saved.bankTransferDiscountPercent ?? 0),
           codInstructions:
             saved.codInstructions || '',
 
@@ -1043,6 +1073,79 @@ export default function AdminBankDetailsPage() {
                 placeholder="Explain COD and any advance payment requirement."
                 className={`${inputClass} resize-y`}
               />
+            </div>
+          </div>
+        </section>
+
+        {/* Bank Transfer Discount */}
+        <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
+          <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F2EAE4] text-[#6B4228]">
+                <Percent className="h-5 w-5" />
+              </div>
+
+              <div>
+                <h2 className="text-base font-semibold text-[#281912]">
+                  Bank Transfer Discount
+                </h2>
+
+                <p className="mt-1 text-xs leading-5 text-[#806C60]">
+                  Offer an additional discount to customers who pay through Bank Transfer.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-5 p-5 sm:p-6">
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                checked={formData.bankTransferDiscountEnabled}
+                onChange={(event) =>
+                  updateField(
+                    'bankTransferDiscountEnabled',
+                    event.target.checked
+                  )
+                }
+                className="h-4 w-4 accent-[#3A2117]"
+              />
+
+              <span className="text-sm font-semibold text-[#281912]">
+                Enable Bank Transfer Discount
+              </span>
+            </label>
+
+            <div className="max-w-sm">
+              <label className={labelClass}>
+                Discount Percentage
+              </label>
+
+              <div className="flex overflow-hidden rounded-xl border border-[#DCCFC6] bg-[#FFFEFC] focus-within:border-[#6B4228]">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formData.bankTransferDiscountPercent}
+                  disabled={!formData.bankTransferDiscountEnabled}
+                  onChange={(event) =>
+                    updateField(
+                      'bankTransferDiscountPercent',
+                      event.target.value
+                    )
+                  }
+                  className="w-full bg-transparent px-4 py-3 text-sm text-[#281912] outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                />
+
+                <span className="grid min-w-[52px] place-items-center border-l border-[#E5DAD2] bg-[#F7F4EF] text-sm font-semibold text-[#6B4228]">
+                  %
+                </span>
+              </div>
+
+              <p className="mt-2 text-[11px] leading-5 text-[#8A7569]">
+                This discount will only apply when the customer selects Bank Deposit at checkout.
+              </p>
             </div>
           </div>
         </section>

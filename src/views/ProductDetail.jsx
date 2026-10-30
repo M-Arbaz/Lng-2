@@ -1686,7 +1686,9 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                                 type="button"
                                 onClick={() => {
                                   setCompareVisibleIndices((prev) =>
-                                    prev.includes(`color-${idx}`) ? prev.filter((i) => !i.startsWith('color-')) : [...prev.filter((i) => !i.startsWith('color-')), `color-${idx}`],
+                                    prev.includes(`color-${idx}`)
+                                      ? prev.filter((item) => item !== `color-${idx}`)
+                                      : [...prev, `color-${idx}`]
                                   )
                                 }}
                                 className={classNames(
@@ -1774,7 +1776,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                 {colorVariants.length > 0 && compareVisibleIndices.some(idx => idx.startsWith('color-')) && (
                   <div>
                     <p className="text-sm font-semibold text-stone-700 mb-4">Color Variants</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                    <div className="flex w-full flex-nowrap items-start gap-4 overflow-x-auto pb-3">
                       {colorVariants
                         .map((variant, idx) => ({ variant, idx }))
                         .filter(({ idx }) => compareVisibleIndices.includes(`color-${idx}`))
@@ -1783,7 +1785,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                           return (
                             <div
                               key={`compare-color-card-${variant.name}-${idx}`}
-                              className="group cursor-pointer flex flex-col items-center"
+                              className="group flex w-[220px] shrink-0 cursor-pointer flex-col items-center sm:w-[260px]"
                               onClick={() => {
                                 setSelectedColorIndex(idx)
                                 setActiveColorIndex(null)

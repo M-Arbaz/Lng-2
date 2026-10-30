@@ -1100,12 +1100,31 @@ export function AppStateProvider({
               subtotal:
                 payload.subtotal,
 
-              discountAmount:
-                Number(
-                  payload.discountAmount ||
-                  0
-                ),
 
+              discountAmount: Number(
+                payload.discountAmount || 0
+              ),
+
+              couponDiscountAmount: Number(
+                payload.couponDiscountAmount ??
+                payload.discountAmount ??
+                0
+              ),
+
+              bankTransferDiscountPercent: Number(
+                payload.bankTransferDiscountPercent || 0
+              ),
+
+              bankTransferDiscountAmount: Number(
+                payload.bankTransferDiscountAmount || 0
+              ),
+
+              discountedSubtotal: payload.discountedSubtotal ??
+                Math.max(
+                  0,
+                  Number(payload.subtotal || 0) -
+                  Number(payload.discountAmount || 0)
+                ),
               discountedSubtotal:
                 payload.discountedSubtotal ??
                 Math.max(
