@@ -7,6 +7,7 @@ import {
   AlertCircle,
   Loader2,
   X,
+  Trash2,
 } from 'lucide-react'
 import { useNavigate } from '@/lib/navigation'
 import { useAuth } from '../context/AuthContext'
@@ -42,6 +43,7 @@ export default function CheckoutPage({
   appliedCoupon,
   onCouponChange,
   onPlaceOrder,
+  handleRemoveFromCart,
 }) {
   const navigate = useNavigate()
 
@@ -63,6 +65,33 @@ export default function CheckoutPage({
     type: '',
     text: '',
   })
+
+  // Remove product directly from checkout cart
+  const handleRemoveCheckoutItem = (itemId) => {
+    if (typeof handleRemoveFromCart !== 'function') {
+      return
+    }
+
+    const isLastItem = cart.length === 1
+
+    handleRemoveFromCart(itemId)
+
+    if (isLastItem) {
+      // Remove coupon when the final product is removed
+      onCouponChange?.(null)
+
+      setCouponCode('')
+
+      setCouponMessage({
+        type: '',
+        text: '',
+      })
+
+      // Redirect to products instead of showing empty checkout
+      navigate('/products')
+    }
+  }
+
   const [
     addressLine1,
     setAddressLine1,
@@ -3069,21 +3098,34 @@ export default function CheckoutPage({
                           )}
                         </div>
 
-                        <p className="text-xs font-semibold text-[#281912]">
-                          Rs.
-                          {formatPKR(
-                            safeNumber(
-                              item.unitPrice ??
-                              item
-                                .product
-                                ?.price
-                            ) *
-                            safeNumber(
-                              item.quantity,
-                              1
-                            )
-                          )}
-                        </p>
+                        <div className="flex shrink-0 flex-col items-end justify-between gap-2">
+
+                          <p className="whitespace-nowrap text-xs font-semibold text-[#281912]">
+                            Rs.
+                            {formatPKR(
+                              safeNumber(
+                                item.unitPrice ??
+                                item.product?.price
+                              ) *
+                              safeNumber(
+                                item.quantity,
+                                1
+                              )
+                            )}
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCheckoutItem(item.id)}
+                            disabled={loading}
+                            title="Remove product"
+                            aria-label={`Remove ${item.product?.name || 'product'} from cart`}
+                            className="grid h-8 w-8 place-items-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 transition hover:border-rose-300 hover:bg-rose-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <Trash2 size={15} strokeWidth={1.8} />
+                          </button>
+
+                        </div>
                       </div>
                     )
                   )

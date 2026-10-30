@@ -12,6 +12,7 @@ export default function CheckoutRoute() {
       appliedCoupon={app.appliedCoupon}
       onCouponChange={app.setAppliedCoupon}
       onPlaceOrder={app.handlePlaceOrder}
+      handleRemoveFromCart={app.handleRemoveFromCart}
       theme={app.theme}
     />
   )
