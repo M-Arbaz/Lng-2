@@ -1,7 +1,7 @@
 'use client'
-
 import { useMemo, useState } from 'react'
 import { useNavigate } from '@/lib/navigation'
+import DownloadInvoiceButton from '@/components/DownloadInvoiceButton'
 import {
   ArrowLeft,
   ArrowRight,
@@ -837,6 +837,15 @@ export default function OrdersPage({
 
                       {isExpanded && (
                         <div className="p-5 sm:p-6">
+                          {/* DOWNLOAD INVOICE */}
+                          <div className="mb-4 flex justify-end">
+                            <DownloadInvoiceButton
+                              compact
+                              order={order}
+                              label="Download Invoice PDF"
+                            />
+                          </div>
+
                           {/* ORDER INFO */}
                           <div className="grid gap-3 sm:grid-cols-3">
                             <div

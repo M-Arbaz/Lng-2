@@ -533,16 +533,30 @@ export async function downloadOrderInvoice(
         42,
         'F'
     )
-
     if (logoData) {
         try {
+            // Light background for logo contrast
+            doc.setFillColor(...BRAND.cream)
+            doc.setDrawColor(...BRAND.line)
+
+            doc.roundedRect(
+                14,
+                7,
+                29,
+                29,
+                3,
+                3,
+                'FD'
+            )
+
+            // Larger logo with square proportions preserved
             doc.addImage(
                 logoData,
                 'PNG',
-                14,
-                9,
-                21,
-                21,
+                15.5,
+                8.5,
+                26,
+                26,
                 'lamp-glow-logo',
                 'FAST'
             )
@@ -554,7 +568,8 @@ export async function downloadOrderInvoice(
         }
     }
 
-    const wordmarkX = logoData ? 41 : 15
+    const wordmarkX = logoData ? 49 : 15
+
 
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(15)

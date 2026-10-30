@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from '@/lib/navigation';
+import DownloadInvoiceButton from '@/components/DownloadInvoiceButton';
 import uploadToXcdn from '@/utils/xcdnUpload';
 import { slugify } from '../utils/slugify.js';
 import {
@@ -577,7 +578,16 @@ export default function ProfileSection({
                     : '—'
                 }
               </p>
+
+              {/* DOWNLOAD INVOICE */}
+              <div className="mt-2">
+                <DownloadInvoiceButton
+                  compact
+                  order={order}
+                />
+              </div>
             </div>
+
             <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${getStatusStyle(order.orderStatus)}`}>
               {getStatusLabel(order.orderStatus)}
             </span>
@@ -865,6 +875,14 @@ export default function ProfileSection({
                               )
                               : 'Date unavailable'}
                           </p>
+
+                          {/* DOWNLOAD INVOICE */}
+                          <div className="mt-3">
+                            <DownloadInvoiceButton
+                              compact
+                              order={order}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
