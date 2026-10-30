@@ -221,7 +221,7 @@ export default function AdminBankDetailsPage() {
     try {
       const url = await uploadToXcdn(
         file,
-        'bank-details'
+        'about'
       )
 
       updateField('qrCodeImage', url)
