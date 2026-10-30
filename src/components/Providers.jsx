@@ -1,14 +1,18 @@
+
 'use client'
 
 import { AuthProvider } from '@/context/AuthContext'
 import { AppStateProvider } from '@/context/AppStateContext'
+import DomainAccessGuard from '@/components/DomainAccessGuard'
 
 export default function Providers({ children }) {
   return (
-    <AuthProvider>
-      <AppStateProvider>
-        {children}
-      </AppStateProvider>
-    </AuthProvider>
+    <DomainAccessGuard>
+      <AuthProvider>
+        <AppStateProvider>
+          {children}
+        </AppStateProvider>
+      </AuthProvider>
+    </DomainAccessGuard>
   )
 }
