@@ -16,6 +16,7 @@ import classNames from '../utils/classNames.js'
 import bankDetailsService from '../utils/bankDetailsService'
 import shippingService from '../utils/shippingService'
 import couponsService from '../utils/couponsService'
+import DownloadInvoiceButton from '../components/DownloadInvoiceButton'
 
 const fieldClass =
   'h-12 w-full rounded-xl border border-[#3A2117]/15 bg-[#FFFEFC] px-4 text-sm text-[#281912] outline-none transition focus:border-[#6B4228] focus:ring-4 focus:ring-[#6B4228]/[0.06] placeholder:text-[#A29186]'
@@ -1509,24 +1510,12 @@ export default function CheckoutPage({
           return
         }
 
+        // Keep the complete, exact order snapshot for the reusable PDF invoice.
+        // This is the same data that was just persisted through onPlaceOrder.
         setPlacedOrderSummary({
-          subtotal: numericTotal,
-
-          // Keep the combined discount and both components for the receipt.
-          discountAmount: checkoutTotalDiscountAmount,
-          couponDiscountAmount: checkoutDiscountAmount,
-          bankTransferDiscountPercent:
-            checkoutBankTransferDiscountPercent,
-          bankTransferDiscountAmount:
-            checkoutBankTransferDiscountAmount,
-
-          discountedSubtotal: checkoutFinalDiscountedSubtotal,
-          couponCode: checkoutCoupon?.code || '',
-          shipping: shipping ?? 0,
-          shippingMethodName: selectedShippingMethod.name,
-          deliveryEstimate:
-            selectedShippingMethod.deliveryEstimate || '',
-          total: checkoutGrandTotal,
+          ...order,
+          id: String(orderId),
+          createdAt: new Date().toISOString(),
         })
 
         setPlacedOrderId(
@@ -1879,6 +1868,18 @@ export default function CheckoutPage({
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-2 rounded-[22px] border border-[#3A2117]/10 bg-[#F7F4EF] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <div>
+                  <p className="text-sm font-semibold text-[#281912]">Your invoice is ready</p>
+                  <p className="mt-1 text-xs leading-5 text-[#7A6A60]">Download a PDF copy of your order, delivery details and payment breakdown.</p>
+                </div>
+                <DownloadInvoiceButton
+                  order={placedOrderSummary}
+                  label="Download Invoice PDF"
+                  className="shrink-0"
+                />
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
