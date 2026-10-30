@@ -717,10 +717,6 @@ export default function CheckoutPage({
       15000
     )
 
-  const grandTotal =
-    discountedSubtotal +
-    (shipping ?? 0)
-
   const bankAccountActive =
     Boolean(
       bankDetails?.isActive &&
@@ -790,6 +786,8 @@ export default function CheckoutPage({
     discountedSubtotal - bankTransferDiscountAmount
   )
 
+  // Shipping is not discounted. This total already includes the coupon
+  // discount and, when Bank Deposit is selected, the Bank Transfer discount.
   const grandTotal =
     finalDiscountedSubtotal + (shipping ?? 0)
 
@@ -1175,7 +1173,6 @@ export default function CheckoutPage({
         }
       }
 
-
       const checkoutDiscountedSubtotal = Math.max(
         0,
         numericTotal - checkoutDiscountAmount
@@ -1210,7 +1207,6 @@ export default function CheckoutPage({
       const checkoutGrandTotal =
         checkoutFinalDiscountedSubtotal +
         (shipping ?? 0)
-
 
       const checkoutAdvanceAmount =
         paymentMethod ===
@@ -1514,31 +1510,23 @@ export default function CheckoutPage({
         }
 
         setPlacedOrderSummary({
-          subtotal:
-            numericTotal,
+          subtotal: numericTotal,
 
-          discountAmount:
-            checkoutDiscountAmount,
+          // Keep the combined discount and both components for the receipt.
+          discountAmount: checkoutTotalDiscountAmount,
+          couponDiscountAmount: checkoutDiscountAmount,
+          bankTransferDiscountPercent:
+            checkoutBankTransferDiscountPercent,
+          bankTransferDiscountAmount:
+            checkoutBankTransferDiscountAmount,
 
-          discountedSubtotal:
-            checkoutDiscountedSubtotal,
-
-          couponCode:
-            checkoutCoupon?.code ||
-            '',
-
-          shipping:
-            shipping ?? 0,
-
-          shippingMethodName:
-            selectedShippingMethod.name,
-
+          discountedSubtotal: checkoutFinalDiscountedSubtotal,
+          couponCode: checkoutCoupon?.code || '',
+          shipping: shipping ?? 0,
+          shippingMethodName: selectedShippingMethod.name,
           deliveryEstimate:
-            selectedShippingMethod.deliveryEstimate ||
-            '',
-
-          total:
-            checkoutGrandTotal,
+            selectedShippingMethod.deliveryEstimate || '',
+          total: checkoutGrandTotal,
         })
 
         setPlacedOrderId(
@@ -1818,19 +1806,8 @@ export default function CheckoutPage({
                       )}
                     </span>
                   </div>
-                  {bankTransferDiscountAmount > 0 && (
-                    <div className="flex justify-between gap-4">
-                      <span>
-                        Bank Transfer Discount ({bankTransferDiscountPercent}%)
-                      </span>
-
-                      <span className="font-semibold text-emerald-700">
-                        - Rs.{formatPKR(bankTransferDiscountAmount)}
-                      </span>
-                    </div>
-                  )}
                   {safeNumber(
-                    placedOrderSummary?.discountAmount
+                    placedOrderSummary?.couponDiscountAmount
                   ) > 0 && (
                       <div className="flex justify-between gap-4">
                         <span>
@@ -1843,7 +1820,7 @@ export default function CheckoutPage({
                         <span className="font-semibold text-emerald-700">
                           - Rs.
                           {formatPKR(
-                            placedOrderSummary.discountAmount
+                            placedOrderSummary.couponDiscountAmount
                           )}
                         </span>
                       </div>
@@ -1957,7 +1934,7 @@ export default function CheckoutPage({
           aria-live="polite"
           className="fixed bottom-6 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#3A2117] px-5 py-3 text-xs font-medium text-white shadow-xl"
         >
-          <Check size={16} className="text-emerald-400" />
+          <CheckCircle size={16} className="text-emerald-400" />
           {copyToast}
         </div>
       )}
@@ -3386,6 +3363,18 @@ export default function CheckoutPage({
                         </span>
                       </div>
                     )}
+
+                  {bankTransferDiscountAmount > 0 && (
+                    <div className="flex justify-between gap-4">
+                      <span>
+                        Bank Transfer Discount ({bankTransferDiscountPercent}%)
+                      </span>
+
+                      <span className="font-semibold text-emerald-700">
+                        - Rs.{formatPKR(bankTransferDiscountAmount)}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between gap-4">
                     <span>
