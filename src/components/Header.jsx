@@ -1167,7 +1167,7 @@ const Header = forwardRef(function Header(
                     ? 'border-white/40 bg-[#FFF9F2]/95 shadow-[0_8px_28px_rgba(0,0,0,0.24)]'
                     : theme === 'dark'
                       ? 'border-white/10 bg-white/[0.06] shadow-[0_4px_18px_rgba(0,0,0,0.18)]'
-                      : 'border-[#E5D8CC] bg-white/80 shadow-[0_4px_18px_rgba(80,48,25,0.10)]',
+                      : 'border-[#E5D8CC] shadow-[0_4px_18px_rgba(80,48,25,0.10)]',
                 )}
               >
                 <img

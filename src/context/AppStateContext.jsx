@@ -1142,8 +1142,10 @@ export function AppStateProvider({
             }
           )
         // Send order notification emails after Firestore saves the order.
+        // Send order notifications after Firestore saves the order.
+        // Admin notification must not depend on customer email.
         try {
-          if (order.email && order.id) {
+          if (order?.id) {
             const response = await fetch(
               'https://email.lampandglow.pk/api/notify-order',
               {
@@ -1154,7 +1156,7 @@ export function AppStateProvider({
                 body: JSON.stringify({
                   orderId: order.id,
                   fullName: order.fullName,
-                  email: order.email,
+                  email: order.email || '',
                   phone: order.phone,
                   addressLine1: order.addressLine1,
                   addressLine2: order.addressLine2,
@@ -1171,26 +1173,24 @@ export function AppStateProvider({
                   total: order.total,
                 }),
               }
-            );
+            )
 
-            if (!response.ok) {
+            const result = await response.json().catch(() => null)
+
+            if (!response.ok || result?.success === false) {
               console.error(
-                'Order saved, but email API returned an error:',
-                response.status
-              );
+                'Order saved, but notification API failed:',
+                response.status,
+                result
+              )
             }
-          } else {
-            console.warn(
-              'Order saved, but email notification skipped: customer email is missing.'
-            );
           }
         } catch (emailError) {
-          // Do not make the customer place the same order again
-          // just because email delivery failed.
+          // Never force the customer to place the same order again.
           console.error(
-            'Order saved, but email notification failed:',
+            'Order saved, but notification failed:',
             emailError
-          );
+          )
         }
         /*
          * Coupon usage is

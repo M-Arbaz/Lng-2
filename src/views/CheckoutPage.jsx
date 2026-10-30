@@ -8,6 +8,7 @@ import {
   Loader2,
   X,
   Trash2,
+  Copy,
 } from 'lucide-react'
 import { useNavigate } from '@/lib/navigation'
 import { useAuth } from '../context/AuthContext'
