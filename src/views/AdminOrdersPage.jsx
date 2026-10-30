@@ -396,6 +396,102 @@ function formatBulbOption(value) {
     )
 }
 
+function getPaymentProofDetails(order) {
+  const proof = order?.paymentProof || order?.paymentDetails?.paymentProof || null
+  const url = (
+    (typeof proof === 'string' ? proof : proof?.url) ||
+    order?.paymentProofUrl ||
+    order?.paymentDetails?.paymentProofUrl ||
+    ''
+  )
+
+  if (!/^https?:\/\//i.test(String(url))) return null
+
+  return {
+    url: String(url),
+    fileName:
+      (typeof proof === 'object' && proof?.fileName) ||
+      order?.paymentProofFileName ||
+      order?.paymentDetails?.paymentProofFileName ||
+      'Payment screenshot',
+    uploadedAt:
+      (typeof proof === 'object' && proof?.uploadedAt) ||
+      order?.paymentProofUploadedAt ||
+      order?.paymentDetails?.paymentProofUploadedAt ||
+      null,
+  }
+}
+
+function PaymentProofSection({ order }) {
+  const proof = getPaymentProofDetails(order)
+
+  return (
+    <section className="rounded-[22px] border border-[#E6DDD6] bg-[#FFFEFC] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#927E72]">
+            Payment
+          </p>
+          <h4 className="mt-1 text-sm font-semibold text-[#34241C]">
+            Payment Proof Screenshot
+          </h4>
+        </div>
+        {proof ? (
+          <a
+            href={proof.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#D7CBC3] bg-[#F8F5F2] px-3 py-2 text-xs font-semibold text-[#5E493D] transition hover:border-[#BFA99C]"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Open Full Image
+          </a>
+        ) : (
+          <span className="rounded-full border border-[#E5D8CF] bg-[#F8F5F2] px-3 py-1 text-[10px] font-semibold text-[#806C61]">
+            Not uploaded
+          </span>
+        )}
+      </div>
+
+      {proof ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,280px)_1fr] sm:items-start">
+          <a
+            href={proof.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block overflow-hidden rounded-xl border border-[#E6DDD6] bg-[#F8F5F2]"
+          >
+            <img
+              src={proof.url}
+              alt="Customer payment proof screenshot"
+              className="max-h-[360px] w-full object-contain"
+              loading="lazy"
+            />
+          </a>
+          <div className="min-w-0 rounded-xl bg-[#F8F5F2] p-4">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-[#948075]">
+              File Name
+            </p>
+            <p className="mt-1 break-all text-xs font-semibold text-[#34241C]">
+              {proof.fileName}
+            </p>
+            <p className="mt-4 text-[9px] font-semibold uppercase tracking-[0.1em] text-[#948075]">
+              Uploaded At
+            </p>
+            <p className="mt-1 text-xs font-medium text-[#49362C]">
+              {proof.uploadedAt ? formatDateTime(proof.uploadedAt) : '—'}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-4 rounded-xl border border-dashed border-[#D9CBC2] bg-[#F8F5F2] px-4 py-5 text-center text-xs text-[#8D796E]">
+          No payment screenshot was saved with this order.
+        </p>
+      )}
+    </section>
+  )
+}
+
 function AddressBlock({
   addressLine1,
   addressLine2,
@@ -2419,6 +2515,9 @@ export default function AdminOrdersPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* PAYMENT PROOF */}
+                  <PaymentProofSection order={selectedOrder} />
 
                   {/* CUSTOMER + ADDRESS */}
                   <div className="grid gap-6 lg:grid-cols-2">

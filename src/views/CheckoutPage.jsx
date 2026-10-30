@@ -10,6 +10,7 @@ import {
   X,
   Trash2,
   Copy,
+  UploadCloud,
 } from 'lucide-react'
 import { useNavigate } from '@/lib/navigation'
 import { useAuth } from '../context/AuthContext'
@@ -18,6 +19,7 @@ import bankDetailsService from '../utils/bankDetailsService'
 import shippingService from '../utils/shippingService'
 import couponsService from '../utils/couponsService'
 import DownloadInvoiceButton from '../components/DownloadInvoiceButton'
+import { uploadToXcdn } from '../utils/xcdnUpload.js'
 
 const fieldClass =
   'h-12 w-full rounded-xl border border-[#3A2117]/15 bg-[#FFFEFC] px-4 text-sm text-[#281912] outline-none transition focus:border-[#6B4228] focus:ring-4 focus:ring-[#6B4228]/[0.06] placeholder:text-[#A29186]'
@@ -150,12 +152,70 @@ export default function CheckoutPage({
     setPaymentMethod,
   ] = useState('')
 
+  // Payment proof is required for Bank Deposit and COD advance payments.
+  const [paymentProofFile, setPaymentProofFile] = useState(null)
+  const [paymentProofPreview, setPaymentProofPreview] = useState('')
+  const [paymentProofUrl, setPaymentProofUrl] = useState('')
+  const [paymentProofError, setPaymentProofError] = useState('')
+
   const [
     bankDetails,
     setBankDetails,
   ] = useState(null)
   const [copyToast, setCopyToast] = useState('')
   const copyToastTimerRef = useRef(null)
+
+  useEffect(() => {
+    if (!paymentProofPreview) return undefined
+    return () => URL.revokeObjectURL(paymentProofPreview)
+  }, [paymentProofPreview])
+
+  const handlePaymentProofChange = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type?.startsWith('image/')) {
+      setPaymentProofFile(null)
+      setPaymentProofPreview('')
+      setPaymentProofUrl('')
+      setPaymentProofError('Please select a valid image screenshot.')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setPaymentProofFile(null)
+      setPaymentProofPreview('')
+      setPaymentProofUrl('')
+      setPaymentProofError('Payment screenshot must be 10 MB or smaller.')
+      event.target.value = ''
+      return
+    }
+
+    setPaymentProofFile(file)
+    setPaymentProofPreview(URL.createObjectURL(file))
+    setPaymentProofUrl('')
+    setPaymentProofError('')
+    setError('')
+  }
+
+  const handleRemovePaymentProof = () => {
+    setPaymentProofFile(null)
+    setPaymentProofPreview('')
+    setPaymentProofUrl('')
+    setPaymentProofError('')
+  }
+
+  const handlePaymentMethodChange = (nextMethod) => {
+    if (nextMethod !== paymentMethod) {
+      setPaymentProofFile(null)
+      setPaymentProofPreview('')
+      setPaymentProofUrl('')
+      setPaymentProofError('')
+    }
+    setPaymentMethod(nextMethod)
+    setError('')
+  }
 
   const handleCopy = async (label, value) => {
     const text = String(value ?? '').trim()
@@ -808,6 +868,10 @@ export default function CheckoutPage({
     bankAccountActive &&
     advancePercent > 0
 
+  const requiresPaymentProof =
+    paymentMethod === 'bank' ||
+    (paymentMethod === 'cod' && requiresCodAdvance)
+
   const advanceAmount =
     requiresCodAdvance
       ? Math.round(
@@ -1007,6 +1071,13 @@ export default function CheckoutPage({
           'Bank Deposit is currently unavailable. Please select Cash on Delivery.'
         )
 
+        return false
+      }
+
+      if (requiresPaymentProof && !paymentProofFile) {
+        const message = 'Please upload your payment screenshot to continue.'
+        setPaymentProofError(message)
+        setError(message)
         return false
       }
 
@@ -1239,6 +1310,30 @@ export default function CheckoutPage({
           checkoutAdvanceAmount
         )
 
+      let checkoutPaymentProofUrl = paymentProofUrl
+
+      if (requiresPaymentProof && !checkoutPaymentProofUrl) {
+        setError('')
+        setLoading(true)
+
+        try {
+          checkoutPaymentProofUrl = await uploadToXcdn(
+            paymentProofFile,
+            'about'
+          )
+          setPaymentProofUrl(checkoutPaymentProofUrl)
+          setPaymentProofError('')
+        } catch (uploadError) {
+          console.error('Payment proof upload failed:', uploadError)
+          setLoading(false)
+          goToStep(4)
+          const message = uploadError?.message || 'Unable to upload your payment screenshot. Please try again.'
+          setPaymentProofError(message)
+          setError(message)
+          return
+        }
+      }
+
       const order = {
         fullName:
           fullName.trim(),
@@ -1268,6 +1363,15 @@ export default function CheckoutPage({
           note.trim(),
 
         paymentMethod,
+
+        paymentProof: checkoutPaymentProofUrl
+          ? {
+            url: checkoutPaymentProofUrl,
+            fileName: paymentProofFile?.name || 'payment-proof',
+            uploadedAt: new Date().toISOString(),
+            folder: 'about',
+          }
+          : null,
 
         paymentDetails: {
           bankName:
@@ -2677,10 +2781,8 @@ export default function CheckoutPage({
                         onChange={(
                           event
                         ) =>
-                          setPaymentMethod(
-                            event
-                              .target
-                              .value
+                          handlePaymentMethodChange(
+                            event.target.value
                           )
                         }
                         className="sr-only"
@@ -2740,10 +2842,8 @@ export default function CheckoutPage({
                           onChange={(
                             event
                           ) =>
-                            setPaymentMethod(
-                              event
-                                .target
-                                .value
+                            handlePaymentMethodChange(
+                              event.target.value
                             )
                           }
                           className="sr-only"
@@ -2865,6 +2965,18 @@ export default function CheckoutPage({
                             }
                           </div>
                         )}
+
+                        {requiresPaymentProof && (
+                          <PaymentProofUpload
+                            key={paymentMethod}
+                            file={paymentProofFile}
+                            preview={paymentProofPreview}
+                            error={paymentProofError}
+                            uploaded={Boolean(paymentProofUrl)}
+                            onChange={handlePaymentProofChange}
+                            onRemove={handleRemovePaymentProof}
+                          />
+                        )}
                       </div>
                     )}
 
@@ -2964,6 +3076,18 @@ export default function CheckoutPage({
                               bankDetails.codInstructions
                             }
                           </div>
+                        )}
+
+                        {requiresPaymentProof && (
+                          <PaymentProofUpload
+                            key={paymentMethod}
+                            file={paymentProofFile}
+                            preview={paymentProofPreview}
+                            error={paymentProofError}
+                            uploaded={Boolean(paymentProofUrl)}
+                            onChange={handlePaymentProofChange}
+                            onRemove={handleRemovePaymentProof}
+                          />
                         )}
                       </div>
                     )}
@@ -3647,6 +3771,114 @@ function ReviewBox({
     </div>
   )
 }
+function PaymentProofUpload({
+  file,
+  preview,
+  error,
+  uploaded,
+  onChange,
+  onRemove,
+}) {
+  const inputRef = useRef(null)
+
+  const openFilePicker = () => {
+    if (inputRef.current) {
+      // Reset so selecting the same screenshot again still triggers onChange.
+      inputRef.current.value = ''
+      inputRef.current.click()
+    }
+  }
+
+  const removeFile = () => {
+    if (inputRef.current) inputRef.current.value = ''
+    onRemove?.()
+  }
+
+  return (
+    <div className="border-t border-[#3A2117]/10 px-5 py-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-[#281912]">
+            Upload Payment Proof <span className="text-red-600">*</span>
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
+            Upload a clear screenshot of your successful payment. This is required to place your order.
+          </p>
+        </div>
+        <span className="rounded-full border border-[#D8C49B] bg-[#FFF8E8] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#91651D]">
+          Required
+        </span>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={onChange}
+        className="sr-only"
+      />
+
+      {file && preview ? (
+        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-[#D8CFC7] bg-white p-3 sm:flex-row sm:items-center">
+          <img
+            src={preview}
+            alt="Payment proof preview"
+            className="h-28 w-full rounded-lg bg-[#F7F4EF] object-contain sm:w-32"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="break-all text-xs font-semibold text-[#34241C]">
+              {file.name}
+            </p>
+            <p className="mt-1 text-[10px] text-[#8A786D]">
+              {(file.size / (1024 * 1024)).toFixed(2)} MB · {uploaded ? 'Uploaded securely to XCDN' : 'Ready to upload'}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={openFilePicker}
+                className="rounded-lg border border-[#D8CFC7] px-3 py-2 text-[10px] font-semibold text-[#5E493D] hover:bg-[#F7F4EF]"
+              >
+                Change Screenshot
+              </button>
+              <button
+                type="button"
+                onClick={removeFile}
+                className="rounded-lg border border-red-200 px-3 py-2 text-[10px] font-semibold text-red-700 hover:bg-red-50"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={openFilePicker}
+          className="mt-4 flex min-h-[76px] w-full items-center justify-center gap-3 rounded-xl border border-dashed border-[#BFA99C] bg-white px-4 py-4 text-left transition hover:border-[#6B4228] hover:bg-[#FFFCF8]"
+        >
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F2ECE5] text-[#6B4228]">
+            <UploadCloud className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block text-xs font-semibold text-[#34241C]">
+              Choose Payment Screenshot
+            </span>
+            <span className="mt-1 block text-[10px] text-[#8A786D]">
+              JPG, PNG, WEBP or other image · Max 10 MB
+            </span>
+          </span>
+        </button>
+      )}
+
+      {error && (
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function QrCodeBlock({
   image,
   instructions,

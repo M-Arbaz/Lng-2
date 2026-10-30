@@ -1165,6 +1165,13 @@ export function AppStateProvider({
               paymentMethod:
                 payload.paymentMethod ||
                 'cash_on_delivery',
+              paymentDetails:
+                payload.paymentDetails ||
+                null,
+
+              paymentProof:
+                payload.paymentProof ||
+                null,
             }
           )
         // Send order notification emails after Firestore saves the order.
