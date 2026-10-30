@@ -1,6 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import {
+  TicketPercent,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  X,
+} from 'lucide-react'
 import { useNavigate } from '@/lib/navigation'
 import { useAuth } from '../context/AuthContext'
 import classNames from '../utils/classNames.js'
@@ -46,7 +53,16 @@ export default function CheckoutPage({
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [couponCode, setCouponCode] = useState(
+    appliedCoupon?.coupon?.code || ''
+  )
 
+  const [couponLoading, setCouponLoading] = useState(false)
+
+  const [couponMessage, setCouponMessage] = useState({
+    type: '',
+    text: '',
+  })
   const [
     addressLine1,
     setAddressLine1,
@@ -106,7 +122,68 @@ export default function CheckoutPage({
     bankDetails,
     setBankDetails,
   ] = useState(null)
+  const [copyToast, setCopyToast] = useState('')
+  const copyToastTimerRef = useRef(null)
 
+  const handleCopy = async (label, value) => {
+    const text = String(value ?? '').trim()
+
+    if (!text) return
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(text)
+        } catch {
+          // Fallback for browsers that block Clipboard API
+          const textarea = document.createElement('textarea')
+          textarea.value = text
+          textarea.style.position = 'fixed'
+          textarea.style.opacity = '0'
+          document.body.appendChild(textarea)
+          textarea.select()
+
+          const copied = document.execCommand('copy')
+          textarea.remove()
+
+          if (!copied) throw new Error('Copy failed')
+        }
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+
+        const copied = document.execCommand('copy')
+        textarea.remove()
+
+        if (!copied) throw new Error('Copy failed')
+      }
+
+      setCopyToast(`${label} copied to clipboard`)
+    } catch (error) {
+      console.error('Clipboard copy failed:', error)
+      setCopyToast('Unable to copy. Please try again.')
+    }
+
+    if (copyToastTimerRef.current) {
+      window.clearTimeout(copyToastTimerRef.current)
+    }
+
+    copyToastTimerRef.current = window.setTimeout(() => {
+      setCopyToast('')
+    }, 2500)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (copyToastTimerRef.current) {
+        window.clearTimeout(copyToastTimerRef.current)
+      }
+    }
+  }, [])
   const [
     shippingSettings,
     setShippingSettings,
@@ -375,7 +452,137 @@ export default function CheckoutPage({
       numericTotal -
       couponDiscount
     )
+  // Keep coupon input synchronized with global coupon state
+  useEffect(() => {
+    setCouponCode(
+      appliedCoupon?.coupon?.code || ''
+    )
+  }, [appliedCoupon?.coupon?.code])
 
+  // Apply coupon
+  const handleApplyCoupon = async (event) => {
+    event?.preventDefault()
+
+    const code = couponCode.trim().toUpperCase()
+
+    if (!code) {
+      setCouponMessage({
+        type: 'error',
+        text: 'Please enter a coupon code.',
+      })
+      return
+    }
+
+    try {
+      setCouponLoading(true)
+
+      setCouponMessage({
+        type: '',
+        text: '',
+      })
+
+      const result = await couponsService.validateCoupon({
+        code,
+        cart,
+        cartTotal: numericTotal,
+      })
+
+      if (!result.valid) {
+        setCouponMessage({
+          type: 'error',
+          text: result.message || 'Coupon could not be applied.',
+        })
+        return
+      }
+
+      onCouponChange?.({
+        coupon: result.coupon,
+        discountAmount: result.discountAmount,
+        eligibleSubtotal: result.eligibleSubtotal,
+      })
+
+      setCouponCode(result.coupon.code)
+
+      setCouponMessage({
+        type: 'success',
+        text: result.message || 'Coupon applied successfully!',
+      })
+    } catch (error) {
+      console.error('Error applying checkout coupon:', error)
+
+      setCouponMessage({
+        type: 'error',
+        text: 'Unable to apply coupon. Please try again.',
+      })
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  // Remove applied coupon
+  const handleRemoveCoupon = () => {
+    onCouponChange?.(null)
+    setCouponCode('')
+
+    setCouponMessage({
+      type: '',
+      text: '',
+    })
+  }
+
+  // Revalidate coupon if cart contents or subtotal changes
+  useEffect(() => {
+    const code = appliedCoupon?.coupon?.code
+
+    if (!code || !cart.length) {
+      return
+    }
+
+    let active = true
+
+    const revalidateCoupon = async () => {
+      try {
+        const result = await couponsService.validateCoupon({
+          code,
+          cart,
+          cartTotal: numericTotal,
+        })
+
+        if (!active) return
+
+        if (!result.valid) {
+          onCouponChange?.(null)
+          setCouponCode('')
+
+          setCouponMessage({
+            type: 'error',
+            text: result.message || 'The applied coupon is no longer valid.',
+          })
+
+          return
+        }
+
+        onCouponChange?.({
+          coupon: result.coupon,
+          discountAmount: result.discountAmount,
+          eligibleSubtotal: result.eligibleSubtotal,
+        })
+      } catch (error) {
+        console.error('Error revalidating checkout coupon:', error)
+      }
+    }
+
+    revalidateCoupon()
+
+    return () => {
+      active = false
+    }
+  }, [
+    cart,
+    cartTotal,
+    appliedCoupon?.coupon?.code,
+    onCouponChange,
+  ])
   const activeShippingMethods =
     useMemo(
       () =>
@@ -1616,6 +1823,16 @@ export default function CheckoutPage({
 
   return (
     <main className="min-h-screen bg-[#F7F4EF] text-[#281912]">
+      {copyToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#3A2117] px-5 py-3 text-xs font-medium text-white shadow-xl"
+        >
+          <Check size={16} className="text-emerald-400" />
+          {copyToast}
+        </div>
+      )}
       <section className="border-b border-[#3A2117]/10 bg-[#FFFEFC]">
         <div className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -2466,37 +2683,32 @@ export default function CheckoutPage({
                         <div className="grid gap-4 p-5 text-xs sm:grid-cols-2">
                           <Info
                             label="Bank"
-                            value={
-                              bankDetails.bankName
-                            }
+                            value={bankDetails.bankName}
+                            onCopy={handleCopy}
                           />
 
                           <Info
                             label="Account Title"
-                            value={
-                              bankDetails.accountTitle
-                            }
+                            value={bankDetails.accountTitle}
+                            onCopy={handleCopy}
                           />
 
                           <Info
                             label="Account Number"
-                            value={
-                              bankDetails.accountNumber
-                            }
+                            value={bankDetails.accountNumber}
+                            onCopy={handleCopy}
                           />
 
                           <Info
                             label="IBAN"
-                            value={
-                              bankDetails.iban
-                            }
+                            value={bankDetails.iban}
+                            onCopy={handleCopy}
                           />
 
                           <Info
                             label="Branch Code"
-                            value={
-                              bankDetails.branchCode
-                            }
+                            value={bankDetails.branchCode}
+                            onCopy={handleCopy}
                           />
                         </div>
 
@@ -2557,30 +2769,26 @@ export default function CheckoutPage({
                             <div className="grid gap-4 border-t border-[#3A2117]/10 p-5 text-xs sm:grid-cols-2">
                               <Info
                                 label="Bank"
-                                value={
-                                  bankDetails.bankName
-                                }
+                                value={bankDetails.bankName}
+                                onCopy={handleCopy}
                               />
 
                               <Info
                                 label="Account Title"
-                                value={
-                                  bankDetails.accountTitle
-                                }
+                                value={bankDetails.accountTitle}
+                                onCopy={handleCopy}
                               />
 
                               <Info
                                 label="Account Number"
-                                value={
-                                  bankDetails.accountNumber
-                                }
+                                value={bankDetails.accountNumber}
+                                onCopy={handleCopy}
                               />
 
                               <Info
                                 label="IBAN"
-                                value={
-                                  bankDetails.iban
-                                }
+                                value={bankDetails.iban}
+                                onCopy={handleCopy}
                               />
                             </div>
                           </>
@@ -2889,6 +3097,109 @@ export default function CheckoutPage({
 
               <div className="border-t border-[#3A2117]/10 p-5">
                 <div className="space-y-3 text-xs text-[#6B5A50]">
+                  {/* PROMO CODE */}
+                  <div className="mb-5 rounded-2xl border border-[#3A2117]/10 bg-[#F7F4EF] p-4">
+
+                    <div className="flex items-center gap-2">
+                      <TicketPercent
+                        size={17}
+                        className="text-[#6B4228]"
+                      />
+
+                      <p className="text-xs font-semibold text-[#3A2117]">
+                        Promo Code
+                      </p>
+                    </div>
+
+                    {appliedCoupon ? (
+                      <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                        <div className="flex items-start justify-between gap-3">
+
+                          <div className="flex min-w-0 gap-2.5">
+                            <CheckCircle
+                              size={17}
+                              className="mt-0.5 shrink-0 text-emerald-600"
+                            />
+
+                            <div className="min-w-0">
+                              <p className="font-mono text-sm font-bold tracking-wide text-emerald-800">
+                                {appliedCoupon.coupon.code}
+                              </p>
+
+                              <p className="mt-1 text-[10px] text-[#6B5A50]">
+                                You save Rs.{formatPKR(couponDiscount)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleRemoveCoupon}
+                            aria-label="Remove coupon"
+                            title="Remove coupon"
+                            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#8A7569] transition hover:bg-[#E9DED6] hover:text-[#3A2117]"
+                          >
+                            <X size={15} />
+                          </button>
+
+                        </div>
+                      </div>
+                    ) : (
+                      <form
+                        onSubmit={handleApplyCoupon}
+                        className="mt-3 flex gap-2"
+                      >
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(event) => {
+                            setCouponCode(event.target.value.toUpperCase())
+
+                            if (couponMessage.text) {
+                              setCouponMessage({
+                                type: '',
+                                text: '',
+                              })
+                            }
+                          }}
+                          placeholder="Enter promo code"
+                          autoComplete="off"
+                          className="min-w-0 flex-1 rounded-xl border border-[#3A2117]/15 bg-[#FFFEFC] px-3.5 py-2.5 text-xs font-medium uppercase text-[#281912] outline-none placeholder:normal-case placeholder:text-[#A28E82] focus:border-[#6B4228] focus:ring-2 focus:ring-[#6B4228]/10"
+                        />
+
+                        <button
+                          type="submit"
+                          disabled={couponLoading || !couponCode.trim()}
+                          className="inline-flex min-w-[82px] items-center justify-center gap-1.5 rounded-xl bg-[#3A2117] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#4A2B1F] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {couponLoading ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : null}
+
+                          Apply
+                        </button>
+                      </form>
+                    )}
+
+                    {couponMessage.text && (
+                      <div
+                        className={`mt-2.5 flex items-start gap-2 text-[10px] leading-4 ${couponMessage.type === 'success'
+                          ? 'text-emerald-700'
+                          : 'text-rose-600'
+                          }`}
+                      >
+                        {couponMessage.type === 'success' ? (
+                          <CheckCircle size={13} className="mt-0.5 shrink-0" />
+                        ) : (
+                          <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                        )}
+
+                        <span>{couponMessage.text}</span>
+                      </div>
+                    )}
+
+                  </div>
+                  {/* END PROMO CODE */}
                   <div className="flex justify-between gap-4">
                     <span>
                       Subtotal
@@ -3164,20 +3475,35 @@ function ReviewBox({
 function Info({
   label,
   value,
+  onCopy,
 }) {
   if (!value) {
     return null
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#8A654D]">
         {label}
       </p>
 
-      <p className="mt-1 break-words font-medium text-[#281912]">
-        {value}
-      </p>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <p className="min-w-0 break-all font-medium text-[#281912]">
+          {value}
+        </p>
+
+        {onCopy && (
+          <button
+            type="button"
+            onClick={() => onCopy(label, value)}
+            title={`Copy ${label}`}
+            aria-label={`Copy ${label}`}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[#3A2117]/10 bg-white text-[#6B4228] transition hover:border-[#6B4228]/40 hover:bg-[#F2ECE5] active:scale-95"
+          >
+            <Copy size={15} strokeWidth={1.8} />
+          </button>
+        )}
+      </div>
     </div>
   )
 }
