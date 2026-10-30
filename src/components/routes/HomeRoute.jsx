@@ -8,6 +8,12 @@ export default function HomeRoute() {
   const app = useAppState()
   return (
     <HomeSection
+      homeContentReady={
+        !app.loading &&
+        app.homeDynamicSectionsReady.hero &&
+        app.homeDynamicSectionsReady.collections &&
+        app.homeDynamicSectionsReady.instagram
+      }
       theme={app.theme}
       categories={app.dynamicCategories}
       heroSlides={app.heroSlides}

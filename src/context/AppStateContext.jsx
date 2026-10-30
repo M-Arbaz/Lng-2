@@ -248,7 +248,14 @@ export function AppStateProvider({
     instagramImages,
     setInstagramImages,
   ] = useState([])
-
+  const [
+    homeDynamicSectionsReady,
+    setHomeDynamicSectionsReady,
+  ] = useState({
+    hero: false,
+    collections: false,
+    instagram: false,
+  })
   const headerRef =
     useRef(null)
 
@@ -1517,6 +1524,12 @@ export function AppStateProvider({
           error
         )
       )
+      .finally(() => {
+        setHomeDynamicSectionsReady((prev) => ({
+          ...prev,
+          hero: true,
+        }))
+      })
 
     collectionSlidesService
       .getActiveSlides()
@@ -1567,6 +1580,12 @@ export function AppStateProvider({
           error
         )
       )
+      .finally(() => {
+        setHomeDynamicSectionsReady((prev) => ({
+          ...prev,
+          collections: true,
+        }))
+      })
 
     instagramGridService
       .getActiveItems()
@@ -1597,6 +1616,12 @@ export function AppStateProvider({
           error
         )
       )
+      .finally(() => {
+        setHomeDynamicSectionsReady((prev) => ({
+          ...prev,
+          instagram: true,
+        }))
+      })
   }, [])
 
   function handleHeroAction(
@@ -1722,6 +1747,7 @@ export function AppStateProvider({
     heroSlides,
     collectionSlides,
     instagramImages,
+    homeDynamicSectionsReady,
 
     handleNavigate,
     handleHeroAction,

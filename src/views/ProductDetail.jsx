@@ -851,7 +851,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                             selectedImage
                           }
                           alt={product.name}
-                          className="h-full w-full object-cover transition-transform duration-[1000ms] ease-out group-hover:scale-[1.06]" />
+                          className="h-full w-full object-cover object-[50%_20%] transition-transform duration-[1000ms] ease-out group-hover:scale-[1.06]" />
                         {/* Zoom hint */}
                         <div className="pointer-events-none absolute bottom-5 right-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/50 bg-white/90 text-[#3A2117] opacity-0 shadow-lg backdrop-blur transition-all duration-300 group-hover:scale-100 group-hover:opacity-100">
                           <svg

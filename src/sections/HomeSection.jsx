@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import HeroSlider from '../components/HeroSlider.jsx'
 import HomeFeaturedProducts from './HomeFeaturedProducts.jsx'
 import HomeHandpickCollection from './HomeHandpickCollection.jsx'
@@ -10,6 +11,7 @@ import HomeStats from './HomeStats.jsx'
 import HomeShopByCategory from './HomeShopByCategory.jsx'
 
 export default function HomeSection({
+  homeContentReady = false,
   heroSlides,
   onHeroAction,
   headerHeight,
@@ -26,6 +28,7 @@ export default function HomeSection({
   isInWishlist,
   reviews,
 }) {
+  const [blogsLoaded, setBlogsLoaded] = useState(false)
   return (
     <section
       className={
@@ -52,11 +55,15 @@ export default function HomeSection({
         theme={theme}
       />
 
-      <HomeBlogs theme={theme} />
-
+      <HomeBlogs
+        theme={theme}
+        onLoadComplete={setBlogsLoaded}
+      />
       <HomeInstagramGrid images={instagramImages} theme={theme} />
 
-      <HomeStats theme={theme} />
+      {homeContentReady && blogsLoaded && (
+        <HomeStats theme={theme} />
+      )}
 
       <HomeTestimonials products={products} reviews={reviews} theme={theme} />
     </section>

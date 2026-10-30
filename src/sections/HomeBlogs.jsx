@@ -5,7 +5,9 @@ import { Link } from '@/lib/navigation'
 import { Loader2, ArrowRight, BookOpen } from 'lucide-react'
 import blogsService from '../utils/blogsService.js'
 
-export default function HomeBlogs() {
+export default function HomeBlogs({
+  onLoadComplete,
+}) {
   const [blogs, setBlogs] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -19,6 +21,10 @@ export default function HomeBlogs() {
         console.error('Error loading homepage blogs:', e)
       } finally {
         setLoading(false)
+
+        if (typeof onLoadComplete === 'function') {
+          onLoadComplete(true)
+        }
       }
     }
     loadBlogs()
