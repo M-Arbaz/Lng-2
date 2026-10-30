@@ -5,6 +5,7 @@ import {
   TicketPercent,
   CheckCircle,
   AlertCircle,
+  CheckCircle2,
   Loader2,
   X,
   Trash2,
@@ -2754,15 +2755,39 @@ export default function CheckoutPage({
                               )}
                           </div>
 
-                          <div>
-                            <p className="text-sm font-semibold text-[#281912]">
-                              Bank
-                              Deposit
-                            </p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-[#281912]">
+                                Bank Deposit
+                              </p>
+
+                              {bankTransferDiscountPercent > 0 && (
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.06em] ${paymentMethod === 'bank'
+                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                    : 'border-[#D8C49B] bg-[#FFF8E8] text-[#91651D]'
+                                    }`}
+                                >
+                                  {paymentMethod === 'bank' ? (
+                                    <>
+                                      <CheckCircle2 size={11} />
+                                      {bankTransferDiscountPercent}% OFF APPLIED
+                                    </>
+                                  ) : (
+                                    <>
+                                      <TicketPercent size={11} />
+                                      {bankTransferDiscountPercent}% OFF
+                                    </>
+                                  )}
+                                </span>
+                              )}
+                            </div>
 
                             <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
                               {bankTransferDiscountPercent > 0
-                                ? `Get ${bankTransferDiscountPercent}% OFF when you pay through Bank Transfer.`
+                                ? paymentMethod === 'bank'
+                                  ? 'Your Bank Transfer discount has been applied to this order.'
+                                  : 'Pay through Bank Deposit and save on your order.'
                                 : 'Transfer payment directly to our bank account.'}
                             </p>
                           </div>
