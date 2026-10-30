@@ -81,6 +81,11 @@ export default function AdminShippingPage() {
   ] = useState(true)
 
   const [
+    freeShippingMethodIds,
+    setFreeShippingMethodIds,
+  ] = useState(['standard'])
+
+  const [
     freeShippingThreshold,
     setFreeShippingThreshold,
   ] = useState('15000')
@@ -207,6 +212,12 @@ export default function AdminShippingPage() {
           setFreeShippingEnabled(
             data.freeShippingEnabled !==
             false
+          )
+
+          setFreeShippingMethodIds(
+            Array.isArray(data.freeShippingMethodIds)
+              ? data.freeShippingMethodIds
+              : []
           )
 
           setFreeShippingThreshold(
@@ -629,6 +640,13 @@ export default function AdminShippingPage() {
           )
       )
 
+      setFreeShippingMethodIds(
+        (previous) =>
+          previous.filter(
+            (methodId) => methodId !== id
+          )
+      )
+
       setDirty(true)
     }
 
@@ -721,6 +739,8 @@ export default function AdminShippingPage() {
 
             methods,
 
+            freeShippingMethodIds,
+
             freeShippingEnabled,
 
             freeShippingThreshold:
@@ -737,6 +757,10 @@ export default function AdminShippingPage() {
 
         setMethods(
           saved.methods || []
+        )
+
+        setFreeShippingMethodIds(
+          saved.freeShippingMethodIds || []
         )
 
         setFreeShippingEnabled(
@@ -841,12 +865,12 @@ export default function AdminShippingPage() {
         {message.text && (
           <div
             className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm ${message.type ===
-                'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : message.type ===
-                  'warning'
-                  ? 'border-amber-200 bg-amber-50 text-amber-800'
-                  : 'border-rose-200 bg-rose-50 text-rose-800'
+              'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : message.type ===
+                'warning'
+                ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-rose-200 bg-rose-50 text-rose-800'
               }`}
           >
             {message.type ===
@@ -921,9 +945,8 @@ export default function AdminShippingPage() {
                     </h2>
 
                     <p className="mt-1 text-xs leading-5 text-[#806C60]">
-                      When enabled, eligible orders receive free
-                      shipping regardless of the selected delivery
-                      method.
+                      Set the order threshold and choose which delivery
+                      methods can receive free shipping.
                     </p>
                   </div>
                 </div>
@@ -950,8 +973,8 @@ export default function AdminShippingPage() {
                       setDirty(true)
                     }}
                     className={`flex min-h-[48px] w-full items-center justify-between rounded-xl border px-4 transition ${freeShippingEnabled
-                        ? 'border-[#6B4228]/30 bg-[#F4ECE6]'
-                        : 'border-[#DED2C9] bg-[#F7F4EF]'
+                      ? 'border-[#6B4228]/30 bg-[#F4ECE6]'
+                      : 'border-[#DED2C9] bg-[#F7F4EF]'
                       }`}
                   >
                     <span className="text-sm font-semibold text-[#281912]">
@@ -962,14 +985,14 @@ export default function AdminShippingPage() {
 
                     <span
                       className={`relative h-6 w-11 rounded-full transition ${freeShippingEnabled
-                          ? 'bg-[#3A2117]'
-                          : 'bg-[#C9BDB5]'
+                        ? 'bg-[#3A2117]'
+                        : 'bg-[#C9BDB5]'
                         }`}
                     >
                       <span
                         className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${freeShippingEnabled
-                            ? 'left-6'
-                            : 'left-1'
+                          ? 'left-6'
+                          : 'left-1'
                           }`}
                       />
                     </span>
@@ -1008,6 +1031,66 @@ export default function AdminShippingPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="border-t border-[#ECE2DB] p-5 sm:p-6">
+                <div className="mb-3">
+                  <p className={labelClass}>
+                    Eligible Delivery Methods
+                  </p>
+
+                  <p className="text-xs leading-5 text-[#806C60]">
+                    Free shipping will apply only to the methods selected here.
+                    Other methods will keep their normal delivery charges.
+                  </p>
+                </div>
+
+                {methods.length ? (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {methods.map((method) => {
+                      const checked =
+                        freeShippingMethodIds.includes(method.id)
+
+                      return (
+                        <label
+                          key={method.id}
+                          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${checked
+                            ? 'border-[#6B4228]/35 bg-[#F7F1EC]'
+                            : 'border-[#E5DAD2] bg-[#FFFEFC]'
+                            }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) => {
+                              setFreeShippingMethodIds((previous) =>
+                                event.target.checked
+                                  ? [...new Set([...previous, method.id])]
+                                  : previous.filter((id) => id !== method.id)
+                              )
+
+                              setDirty(true)
+                            }}
+                            className="h-4 w-4 rounded border-[#BDAEA5] accent-[#3A2117]"
+                          />
+
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-semibold text-[#281912]">
+                              {method.name}
+                            </span>
+                            <span className="mt-0.5 block text-[10px] text-[#8A7467]">
+                              {method.enabled !== false ? 'Active' : 'Disabled'}
+                            </span>
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-dashed border-[#D8CBC2] bg-[#F7F4EF] px-4 py-4 text-xs text-[#806C60]">
+                    Add a delivery method below before selecting free-shipping eligibility.
+                  </p>
+                )}
               </div>
             </section>
 
@@ -1050,9 +1133,9 @@ export default function AdminShippingPage() {
                             method.id
                           }
                           className={`rounded-2xl border p-5 transition ${method.enabled !==
-                              false
-                              ? 'border-[#DCCFC6] bg-[#FFFEFC]'
-                              : 'border-[#E6DDD7] bg-[#F7F4EF] opacity-75'
+                            false
+                            ? 'border-[#DCCFC6] bg-[#FFFEFC]'
+                            : 'border-[#E6DDD7] bg-[#F7F4EF] opacity-75'
                             }`}
                         >
                           <div className="flex items-start justify-between gap-4">
@@ -1066,9 +1149,9 @@ export default function AdminShippingPage() {
 
                                 <span
                                   className={`rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] ${method.enabled !==
-                                      false
-                                      ? 'bg-emerald-50 text-emerald-700'
-                                      : 'bg-[#EAE1DB] text-[#8A7467]'
+                                    false
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'bg-[#EAE1DB] text-[#8A7467]'
                                     }`}
                                 >
                                   {method.enabled !==
@@ -1603,8 +1686,8 @@ export default function AdminShippingPage() {
                       )
                     }
                     className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left transition ${methodForm.enabled
-                        ? 'border-[#6B4228]/25 bg-[#F4ECE6]'
-                        : 'border-[#DED2C9] bg-[#F7F4EF]'
+                      ? 'border-[#6B4228]/25 bg-[#F4ECE6]'
+                      : 'border-[#DED2C9] bg-[#F7F4EF]'
                       }`}
                   >
                     <div>
@@ -1620,14 +1703,14 @@ export default function AdminShippingPage() {
 
                     <span
                       className={`relative h-6 w-11 shrink-0 rounded-full transition ${methodForm.enabled
-                          ? 'bg-[#3A2117]'
-                          : 'bg-[#C9BDB5]'
+                        ? 'bg-[#3A2117]'
+                        : 'bg-[#C9BDB5]'
                         }`}
                     >
                       <span
                         className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all ${methodForm.enabled
-                            ? 'left-6'
-                            : 'left-1'
+                          ? 'left-6'
+                          : 'left-1'
                           }`}
                       />
                     </span>

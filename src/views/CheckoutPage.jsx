@@ -224,6 +224,7 @@ export default function CheckoutPage({
     methods: [],
     freeShippingEnabled: true,
     freeShippingThreshold: 15000,
+    freeShippingMethodIds: ['standard'],
   })
 
   const [
@@ -341,6 +342,11 @@ export default function CheckoutPage({
                 data?.freeShippingThreshold,
                 15000
               ),
+
+            freeShippingMethodIds:
+              Array.isArray(data?.freeShippingMethodIds)
+                ? data.freeShippingMethodIds
+                : [],
           })
         }
       } catch (err) {
@@ -707,6 +713,11 @@ export default function CheckoutPage({
   const qualifiesForFreeShipping =
     Boolean(
       shippingQuote?.qualifiesForFreeShipping
+    )
+
+  const freeShippingMethodEligible =
+    Boolean(
+      shippingQuote?.freeShippingMethodEligible
     )
 
   const freeShippingEnabled =
@@ -3436,14 +3447,11 @@ export default function CheckoutPage({
                   {freeShippingEnabled &&
                     !qualifiesForFreeShipping && (
                       <div className="rounded-xl bg-[#F7F4EF] px-3 py-2.5 text-[10px] leading-4 text-[#8A654D]">
-                        Free
-                        shipping
-                        on orders
-                        of Rs.
-                        {formatPKR(
-                          freeShippingThreshold
-                        )}{' '}
-                        or more.
+                        {freeShippingMethodEligible
+                          ? `Free shipping on this delivery method for orders of Rs.${formatPKR(
+                            freeShippingThreshold
+                          )} or more.`
+                          : 'Free shipping is available only on selected delivery methods. Choose an eligible method to use this offer.'}
                       </div>
                     )}
 

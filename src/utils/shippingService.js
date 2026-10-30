@@ -32,6 +32,7 @@ const DEFAULT_SHIPPING_SETTINGS = {
   methods: DEFAULT_METHODS,
   freeShippingEnabled: true,
   freeShippingThreshold: 15000,
+  freeShippingMethodIds: ['standard'],
 }
 
 function toNonNegativeNumber(
@@ -225,10 +226,29 @@ export function normalizeShippingSettings(
         })
       )
 
+  // Older settings did not store method-level eligibility. Preserve their
+  // previous all-method behavior until an admin saves a selection.
+  const configuredFreeShippingMethodIds =
+    Array.isArray(data.freeShippingMethodIds)
+      ? data.freeShippingMethodIds
+      : methods.map((method) => method.id)
+
+  const freeShippingMethodIds = [
+    ...new Set(
+      configuredFreeShippingMethodIds
+        .map((id) => String(id || '').trim())
+        .filter((id) =>
+          methods.some((method) => method.id === id)
+        )
+    ),
+  ]
+
   return {
     cities,
 
     methods,
+
+    freeShippingMethodIds,
 
     freeShippingEnabled:
       data.freeShippingEnabled !==
@@ -256,6 +276,10 @@ function createDefaultSettings() {
           ...method,
         })
       ),
+
+    freeShippingMethodIds:
+      DEFAULT_SHIPPING_SETTINGS
+        .freeShippingMethodIds,
 
     freeShippingEnabled:
       DEFAULT_SHIPPING_SETTINGS
@@ -327,6 +351,13 @@ const shippingService = {
           )
             ? settings.methods
             : [],
+
+        freeShippingMethodIds:
+          Array.isArray(
+            settings?.freeShippingMethodIds
+          )
+            ? settings.freeShippingMethodIds
+            : undefined,
       })
 
     const payload = {
@@ -335,6 +366,9 @@ const shippingService = {
 
       methods:
         normalized.methods,
+
+      freeShippingMethodIds:
+        normalized.freeShippingMethodIds,
 
       freeShippingEnabled:
         normalized
@@ -418,11 +452,20 @@ const shippingService = {
       normalized
         .freeShippingThreshold
 
+    const freeShippingMethodEligible =
+      Boolean(
+        method &&
+        normalized.freeShippingMethodIds.includes(
+          method.id
+        )
+      )
+
     const qualifiesForFreeShipping =
-      normalized
-        .freeShippingEnabled &&
-      cleanSubtotal >=
-      threshold
+      Boolean(
+        normalized.freeShippingEnabled &&
+        freeShippingMethodEligible &&
+        cleanSubtotal >= threshold
+      )
 
     if (!method) {
       return {
@@ -431,6 +474,8 @@ const shippingService = {
         fee: null,
 
         qualifiesForFreeShipping,
+
+        freeShippingMethodEligible,
 
         freeShippingEnabled:
           normalized
@@ -451,6 +496,8 @@ const shippingService = {
 
         qualifiesForFreeShipping:
           true,
+
+        freeShippingMethodEligible,
 
         freeShippingEnabled:
           normalized
@@ -478,6 +525,8 @@ const shippingService = {
         qualifiesForFreeShipping:
           false,
 
+        freeShippingMethodEligible,
+
         freeShippingEnabled:
           normalized
             .freeShippingEnabled,
@@ -501,6 +550,8 @@ const shippingService = {
 
       qualifiesForFreeShipping:
         false,
+
+      freeShippingMethodEligible,
 
       freeShippingEnabled:
         normalized

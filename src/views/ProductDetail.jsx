@@ -95,7 +95,36 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
   const addToCartRef = useRef(null)
   const videoRef = useRef(null)
   const [badgePage, setBadgePage] = useState(0)
+  const [isBadgeTransitionEnabled, setIsBadgeTransitionEnabled] = useState(true)
   const [isImageLightboxOpen, setIsImageLightboxOpen] = useState(false)
+
+  // Automatically slide the trust badges from right to left on mobile.
+  useEffect(() => {
+    if (!isMobile) return undefined
+
+    const badgeInterval = window.setInterval(() => {
+      setBadgePage((currentPage) => (currentPage >= 2 ? 0 : currentPage + 1))
+    }, 3500)
+
+    return () => window.clearInterval(badgeInterval)
+  }, [isMobile])
+
+  // After the duplicated first slide enters view, silently reset the track
+  // to the real first slide so the carousel keeps moving left in a loop.
+  useEffect(() => {
+    if (badgePage !== 2) return undefined
+
+    const resetTimer = window.setTimeout(() => {
+      setIsBadgeTransitionEnabled(false)
+      setBadgePage(0)
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setIsBadgeTransitionEnabled(true))
+      })
+    }, 750)
+
+    return () => window.clearTimeout(resetTimer)
+  }, [badgePage])
   useEffect(() => {
     const syncMobile = () => setIsMobile(window.innerWidth < 640)
     syncMobile()
@@ -2559,71 +2588,59 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
       {/* ═══════════════ TRUST BADGES ═══════════════ */}
       <div className="border-t border-[#3A2117]/10 bg-[#F3EEE8]">
         <div className="mx-auto w-full max-w-[1400px] px-4 py-10 sm:px-6 lg:px-10">
-          {/* Mobile: 2 per row with arrow navigation */}
+          {/* Mobile: smooth right-to-left looping trust-badge carousel */}
           <div className="sm:hidden">
-            <div className="relative flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setBadgePage((p) => Math.max(0, p - 1))}
-                disabled={badgePage === 0}
+            <div className="overflow-hidden">
+              <div
                 className={classNames(
-                  'shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200',
-                  badgePage === 0
-                    ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
-                    : 'bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-500 shadow-sm',
+                  'flex w-[300%]',
+                  isBadgeTransitionEnabled
+                    ? 'transition-transform duration-700 ease-in-out motion-reduce:transition-none'
+                    : 'transition-none',
                 )}
-                aria-label="Previous"
+                style={{ transform: `translateX(-${(badgePage * 100) / 3}%)` }}
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
-              </button>
-
-              <div className="grid grid-cols-2 gap-3 flex-1">
                 {[
-                  { icon: 'M3 3h7l2 3h9v13H3z', icon2: 'M3 8h18', label: 'Dedicated Support' },
-                  { icon: 'M9 14l-4-4 4-4', icon2: 'M5 10h11a4 4 0 0 1 0 8h-1', label: '7 Days Free Returns' },
-                  { icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', icon2: 'm9 12 2 2 4-4', label: 'Safe Payment' },
-                  { icon: 'M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6', icon2: null, label: 'Online Discounts', iconType: 'cart' },
-                ].slice(badgePage * 2, badgePage * 2 + 2).map((item, i) => (
-                  <div key={i} className="flex flex-col items-center gap-2 text-center">
-                    {item.iconType === 'cart' ? (
-                      <svg viewBox="0 0 24 24" className="h-8 w-8 text-stone-700" fill="none" stroke="currentColor" strokeWidth="1.2">
-                        <circle cx="9" cy="21" r="1" />
-                        <circle cx="20" cy="21" r="1" />
-                        <path d={item.icon} />
-                      </svg>
-                    ) : item.icon2 ? (
-                      <svg viewBox="0 0 24 24" className="h-8 w-8 text-stone-700" fill="none" stroke="currentColor" strokeWidth="1.2">
-                        <path d={item.icon} />
-                        <path d={item.icon2} />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" className="h-8 w-8 text-stone-700" fill="none" stroke="currentColor" strokeWidth="1.2">
-                        <path d={item.icon} />
-                      </svg>
-                    )}
-                    <p className="text-[12px] font-bold text-stone-800 uppercase tracking-wide">{item.label}</p>
+                  [
+                    { icon: 'M3 3h7l2 3h9v13H3z', icon2: 'M3 8h18', label: 'Dedicated Support' },
+                    { icon: 'M9 14l-4-4 4-4', icon2: 'M5 10h11a4 4 0 0 1 0 8h-1', label: '7 Days Free Returns' },
+                  ],
+                  [
+                    { icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', icon2: 'm9 12 2 2 4-4', label: 'Safe Payment' },
+                    { icon: 'M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6', icon2: null, label: 'Online Discounts', iconType: 'cart' },
+                  ],
+                  [
+                    { icon: 'M3 3h7l2 3h9v13H3z', icon2: 'M3 8h18', label: 'Dedicated Support' },
+                    { icon: 'M9 14l-4-4 4-4', icon2: 'M5 10h11a4 4 0 0 1 0 8h-1', label: '7 Days Free Returns' },
+                  ],
+                ].map((page, pageIndex) => (
+                  <div key={pageIndex} className="w-1/3 shrink-0 px-1">
+                    <div className="grid grid-cols-2 gap-3">
+                      {page.map((item) => (
+                        <div key={item.label} className="flex flex-col items-center gap-2 text-center">
+                          {item.iconType === 'cart' ? (
+                            <svg viewBox="0 0 24 24" className="h-8 w-8 text-stone-700" fill="none" stroke="currentColor" strokeWidth="1.2">
+                              <circle cx="9" cy="21" r="1" />
+                              <circle cx="20" cy="21" r="1" />
+                              <path d={item.icon} />
+                            </svg>
+                          ) : item.icon2 ? (
+                            <svg viewBox="0 0 24 24" className="h-8 w-8 text-stone-700" fill="none" stroke="currentColor" strokeWidth="1.2">
+                              <path d={item.icon} />
+                              <path d={item.icon2} />
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" className="h-8 w-8 text-stone-700" fill="none" stroke="currentColor" strokeWidth="1.2">
+                              <path d={item.icon} />
+                            </svg>
+                          )}
+                          <p className="text-[12px] font-bold text-stone-800 uppercase tracking-wide">{item.label}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
-
-              <button
-                type="button"
-                onClick={() => setBadgePage((p) => Math.min(1, p + 1))}
-                disabled={badgePage >= 1}
-                className={classNames(
-                  'shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200',
-                  badgePage >= 1
-                    ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
-                    : 'bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-500 shadow-sm',
-                )}
-                aria-label="Next"
-              >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              </button>
             </div>
 
             {/* Dot indicators */}
@@ -2635,7 +2652,7 @@ export default function ProductDetail({ products, onAddToCart, reviews, handleTo
                   onClick={() => setBadgePage(page)}
                   className={classNames(
                     'h-1.5 rounded-full transition-all duration-200',
-                    badgePage === page ? 'w-5 bg-stone-900' : 'w-1.5 bg-stone-400/60',
+                    badgePage % 2 === page ? 'w-5 bg-stone-900' : 'w-1.5 bg-stone-400/60',
                   )}
                   aria-label={`Go to page ${page + 1}`}
                 />

@@ -36,6 +36,8 @@ export default function CartPage({
   const isDark = theme === 'dark'
 
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(15000)
+  const [freeShippingEnabled, setFreeShippingEnabled] = useState(true)
+  const [freeShippingMethodIds, setFreeShippingMethodIds] = useState([])
   const [couponCode, setCouponCode] =
     useState(
       appliedCoupon?.coupon?.code || ''
@@ -58,8 +60,23 @@ export default function CartPage({
 
         if (!active) return
 
+        const configuredThreshold =
+          Number(settings?.freeShippingThreshold)
+
         setFreeShippingThreshold(
-          Number(settings?.freeShippingThreshold) || 15000
+          Number.isFinite(configuredThreshold) && configuredThreshold >= 0
+            ? configuredThreshold
+            : 15000
+        )
+
+        setFreeShippingEnabled(
+          settings?.freeShippingEnabled !== false
+        )
+
+        setFreeShippingMethodIds(
+          Array.isArray(settings?.freeShippingMethodIds)
+            ? settings.freeShippingMethodIds
+            : []
         )
       } catch (error) {
         console.error('Failed to load cart shipping settings:', error)
@@ -241,13 +258,14 @@ export default function CartPage({
     }).format(value)
   }
 
-  // Preserve current cart shipping behaviour.
-  const qualifiesForFreeShipping =
-    cartTotal === 0 || cartTotal >= freeShippingThreshold
+  // A cart has no selected delivery method yet, so only show the threshold
+  // as a possible offer. Checkout confirms eligibility for the chosen method.
+  const meetsFreeShippingThreshold =
+    cartTotal >= freeShippingThreshold
 
-  // Cart page par city abhi select nahi hoti,
-  // isliye paid delivery fee guess nahi karni.
-  const shippingFee = qualifiesForFreeShipping ? 0 : null
+  const hasFreeShippingEligibleMethods =
+    freeShippingEnabled &&
+    freeShippingMethodIds.length > 0
 
   const amountUntilFreeShipping = Math.max(
     0,
@@ -988,16 +1006,12 @@ export default function CartPage({
 
                         <span
                           className={
-                            shippingFee === 0
-                              ? 'font-semibold text-emerald-700'
-                              : isDark
-                                ? 'font-medium text-white'
-                                : 'font-medium text-[#281912]'
+                            isDark
+                              ? 'font-medium text-white'
+                              : 'font-medium text-[#281912]'
                           }
                         >
-                          {shippingFee === 0
-                            ? 'Free'
-                            : 'Calculated at checkout'}
+                          Calculated at checkout
                         </span>
                       </div>
 
@@ -1029,9 +1043,7 @@ export default function CartPage({
                                 : 'mt-0.5 text-[10px] text-[#9A8171]'
                             }
                           >
-                            {qualifiesForFreeShipping
-                              ? 'Free shipping applied'
-                              : 'Delivery fee is based on your city'}
+                            Delivery fee depends on your selected method and city
 
                           </p>
                         </div>
@@ -1047,7 +1059,7 @@ export default function CartPage({
                         </span>
                       </div>
                     </div>
-                    {!qualifiesForFreeShipping && amountUntilFreeShipping > 0 && (
+                    {hasFreeShippingEligibleMethods && (
                       <div
                         className={
                           isDark
@@ -1062,11 +1074,17 @@ export default function CartPage({
                               : 'text-[10px] leading-4 text-[#7A6559]'
                           }
                         >
-                          Add{' '}
-                          <span className="font-semibold">
-                            Rs.{formatPrice(amountUntilFreeShipping)}
-                          </span>{' '}
-                          more to unlock free shipping.
+                          {meetsFreeShippingThreshold
+                            ? 'Your order may qualify for free shipping on eligible delivery methods. Select an eligible method at checkout.'
+                            : (
+                              <>
+                                Add{' '}
+                                <span className="font-semibold">
+                                  Rs.{formatPrice(amountUntilFreeShipping)}
+                                </span>{' '}
+                                more to reach the free-shipping threshold on eligible delivery methods.
+                              </>
+                            )}
                         </p>
                       </div>
                     )}
