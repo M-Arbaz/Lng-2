@@ -17,6 +17,9 @@ const emptyBankDetails = {
   bankTransferInstructions: '',
   codInstructions: '',
   codAdvancePercent: 0,
+  qrCodeImage: '',
+  qrCodeInstructions: '',
+  qrCodeEnabled: false,
   isActive: false,
 }
 
@@ -66,6 +69,16 @@ function normalizeBankDetails(data = {}) {
     codInstructions: String(
       data.codInstructions || ''
     ).trim(),
+    qrCodeImage: String(
+      data.qrCodeImage || ''
+    ).trim(),
+
+    qrCodeInstructions: String(
+      data.qrCodeInstructions || ''
+    ).trim(),
+
+    qrCodeEnabled:
+      data.qrCodeEnabled === true,
 
     codAdvancePercent,
 

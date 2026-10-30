@@ -14,9 +14,13 @@ import {
   Percent,
   Save,
   ShieldCheck,
+  Image as ImageIcon,
+  Upload,
+  X,
 } from 'lucide-react'
 
 import AdminLayout from '../components/AdminLayout'
+import { uploadToXcdn } from '../utils/xcdnUpload.js'
 import bankDetailsService from '../utils/bankDetailsService'
 
 const inputClass =
@@ -33,6 +37,9 @@ const INITIAL_FORM = {
   branchCode: '',
   bankTransferInstructions: '',
   codInstructions: '',
+  qrCodeImage: '',
+  qrCodeInstructions: '',
+  qrCodeEnabled: false,
   codAdvancePercent: '0',
   isActive: false,
 }
@@ -61,7 +68,10 @@ export default function AdminBankDetailsPage() {
     dirty,
     setDirty,
   ] = useState(false)
-
+  const [
+    qrCodeUploading,
+    setQrCodeUploading,
+  ] = useState(false)
   const [
     message,
     setMessage,
@@ -113,7 +123,14 @@ export default function AdminBankDetailsPage() {
                 data.codAdvancePercent ??
                 0
               ),
+            qrCodeImage:
+              data.qrCodeImage || '',
 
+            qrCodeInstructions:
+              data.qrCodeInstructions || '',
+
+            qrCodeEnabled:
+              data.qrCodeEnabled === true,
             isActive:
               data.isActive === true,
           })
@@ -170,7 +187,61 @@ export default function AdminBankDetailsPage() {
       })
     }
   }
+  const handleQrCodeUpload = async (event) => {
+    const input = event.target
+    const file = input.files?.[0]
 
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setMessage({
+        type: 'error',
+        text: 'Please select a valid image file.',
+      })
+      input.value = ''
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({
+        type: 'error',
+        text: 'QR image must be smaller than 5MB.',
+      })
+      input.value = ''
+      return
+    }
+
+    setQrCodeUploading(true)
+
+    setMessage({
+      type: '',
+      text: '',
+    })
+
+    try {
+      const url = await uploadToXcdn(
+        file,
+        'bank-details'
+      )
+
+      updateField('qrCodeImage', url)
+
+      setMessage({
+        type: 'success',
+        text: 'QR code uploaded. Save changes to publish it.',
+      })
+    } catch (error) {
+      console.error('QR code upload failed:', error)
+
+      setMessage({
+        type: 'error',
+        text: error?.message || 'QR code upload failed.',
+      })
+    } finally {
+      setQrCodeUploading(false)
+      input.value = ''
+    }
+  }
   const toggleActive = () => {
     setFormData(
       (previous) => ({
@@ -208,7 +279,17 @@ export default function AdminBankDetailsPage() {
         text:
           'COD advance percentage must be between 0 and 100.',
       })
+      if (
+        formData.qrCodeEnabled &&
+        !clean(formData.qrCodeImage)
+      ) {
+        setMessage({
+          type: 'error',
+          text: 'Please upload a QR code image before enabling QR payments.',
+        })
 
+        return false
+      }
       return false
     }
 
@@ -244,7 +325,7 @@ export default function AdminBankDetailsPage() {
   const handleSave =
     async (event) => {
       event.preventDefault()
-
+      if (qrCodeUploading) return
       if (!validate()) {
         return
       }
@@ -294,7 +375,14 @@ export default function AdminBankDetailsPage() {
                 clean(
                   formData.codInstructions
                 ),
+              qrCodeImage:
+                clean(formData.qrCodeImage),
 
+              qrCodeInstructions:
+                clean(formData.qrCodeInstructions),
+
+              qrCodeEnabled:
+                formData.qrCodeEnabled,
               codAdvancePercent:
                 Number(
                   formData.codAdvancePercent
@@ -333,7 +421,14 @@ export default function AdminBankDetailsPage() {
               saved.codAdvancePercent ??
               0
             ),
+          qrCodeImage:
+            saved.qrCodeImage || '',
 
+          qrCodeInstructions:
+            saved.qrCodeInstructions || '',
+
+          qrCodeEnabled:
+            saved.qrCodeEnabled === true,
           isActive:
             saved.isActive === true,
         })
@@ -417,6 +512,7 @@ export default function AdminBankDetailsPage() {
                 type="submit"
                 disabled={
                   saving ||
+                  qrCodeUploading ||
                   !dirty
                 }
                 className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl bg-[#FFFEFC] px-5 text-sm font-semibold text-[#3A2117] transition hover:bg-[#F7F4EF] disabled:cursor-not-allowed disabled:opacity-50"
@@ -441,9 +537,9 @@ export default function AdminBankDetailsPage() {
         {message.text && (
           <div
             className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm ${message.type ===
-                'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border-rose-200 bg-rose-50 text-rose-800'
+              'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-rose-200 bg-rose-50 text-rose-800'
               }`}
           >
             {message.type ===
@@ -530,8 +626,8 @@ export default function AdminBankDetailsPage() {
               }
               onClick={toggleActive}
               className={`flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left transition ${formData.isActive
-                  ? 'border-[#6B4228]/25 bg-[#F4ECE6]'
-                  : 'border-[#DDD1C8] bg-[#F7F4EF]'
+                ? 'border-[#6B4228]/25 bg-[#F4ECE6]'
+                : 'border-[#DDD1C8] bg-[#F7F4EF]'
                 }`}
             >
               <div>
@@ -551,21 +647,85 @@ export default function AdminBankDetailsPage() {
 
               <span
                 className={`relative h-6 w-11 shrink-0 rounded-full transition ${formData.isActive
-                    ? 'bg-[#3A2117]'
-                    : 'bg-[#C9BDB5]'
+                  ? 'bg-[#3A2117]'
+                  : 'bg-[#C9BDB5]'
                   }`}
               >
                 <span
                   className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all ${formData.isActive
-                      ? 'left-6'
-                      : 'left-1'
+                    ? 'left-6'
+                    : 'left-1'
                     }`}
                 />
               </span>
             </button>
           </div>
         </section>
+        {/* QR Code Availability */}
+        <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
+          <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F2EAE4] text-[#6B4228]">
+                <ImageIcon className="h-5 w-5" />
+              </div>
 
+              <div>
+                <h2 className="text-base font-semibold text-[#281912]">
+                  QR Code Availability
+                </h2>
+
+                <p className="mt-1 text-xs leading-5 text-[#806C60]">
+                  Manage QR code visibility independently from Bank Transfer.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 sm:p-6">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.qrCodeEnabled}
+              onClick={() =>
+                updateField(
+                  'qrCodeEnabled',
+                  !formData.qrCodeEnabled
+                )
+              }
+              className={`flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left transition ${formData.qrCodeEnabled
+                ? 'border-[#6B4228]/25 bg-[#F4ECE6]'
+                : 'border-[#DDD1C8] bg-[#F7F4EF]'
+                }`}
+            >
+              <div>
+                <p className="text-sm font-semibold text-[#281912]">
+                  QR Code{' '}
+                  {formData.qrCodeEnabled ? 'enabled' : 'disabled'}
+                </p>
+
+                <p className="mt-1 text-[11px] leading-5 text-[#806C60]">
+                  {formData.qrCodeEnabled
+                    ? 'QR code will be displayed at checkout wherever advance or bank payment applies.'
+                    : 'QR code remains saved but hidden from checkout.'}
+                </p>
+              </div>
+
+              <span
+                className={`relative h-6 w-11 shrink-0 rounded-full transition ${formData.qrCodeEnabled
+                  ? 'bg-[#3A2117]'
+                  : 'bg-[#C9BDB5]'
+                  }`}
+              >
+                <span
+                  className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all ${formData.qrCodeEnabled
+                    ? 'left-6'
+                    : 'left-1'
+                    }`}
+                />
+              </span>
+            </button>
+          </div>
+        </section>
         {/* Bank Account */}
         <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
           <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
@@ -695,7 +855,130 @@ export default function AdminBankDetailsPage() {
             </div>
           </div>
         </section>
+        {/* QR Code Settings */}
+        <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
+          <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F2EAE4] text-[#6B4228]">
+                <ImageIcon className="h-5 w-5" />
+              </div>
 
+              <div>
+                <h2 className="text-base font-semibold text-[#281912]">
+                  Bank QR Code
+                </h2>
+
+                <p className="mt-1 text-xs leading-5 text-[#806C60]">
+                  Upload the QR image provided by your bank and add customer instructions.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-2">
+            <div>
+              <label className={labelClass}>
+                QR Code Image
+              </label>
+
+              {formData.qrCodeImage ? (
+                <div className="rounded-2xl border border-[#E5DAD2] bg-[#F7F4EF] p-4">
+                  <img
+                    src={formData.qrCodeImage}
+                    alt="Bank QR Code"
+                    className="mx-auto max-h-[230px] w-auto max-w-full object-contain"
+                  />
+
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    <label
+                      htmlFor="bank-qr-upload"
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#3A2117] px-4 py-2.5 text-xs font-semibold text-white ${qrCodeUploading || saving
+                        ? 'pointer-events-none opacity-50'
+                        : ''
+                        }`}
+                    >
+                      {qrCodeUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+
+                      Replace QR
+                    </label>
+
+                    <button
+                      type="button"
+                      disabled={qrCodeUploading || saving}
+                      onClick={() =>
+                        updateField('qrCodeImage', '')
+                      }
+                      className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-600 disabled:opacity-50"
+                    >
+                      <X className="h-4 w-4" />
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label
+                  htmlFor="bank-qr-upload"
+                  className={`flex min-h-[230px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#DCCFC6] bg-[#F7F4EF] p-6 text-center transition hover:border-[#6B4228] ${qrCodeUploading || saving
+                    ? 'pointer-events-none opacity-50'
+                    : ''
+                    }`}
+                >
+                  {qrCodeUploading ? (
+                    <Loader2 className="h-8 w-8 animate-spin text-[#6B4228]" />
+                  ) : (
+                    <Upload className="h-8 w-8 text-[#6B4228]" />
+                  )}
+
+                  <p className="mt-3 text-sm font-semibold text-[#281912]">
+                    {qrCodeUploading
+                      ? 'Uploading QR Code...'
+                      : 'Upload Bank QR Code'}
+                  </p>
+
+                  <p className="mt-1 text-xs text-[#806C60]">
+                    PNG, JPG or WEBP · Maximum 5MB
+                  </p>
+                </label>
+              )}
+
+              <input
+                id="bank-qr-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleQrCodeUpload}
+                disabled={qrCodeUploading || saving}
+                className="sr-only"
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                QR Code Instructions
+              </label>
+
+              <textarea
+                rows={8}
+                value={formData.qrCodeInstructions}
+                onChange={(event) =>
+                  updateField(
+                    'qrCodeInstructions',
+                    event.target.value
+                  )
+                }
+                placeholder="Scan this QR code using your banking app and enter the payment amount shown at checkout. After payment, keep your transaction receipt."
+                className={`${inputClass} resize-y`}
+              />
+
+              <p className="mt-2 text-[11px] leading-5 text-[#8A7569]">
+                These instructions will appear alongside the QR code at checkout.
+              </p>
+            </div>
+          </div>
+        </section>
         {/* Instructions */}
         <section className="rounded-3xl border border-[#E5DAD2] bg-[#FFFEFC] shadow-[0_12px_35px_rgba(58,33,23,0.05)]">
           <div className="border-b border-[#ECE2DB] px-5 py-5 sm:px-6">
@@ -837,6 +1120,7 @@ export default function AdminBankDetailsPage() {
             type="submit"
             disabled={
               saving ||
+              qrCodeUploading ||
               !dirty
             }
             className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl bg-[#3A2117] px-6 text-sm font-semibold text-white transition hover:bg-[#281912] disabled:cursor-not-allowed disabled:opacity-50"

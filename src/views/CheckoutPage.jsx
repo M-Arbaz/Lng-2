@@ -740,7 +740,10 @@ export default function CheckoutPage({
         ''
       ).trim()
     )
-
+  const qrCodeActive = Boolean(
+    bankDetails?.qrCodeEnabled &&
+    bankDetails?.qrCodeImage
+  )
   const advancePercent =
     bankAccountActive
       ? Math.min(
@@ -2740,7 +2743,14 @@ export default function CheckoutPage({
                             onCopy={handleCopy}
                           />
                         </div>
-
+                        {qrCodeActive && (
+                          <QrCodeBlock
+                            image={bankDetails.qrCodeImage}
+                            instructions={bankDetails.qrCodeInstructions}
+                            amount={grandTotal}
+                            amountLabel="Amount to pay"
+                          />
+                        )}
                         {bankDetails.bankTransferInstructions && (
                           <div className="border-t border-[#3A2117]/10 px-5 py-4 text-xs leading-5 text-[#6B5A50]">
                             {
@@ -2820,6 +2830,14 @@ export default function CheckoutPage({
                                 onCopy={handleCopy}
                               />
                             </div>
+                            {qrCodeActive && (
+                              <QrCodeBlock
+                                image={bankDetails.qrCodeImage}
+                                instructions={bankDetails.qrCodeInstructions}
+                                amount={advanceAmount}
+                                amountLabel="Advance amount to pay"
+                              />
+                            )}
                           </>
                         ) : (
                           <div className="px-5 py-4 text-xs leading-5 text-[#6B5A50]">
@@ -3513,7 +3531,52 @@ function ReviewBox({
     </div>
   )
 }
+function QrCodeBlock({
+  image,
+  instructions,
+  amount,
+  amountLabel = 'Amount to pay',
+}) {
+  if (!image) return null
 
+  return (
+    <div className="border-t border-[#3A2117]/10 px-5 py-5">
+      <div className="text-center">
+        <p className="text-sm font-semibold text-[#281912]">
+          Scan & Pay with QR
+        </p>
+
+        <p className="mt-1 text-xs leading-5 text-[#7A6A60]">
+          Scan this QR code using your banking app and enter the payment amount shown below.
+        </p>
+      </div>
+
+      <div className="mx-auto mt-4 flex max-w-[260px] justify-center rounded-2xl border border-[#3A2117]/10 bg-white p-4">
+        <img
+          src={image}
+          alt="Bank payment QR code"
+          className="h-auto max-h-[230px] w-full object-contain"
+        />
+      </div>
+
+      <div className="mt-4 rounded-xl border border-[#6B4228]/15 bg-white px-4 py-3 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8A654D]">
+          {amountLabel}
+        </p>
+
+        <p className="mt-1 text-lg font-bold text-[#281912]">
+          Rs. {formatPKR(amount)}
+        </p>
+      </div>
+
+      {instructions && (
+        <div className="mt-4 rounded-xl bg-white px-4 py-3 text-xs leading-5 text-[#6B5A50] whitespace-pre-line">
+          {instructions}
+        </div>
+      )}
+    </div>
+  )
+}
 function Info({
   label,
   value,

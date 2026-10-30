@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 const ALLOWED_PRODUCT_FOLDERS = new Set([
     'banners',
     'blogs',
+    'bank-details',
     'categories',
     'collectionSlides',
     'color-variants',
