@@ -781,7 +781,106 @@ export const ordersService = {
     }
   },
 
-  // Cancel order
+  // Permanently delete an order and restore reserved stock when applicable.
+  deleteOrder: async (orderId) => {
+    const normalizedId = String(orderId || '').trim();
+
+    if (!normalizedId) {
+      throw new Error('Invalid order ID.');
+    }
+
+    try {
+      const orderRef = doc(db, 'orders', normalizedId);
+
+      let inventoryRestored = false;
+
+      await runTransaction(db, async (transaction) => {
+        const orderSnapshot = await transaction.get(orderRef);
+
+        if (!orderSnapshot.exists()) {
+          throw new Error('Order not found.');
+        }
+
+        const orderData = orderSnapshot.data();
+
+        const currentStatus = normalizeOrderStatus(
+          orderData?.status
+        );
+
+        // Never restock orders that have already been fulfilled or shipped.
+        const fulfilledStatuses = new Set([
+          'delivered',
+          'shipped',
+          'dispatched',
+          'out_for_delivery',
+        ]);
+
+        const shouldRestoreInventory =
+          orderData?.inventoryAdjusted === true &&
+          orderData?.inventoryRestored !== true &&
+          !fulfilledStatuses.has(currentStatus);
+
+        const productEntries = [];
+
+        // Read every product before writing anything in the transaction.
+        if (shouldRestoreInventory) {
+          const quantities = getOrderProductQuantities(
+            orderData?.items
+          );
+
+          for (const [productId, quantity] of quantities.entries()) {
+            const productRef = doc(
+              db,
+              'products',
+              productId
+            );
+
+            const productSnapshot = await transaction.get(
+              productRef
+            );
+
+            // A product may have been removed after the order was placed.
+            if (!productSnapshot.exists()) {
+              continue;
+            }
+
+            const productData = productSnapshot.data();
+            const currentStock = Number(productData?.stock || 0);
+
+            productEntries.push({
+              ref: productRef,
+              stock: Number.isFinite(currentStock)
+                ? Math.max(0, currentStock)
+                : 0,
+              quantity,
+            });
+          }
+        }
+
+        // Restore stock only for inventory-managed orders.
+        productEntries.forEach(({ ref, stock, quantity }) => {
+          transaction.update(ref, {
+            stock: stock + quantity,
+            updatedAt: serverTimestamp(),
+          });
+        });
+
+        inventoryRestored = shouldRestoreInventory;
+
+        // Delete the order in the same transaction.
+        transaction.delete(orderRef);
+      });
+
+      return {
+        id: normalizedId,
+        inventoryRestored,
+      };
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      throw error;
+    }
+  },
+
   // Cancel order
   cancelOrder: async (orderId) => {
     return ordersService.updateOrderStatus(

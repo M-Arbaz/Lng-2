@@ -2,7 +2,7 @@
 import { jsPDF } from 'jspdf'
 
 const BRAND = {
-    name: 'LAMP & GLOW',
+    name: 'LAMP AND GLOW',
     dark: [58, 33, 23],
     brown: [107, 66, 40],
     muted: [125, 105, 92],
@@ -397,7 +397,7 @@ function drawFooter(doc, pageNumber, pageCount) {
     doc.setTextColor(...BRAND.muted)
 
     doc.text(
-        'Thank you for shopping with Lamp & Glow.',
+        'Thank you for shopping with Lamp AND Glow.',
         PAGE.left,
         288
     )

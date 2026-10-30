@@ -29,6 +29,7 @@ import {
   XCircle,
   ChevronDown,
   Download,
+  Trash2,
   FileSpreadsheet,
   FileText,
 } from 'lucide-react'
@@ -769,8 +770,18 @@ export default function AdminOrdersPage() {
 
   const [loading, setLoading] =
     useState(true)
-
   const [saving, setSaving] =
+    useState(false)
+
+  // Selected orders for CSV / Excel export
+  const [selectedOrderIds, setSelectedOrderIds] =
+    useState([])
+
+  // Delete confirmation modal
+  const [orderToDelete, setOrderToDelete] =
+    useState(null)
+
+  const [deletingOrder, setDeletingOrder] =
     useState(false)
   const [
     exportMenuOpen,
@@ -1217,7 +1228,76 @@ export default function AdminOrdersPage() {
       searchQuery,
       filterStatus,
     ])
+  const toggleOrderSelection = (orderId) => {
+    setSelectedOrderIds((previous) =>
+      previous.includes(orderId)
+        ? previous.filter((id) => id !== orderId)
+        : [...previous, orderId]
+    )
+  }
 
+  const toggleSelectAllFiltered = (checked) => {
+    const visibleIds = filteredOrders
+      .map((order) => order.id)
+      .filter(Boolean)
+
+    setSelectedOrderIds((previous) => {
+      if (checked) {
+        return Array.from(
+          new Set([...previous, ...visibleIds])
+        )
+      }
+
+      return previous.filter(
+        (id) => !visibleIds.includes(id)
+      )
+    })
+  }
+
+  const confirmDeleteOrder = async () => {
+    const orderId = orderToDelete?.id
+
+    if (!orderId || deletingOrder) return
+
+    try {
+      setDeletingOrder(true)
+
+      const result = await ordersService.deleteOrder(orderId)
+
+      // Remove deleted order from the UI.
+      setOrders((previous) =>
+        previous.filter((order) => order.id !== orderId)
+      )
+
+      // Remove deleted order from selection.
+      setSelectedOrderIds((previous) =>
+        previous.filter((id) => id !== orderId)
+      )
+
+      // Close details modal too, if this order was open.
+      setSelectedOrder((previous) =>
+        previous?.id === orderId ? null : previous
+      )
+
+      setOrderToDelete(null)
+
+      setMessage({
+        type: 'success',
+        text: result?.inventoryRestored
+          ? 'Order deleted successfully. Reserved product stock was restored.'
+          : 'Order deleted successfully.',
+      })
+    } catch (error) {
+      console.error('Order deletion failed:', error)
+
+      setMessage({
+        type: 'error',
+        text: error?.message || 'Unable to delete this order.',
+      })
+    } finally {
+      setDeletingOrder(false)
+    }
+  }
   const stats = useMemo(() => {
     const total = orders.length
 
@@ -1292,8 +1372,13 @@ export default function AdminOrdersPage() {
     format,
     scope = 'filtered'
   ) => {
-    const sourceOrders =
-      scope === 'all'
+    const hasSelection = selectedOrderIds.length > 0
+
+    const sourceOrders = hasSelection
+      ? orders.filter((order) =>
+        selectedOrderIds.includes(order.id)
+      )
+      : scope === 'all'
         ? orders
         : filteredOrders
 
@@ -1324,8 +1409,9 @@ export default function AdminOrdersPage() {
           .toISOString()
           .slice(0, 10)
 
-      const scopeName =
-        scope === 'all'
+      const scopeName = hasSelection
+        ? 'selected'
+        : scope === 'all'
           ? 'all'
           : 'filtered'
 
@@ -1412,9 +1498,11 @@ export default function AdminOrdersPage() {
 
       setMessage({
         type: 'success',
-        text: `${scope === 'all'
-          ? 'All orders'
-          : 'Filtered orders'
+        text: `${hasSelection
+          ? `${sourceOrders.length} selected order(s)`
+          : scope === 'all'
+            ? 'All orders'
+            : 'Filtered orders'
           } exported successfully as ${format === 'csv'
             ? 'CSV'
             : 'Excel'
@@ -1703,19 +1791,31 @@ export default function AdminOrdersPage() {
                   />
 
                   <div className="absolute right-0 z-50 mt-2 w-[290px] overflow-hidden rounded-2xl border border-[#E3D9D2] bg-[#FFFEFC] shadow-[0_18px_50px_rgba(58,33,23,0.16)]">
+
+                    {selectedOrderIds.length > 0 && (
+                      <div className="border-b border-[#E3D9D2] bg-[#F2ECE5] px-4 py-3">
+                        <p className="text-xs font-semibold text-[#3A2117]">
+                          {selectedOrderIds.length} order(s) selected
+                        </p>
+
+                        <p className="mt-1 text-[10px] leading-4 text-[#80685A]">
+                          Export options below will export only your selected orders.
+                        </p>
+                      </div>
+                    )}
                     {/* Current Filter */}
                     <div className="border-b border-[#EEE6E0] p-2">
                       <div className="px-3 pb-2 pt-1">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#927E72]">
-                          Current View
+                          {selectedOrderIds.length > 0
+                            ? 'Selected Orders'
+                            : 'Current View'}
                         </p>
 
                         <p className="mt-0.5 text-xs text-[#766258]">
-                          {filteredOrders.length}{' '}
-                          filtered order
-                          {filteredOrders.length === 1
-                            ? ''
-                            : 's'}
+                          {selectedOrderIds.length > 0
+                            ? `${selectedOrderIds.length} selected order(s)`
+                            : `${filteredOrders.length} filtered order(s)`}
                         </p>
                       </div>
 
@@ -1743,8 +1843,9 @@ export default function AdminOrdersPage() {
                           </p>
 
                           <p className="mt-0.5 text-[10px] text-[#948075]">
-                            Export filtered orders
-                          </p>
+                            {selectedOrderIds.length > 0
+                              ? 'Export selected orders'
+                              : 'Export filtered orders'}                          </p>
                         </div>
                       </button>
 
@@ -1772,78 +1873,84 @@ export default function AdminOrdersPage() {
                           </p>
 
                           <p className="mt-0.5 text-[10px] text-[#948075]">
-                            Export filtered orders
-                          </p>
+                            {selectedOrderIds.length > 0
+                              ? 'Export selected orders'
+                              : 'Export filtered orders'}                          </p>
                         </div>
                       </button>
                     </div>
 
                     {/* All Orders */}
-                    <div className="p-2">
-                      <div className="px-3 pb-2 pt-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#927E72]">
-                          All Orders
-                        </p>
+                    {selectedOrderIds.length === 0 && (
+                      <>
+                        {/* All Orders */}
+                        <div className="p-2">
+                          <div className="px-3 pb-2 pt-1">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#927E72]">
+                              All Orders
+                            </p>
 
-                        <p className="mt-0.5 text-xs text-[#766258]">
-                          {orders.length}{' '}
-                          total order
-                          {orders.length === 1
-                            ? ''
-                            : 's'}
-                        </p>
-                      </div>
+                            <p className="mt-0.5 text-xs text-[#766258]">
+                              {orders.length}{' '}
+                              total order
+                              {orders.length === 1
+                                ? ''
+                                : 's'}
+                            </p>
+                          </div>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleExport(
-                            'xlsx',
-                            'all'
-                          )
-                        }
-                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-[#F7F4EF]"
-                      >
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF3EB] text-[#4F7557]">
-                          <FileSpreadsheet className="h-4 w-4" />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleExport(
+                                'xlsx',
+                                'all'
+                              )
+                            }
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-[#F7F4EF]"
+                          >
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAF3EB] text-[#4F7557]">
+                              <FileSpreadsheet className="h-4 w-4" />
+                            </div>
+
+                            <div>
+                              <p className="text-xs font-semibold text-[#34241C]">
+                                Excel (.xlsx)
+                              </p>
+
+                              <p className="mt-0.5 text-[10px] text-[#948075]">
+                                Export all orders
+                              </p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleExport(
+                                'csv',
+                                'all'
+                              )
+                            }
+                            className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-[#F7F4EF]"
+                          >
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F0E9E4] text-[#6B4228]">
+                              <FileText className="h-4 w-4" />
+                            </div>
+
+                            <div>
+                              <p className="text-xs font-semibold text-[#34241C]">
+                                CSV (.csv)
+                              </p>
+
+                              <p className="mt-0.5 text-[10px] text-[#948075]">
+                                Export all orders
+                              </p>
+                            </div>
+                          </button>
                         </div>
-
-                        <div>
-                          <p className="text-xs font-semibold text-[#34241C]">
-                            Excel (.xlsx)
-                          </p>
-
-                          <p className="mt-0.5 text-[10px] text-[#948075]">
-                            Export all orders
-                          </p>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleExport(
-                            'csv',
-                            'all'
-                          )
-                        }
-                        className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-[#F7F4EF]"
-                      >
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F0E9E4] text-[#6B4228]">
-                          <FileText className="h-4 w-4" />
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold text-[#34241C]">
-                            CSV (.csv)
-                          </p>
-
-                          <p className="mt-0.5 text-[10px] text-[#948075]">
-                            Export all orders
-                          </p>
-                        </div>
-                      </button>
-                    </div>
+                      </>
+                    )}
                   </div>
                 </>
               )}
@@ -1879,11 +1986,44 @@ export default function AdminOrdersPage() {
             </div>
           ) : (
             <>
+              {selectedOrderIds.length > 0 && (
+                <div className="flex flex-col gap-3 border-b border-[#EDE5DF] bg-[#F8F5F2] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs font-semibold text-[#3A2117]">
+                    {selectedOrderIds.length} order(s) selected
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderIds([])}
+                    className="w-fit text-xs font-semibold text-[#8B5A42] underline underline-offset-2 hover:text-[#3A2117]"
+                  >
+                    Clear selection
+                  </button>
+                </div>
+              )}
+
               {/* DESKTOP TABLE */}
               <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[900px]">
                   <thead>
                     <tr className="border-b border-[#EDE5DF] bg-[#FAF7F4]">
+                      <th className="w-12 px-4 py-4 text-center">
+                        <input
+                          type="checkbox"
+                          aria-label="Select all visible orders"
+                          checked={
+                            filteredOrders.length > 0 &&
+                            filteredOrders.every((order) =>
+                              selectedOrderIds.includes(order.id)
+                            )
+                          }
+                          onChange={(event) =>
+                            toggleSelectAllFiltered(event.target.checked)
+                          }
+                          className="h-4 w-4 cursor-pointer accent-[#3A2117]"
+                        />
+                      </th>
+
                       {[
                         'Order',
                         'Customer',
@@ -1920,6 +2060,18 @@ export default function AdminOrdersPage() {
                             key={order.id}
                             className="border-b border-[#F0E9E4] transition last:border-b-0 hover:bg-[#FCFAF8]"
                           >
+                            <td className="px-4 py-4 text-center">
+                              <input
+                                type="checkbox"
+                                aria-label={`Select order ${order.id}`}
+                                checked={selectedOrderIds.includes(order.id)}
+                                onChange={() =>
+                                  toggleOrderSelection(order.id)
+                                }
+                                className="h-4 w-4 cursor-pointer accent-[#3A2117]"
+                              />
+                            </td>
+
                             <td className="px-5 py-4">
                               <p className="font-mono text-xs font-semibold text-[#6B4228]">
                                 #
@@ -1989,18 +2141,30 @@ export default function AdminOrdersPage() {
                             </td>
 
                             <td className="px-5 py-4">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSelectedOrder(
-                                    order
-                                  )
-                                }
-                                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[#3A2117] px-3.5 text-xs font-semibold text-white transition hover:bg-[#4C2D21]"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                View
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedOrder(order)
+                                  }
+                                  className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[#3A2117] px-3.5 text-xs font-semibold text-white transition hover:bg-[#4C2D21]"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  View
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOrderToDelete(order)
+                                  }
+                                  title="Delete order"
+                                  aria-label={`Delete order ${order.id}`}
+                                  className="grid h-[38px] w-[38px] place-items-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         )
@@ -2012,37 +2176,39 @@ export default function AdminOrdersPage() {
 
               {/* MOBILE CARDS */}
               <div className="divide-y divide-[#EEE6E0] md:hidden">
-                {filteredOrders.map(
-                  (order) => {
-                    const StatusIcon =
-                      getStatusIcon(
-                        order.status
-                      )
+                {filteredOrders.map((order) => {
+                  const StatusIcon = getStatusIcon(order.status)
 
-                    return (
+                  return (
+                    <div
+                      key={order.id}
+                      className="flex items-center gap-3 p-5 transition hover:bg-[#FBF8F5]"
+                    >
+                      <input
+                        type="checkbox"
+                        aria-label={`Select order ${order.id}`}
+                        checked={selectedOrderIds.includes(order.id)}
+                        onChange={() =>
+                          toggleOrderSelection(order.id)
+                        }
+                        className="h-4 w-4 flex-shrink-0 cursor-pointer accent-[#3A2117]"
+                      />
+
                       <button
-                        key={order.id}
                         type="button"
                         onClick={() =>
-                          setSelectedOrder(
-                            order
-                          )
+                          setSelectedOrder(order)
                         }
-                        className="block w-full p-5 text-left transition hover:bg-[#FBF8F5]"
+                        className="min-w-0 flex-1 text-left"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="font-mono text-xs font-semibold text-[#6B4228]">
-                              #
-                              {order.id?.slice(
-                                0,
-                                10
-                              )}
+                              #{order.id?.slice(0, 10)}
                             </p>
 
                             <p className="mt-2 truncate text-sm font-semibold text-[#34241C]">
-                              {order.fullName ||
-                                'Customer'}
+                              {order.fullName || 'Customer'}
                             </p>
                           </div>
 
@@ -2056,32 +2222,110 @@ export default function AdminOrdersPage() {
                             )}`}
                           >
                             <StatusIcon className="h-3 w-3" />
-                            {getStatusLabel(
-                              order.status
-                            )}
+                            {getStatusLabel(order.status)}
                           </span>
 
                           <span className="text-xs font-semibold text-[#34241C]">
-                            {formatPKR(
-                              order.total
-                            )}
+                            {formatPKR(order.total)}
                           </span>
 
                           <span className="text-xs text-[#928075]">
-                            {formatDate(
-                              order.createdAt
-                            )}
+                            {formatDate(order.createdAt)}
                           </span>
                         </div>
                       </button>
-                    )
-                  }
-                )}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOrderToDelete(order)
+                        }
+                        title="Delete order"
+                        aria-label={`Delete order ${order.id}`}
+                        className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             </>
           )}
         </section>
+        {/* DELETE ORDER CONFIRMATION */}
+        {orderToDelete && (
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-[#281912]/60 p-4 backdrop-blur-[3px]"
+            role="presentation"
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-order-title"
+              className="w-full max-w-md overflow-hidden rounded-[26px] border border-[#E6DDD6] bg-[#FFFEFC] shadow-[0_25px_80px_rgba(40,25,18,0.3)]"
+            >
+              <div className="p-6 sm:p-7">
+                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-rose-50 text-rose-600">
+                  <Trash2 className="h-6 w-6" />
+                </div>
 
+                <h3
+                  id="delete-order-title"
+                  className="mt-5 text-xl font-semibold tracking-tight text-[#34241C]"
+                >
+                  Delete this order?
+                </h3>
+
+                <p className="mt-2 text-sm leading-6 text-[#806F64]">
+                  Are you sure you want to permanently delete order
+                  {' '}
+                  <span className="font-semibold text-[#3A2117]">
+                    #{orderToDelete.id}
+                  </span>
+                  ?
+                </p>
+
+                <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50/70 p-3">
+                  <p className="text-xs leading-5 text-rose-800">
+                    This action cannot be undone. The order will be
+                    removed from the store records.
+                  </p>
+                </div>
+
+                <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setOrderToDelete(null)}
+                    disabled={deletingOrder}
+                    className="min-h-11 rounded-xl border border-[#DED2CA] bg-white px-5 text-sm font-semibold text-[#5D493E] transition hover:bg-[#F7F4EF] disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={confirmDeleteOrder}
+                    disabled={deletingOrder}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deletingOrder ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        Delete Order
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {/* ORDER DETAILS MODAL */}
         {selectedOrder && (
           <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#281912]/55 p-3 backdrop-blur-[2px] sm:p-5">
