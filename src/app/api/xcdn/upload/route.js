@@ -30,6 +30,10 @@ function getAllowedOrigins() {
     const origins = new Set([
         'http://localhost:3000',
         'http://127.0.0.1:3000',
+        'https://lampandglow.pk',
+        'https://www.lampandglow.pk',
+        'https://rimless-golf-automaker.ngrok-free.dev/',
+        'https://rimless-golf-automaker.ngrok-free.dev'
     ])
 
     const configured = [
